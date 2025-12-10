@@ -51,6 +51,10 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ title: 'Login', headerShown: false }} />
+        <Stack.Screen name="student/[id]" options={{ title: 'Öğrenci', headerShown: false }} />
+        <Stack.Screen name="newrecord/[id]" options={{ title: 'Yeni Kayıt', headerShown: false }} />
+        <Stack.Screen name="record/[id]" options={{ title: 'Kayıt', headerShown: false }} />
+        <Stack.Screen name="newstudent" options={{ title: 'Yeni Öğrenci', headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

@@ -1,8 +1,10 @@
-import { auth } from "@/services/firebase";
+import { auth, db } from "@/services/firebase";
 import { signOut } from "@firebase/auth";
 import { useRouter } from "expo-router";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { Calendar, Eye, Phone, Plus, Search, Users } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
 import {
   FlatList,
   SafeAreaView,
@@ -22,36 +24,10 @@ type Student = {
   assessmentDate: string;
 };
 
-// Dummy veri (şimdilik)
-const DUMMY_STUDENTS: Student[] = [
-  {
-    id: "1",
-    name: "Ayşe Yılmaz",
-    email: "ayse@example.com",
-    number: "0555 111 22 33",
-    aktif: "Aktif",
-    assessmentDate: "2025-12-01T10:00:00.000Z",
-  },
-  {
-    id: "2",
-    name: "Mehmet Demir",
-    email: "mehmet@example.com",
-    number: "0555 222 33 44",
-    aktif: "Pasif",
-    assessmentDate: "2025-11-20T12:00:00.000Z",
-  },
-  {
-    id: "3",
-    name: "Zehra Kaya",
-    email: "zehra@example.com",
-    number: "0555 333 44 55",
-    aktif: "Aktif",
-    assessmentDate: "2025-10-15T09:30:00.000Z",
-  },
-];
 
 export default function KayitlarScreen() {
-  const [students] = useState<Student[]>(DUMMY_STUDENTS);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDurum, setFilterDurum] = useState<"" | "Aktif" | "Pasif">("");
 
@@ -71,14 +47,62 @@ export default function KayitlarScreen() {
     });
   }, [students, searchTerm, filterDurum]);
 
+
+  useEffect(() => {
+    // students koleksiyonuna real-time abone ol
+    const q = query(
+      collection(db, "students"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list: Student[] = snapshot.docs.map((doc) => {
+          const data = doc.data() as any;
+
+          return {
+            id: doc.id,
+            name: data.name ?? "",
+            email: data.email ?? "",
+            number: data.number ?? "",
+            aktif: (data.aktif as "Aktif" | "Pasif") ?? "Aktif",
+            assessmentDate: data.assessmentDate ?? new Date().toISOString(),
+          };
+        });
+
+        setStudents(list);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("students dinlenirken hata:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+          <Text style={{ color: "#e5e7eb" }}>Öğrenciler yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const handleViewDetails = (studentId: string) => {
-    console.log("Detay tıklandı:", studentId);
-    // buraya navigation / router bağlayabilirsin
+    router.push({
+      pathname: "/student/[id]",
+      params: { id: studentId },
+    });
   };
 
   const handleAddStudent = () => {
     console.log("Yeni öğrenci ekle tıklandı");
-    // navigation / router
+    router.replace("/newstudent");
   };
 
   const handleSignout = async () => {

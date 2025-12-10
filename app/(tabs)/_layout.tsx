@@ -14,6 +14,10 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
+        tabBarStyle: {
+          backgroundColor: "#020617",  // koyu tema
+          borderTopColor: "#1e293b"    // tab bar çizgisi (opsiyonel)
+        },
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
@@ -26,7 +30,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Data',
+          title: 'Kolpa',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
         }}
       />
