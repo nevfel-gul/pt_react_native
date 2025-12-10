@@ -1,13 +1,20 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { signOut } from "firebase/auth";
+import { auth } from "../../services/firebase";
 
 export default function HomeScreen() {
+  // const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    // router.replace("/login");
+  };
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -18,7 +25,7 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
+        <ThemedText type="title">Welcomjhkjhkjhke!</ThemedText>
         <HelloWave />
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
@@ -37,28 +44,6 @@ export default function HomeScreen() {
         </ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
 
         <ThemedText>
           {`Tap the Explore tab to learn more about what's included in this starter app.`}
@@ -74,6 +59,21 @@ export default function HomeScreen() {
           <ThemedText type="defaultSemiBold">app-example</ThemedText>.
         </ThemedText>
       </ThemedView>
+      <TouchableOpacity
+        onPress={handleLogout}
+        style={{
+          backgroundColor: "#ef4444",
+          paddingVertical: 12,
+          paddingHorizontal: 20,
+          borderRadius: 10,
+          marginTop: 20,
+        }}
+      >
+        <Text style={{ color: "#fff", fontWeight: "bold", textAlign: "center" }}>
+          Çıkış Yap
+        </Text>
+      </TouchableOpacity>
+
     </ParallaxScrollView>
   );
 }
