@@ -75,7 +75,7 @@ const YeniOgrenciScreen = () => {
             Alert.alert("Başarılı", "Öğrenci kaydedildi.", [
                 {
                     text: "Tamam",
-                    onPress: () => router.replace("/(tabs)/explore"),
+                    onPress: () => router.replace("/(tabs)/kolpa"),
                 },
             ]);
         } catch (error) {
@@ -96,7 +96,7 @@ const YeniOgrenciScreen = () => {
 
                         <TouchableOpacity
                             style={styles.backButton}
-                            onPress={() => router.replace("/(tabs)/explore")}
+                            onPress={() => router.replace("/(tabs)/kolpa")}
                         >
                             <ArrowLeft size={18} color="#f1f5f9" />
                             <Text style={styles.backButtonText}>Geri</Text>

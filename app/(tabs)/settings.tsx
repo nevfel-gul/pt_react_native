@@ -1,6 +1,5 @@
-// app/(tabs)/settings.tsx
-
 import { useRouter } from "expo-router";
+import { signOut } from "firebase/auth";
 import {
   ArrowLeft,
   Bell,
@@ -23,6 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { auth } from "../../services/firebase";
 
 type TabKey = "profile" | "preferences" | "security";
 
@@ -38,6 +38,12 @@ export default function SettingsScreen() {
   const [twoFactor, setTwoFactor] = useState(false);
 
   const handleBack = () => router.back();
+
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.replace("/login");
+  };
 
   // -------------------------
   // TABS
@@ -352,8 +358,8 @@ export default function SettingsScreen() {
         <SettingRow label="Gizlilik Politikası" right={<Text style={styles.badgeMuted}>Aç</Text>} />
       </View>
 
-      <TouchableOpacity style={styles.logoutButton}>
-        <LogOut size={18} color="#450a0a" />
+      <TouchableOpacity style={styles.logoutButton} onPress={() => { handleLogout(); }}>
+        <LogOut size={18} color="#fca5a5" />
         <Text style={styles.logoutText}>Çıkış Yap</Text>
       </TouchableOpacity>
     </>

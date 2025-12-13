@@ -188,7 +188,7 @@ export default function StudentDetailScreen() {
         return () => unsub();
     }, []);
 
-    const goBack = () => router.replace("/(tabs)/explore");
+    const goBack = () => router.replace("/(tabs)/kolpa");
 
     const toggleAktif = async () => {
         if (!student) return;
