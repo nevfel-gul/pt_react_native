@@ -1,245 +1,338 @@
-// app/(tabs)/summary.tsx  (veya istediğin path)
-
-import { Activity, BarChart2, Users } from "lucide-react-native";
-import React, { useState } from "react";
+import { db } from "@/services/firebase";
+import { useRouter } from "expo-router";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import {
+  Bell,
+  Calendar,
+  Eye,
+  Phone,
+  Plus,
+  Search,
+  Users,
+  XIcon,
+} from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  FlatList,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
-type RangeKey = "7g" | "30g" | "all";
+type Student = {
+  id: string;
+  name: string;
+  email: string;
+  number: string;
+  aktif: "Aktif" | "Pasif";
+  assessmentDate: string;
+};
 
-export default function SummaryScreen() {
-  const [selectedRange, setSelectedRange] = useState<RangeKey>("7g");
+export default function KayitlarScreen() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchWidth = useRef(new Animated.Value(0)).current;
+  const [searchActive, setSearchActive] = useState(false);
+  const safeSearch = searchTerm ?? "";
 
-  // Sırf görsel dursun diye ufak dummy bar değerleri
-  const bars = [0.3, 0.6, 0.9, 0.5, 0.7];
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterDurum, setFilterDurum] = useState<"" | "Aktif" | "Pasif">("");
+  const totalCount = students.length;
+  const activeCount = students.filter((s) => s.aktif === "Aktif").length;
+  const passiveCount = students.filter((s) => s.aktif === "Pasif").length;
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const router = useRouter();
+
+  const openAnimatedSearch = () => {
+    setSearchActive(true);
+    Animated.timing(searchWidth, {
+      toValue: 200,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const closeAnimatedSearch = () => {
+    Animated.timing(searchWidth, {
+      toValue: 40,   // 🔵 Tamamen 0 yapma! Büyüteç ikonunun genişliği kadar kalsın
+      duration: 220,
+      useNativeDriver: false,
+    }).start(() => {
+      setSearchActive(false);
+      setSearchTerm("");
+    });
+  };
+
+  const filteredStudents = useMemo(() => {
+    return students.filter((student) => {
+      const matchesSearch =
+        student.name.toLowerCase().includes(safeSearch.toLowerCase()) ||
+        student.email.toLowerCase().includes(safeSearch.toLowerCase());
+
+      const matchesDurum = !filterDurum || student.aktif === filterDurum;
+
+      return matchesSearch && matchesDurum;
+    });
+  }, [students, safeSearch, filterDurum]);
+
+  useEffect(() => {
+    const q = query(collection(db, "students"), orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list: Student[] = snapshot.docs.map((doc) => {
+          const data = doc.data() as any;
+
+          return {
+            id: doc.id,
+            name: data.name ?? "",
+            email: data.email ?? "",
+            number: data.number ?? "",
+            aktif: (data.aktif as "Aktif" | "Pasif") ?? "Aktif",
+            assessmentDate: data.assessmentDate ?? new Date().toISOString(),
+          };
+        });
+
+        setStudents(list);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("students dinlenirken hata:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View
+          style={[
+            styles.container,
+            { justifyContent: "center", alignItems: "center" },
+          ]}
+        >
+          <Text style={{ color: "#e5e7eb" }}>Öğrenciler yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const handleViewDetails = (studentId: string) => {
+    router.push({
+      pathname: "/student/[id]",
+      params: { id: studentId },
+    });
+  };
+
+  const handleAddStudent = () => {
+    router.replace("/newstudent");
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: 32 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* HEADER */}
-          <View style={styles.header}>
-            <Text style={styles.pageTitle}>Özet / Analiz</Text>
-            <Text style={styles.pageSubtitle}>
-              Bu ekran tamamen kolpa verilerle taslak olarak hazır. Sonra
-              backend’den gelen gerçek istatistikleri buraya bağlarız.
-            </Text>
+        <View style={styles.headerWrapper}>
+          <View style={styles.headerTopRow}>
+            <View style={styles.leftHeaderArea}>
+              {/* User Icon */}
+              <View style={styles.titleIconWrapper}>
+                <Users size={24} color="#60a5fa" />
+              </View>
 
-            {/* Tarih aralığı chipleri */}
-            <View style={styles.rangeRow}>
-              <RangeChip
-                label="Son 7 gün"
-                active={selectedRange === "7g"}
-                onPress={() => setSelectedRange("7g")}
-              />
-              <RangeChip
-                label="Son 30 gün"
-                active={selectedRange === "30g"}
-                onPress={() => setSelectedRange("30g")}
-              />
-              <RangeChip
-                label="Tümü"
-                active={selectedRange === "all"}
-                onPress={() => setSelectedRange("all")}
-              />
-            </View>
-          </View>
+              {/* Search */}
+              {!searchActive && (
+                <TouchableOpacity
+                  onPress={openAnimatedSearch}
+                  style={{
+                    backgroundColor: "#1e293b",
+                    height: 40,
+                    paddingHorizontal: 10,
+                    alignItems: "center",
+                    borderRadius: 99,
+                    justifyContent: "center",
+                  }}>
+                  <Search size={22} color="#f1f5f9" />
+                </TouchableOpacity>
+              )}
 
-          {/* KART 1 – Genel İstatistikler */}
-          <View style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <BarChart2 size={18} color="#3b82f6" />
-              <Text style={styles.cardTitle}>Genel İstatistikler</Text>
-            </View>
-            <Text style={styles.cardHint}>
-              Rakamlar şimdilik uydurma, sadece yer tutucu. Tasarım dursun
-              diye koyduk.
-            </Text>
 
-            <StatRow label="Toplam öğrenci" value="23" sub="Aktif + pasif" />
-            <StatRow label="Aktif öğrenci" value="18" sub="Son 60 gün içinde ölçüm yapılmış" />
-            <StatRow label="Bu hafta ölçüm" value="5" sub="Tanita veya performans testi" />
-          </View>
-
-          {/* KART 2 – Hedeflere göre kaba ilerleme */}
-          <View style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <Activity size={18} color="#22c55e" />
-              <Text style={styles.cardTitle}>Hedef Bazlı İlerleme</Text>
-            </View>
-            <Text style={styles.cardHint}>
-              Tamamen kolpa yüzdeler. İleride yağ-kas, mezura, test skorları
-              ile gerçek hesap çıkar.
-            </Text>
-
-            <ProgressRow label="Yağ kaybı odaklı" percent={60} />
-            <ProgressRow label="Kas kazanımı odaklı" percent={45} />
-            <ProgressRow label="Genel sağlık / hareketlilik" percent={55} />
-          </View>
-
-          {/* KART 3 – Öğrenci segmentleri */}
-          <View style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <Users size={18} color="#38bdf8" />
-              <Text style={styles.cardTitle}>Öğrenci Segmentleri (Dummy)</Text>
-            </View>
-
-            <TagRow label="Haftada 2 gün gelen" value="9 kişi" />
-            <TagRow label="Haftada 3 gün gelen" value="6 kişi" />
-            <TagRow label="Online / hibrit" value="4 kişi" />
-            <TagRow label="Tam başlangıç seviyesi" value="7 kişi" />
-          </View>
-
-          {/* KART 4 – Basit fake bar chart */}
-          <View style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <BarChart2 size={18} color="#f97316" />
-              <Text style={styles.cardTitle}>Günlük Seans Doluluk (Demo)</Text>
-            </View>
-            <Text style={styles.cardHint}>
-              Her sütun bir günü temsil ediyor. Yükseklikler random,
-              backend yok şu an 🙂
-            </Text>
-
-            <View style={styles.chartContainer}>
-              {bars.map((ratio, idx) => (
-                <View key={idx} style={styles.chartBarWrapper}>
-                  <View
-                    style={[
-                      styles.chartBar,
-                      { height: 80 + 60 * ratio },
-                    ]}
+              {searchActive && (
+                <Animated.View
+                  style={{
+                    width: searchWidth,
+                    height: 40,
+                    backgroundColor: "#1e293b",
+                    borderRadius: 99,
+                    paddingHorizontal: 10,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  {/* Input solda büyüsün */}
+                  <TextInput
+                    placeholder="Ara..."
+                    placeholderTextColor="#94a3b8"
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                    style={{
+                      color: "#f1f5f9",
+                      flex: 1,        // otomatik genişletir
+                    }}
+                    autoFocus
                   />
+
+                  {/* X ikon sağa otomatik yaslanır */}
+                  <TouchableOpacity onPress={closeAnimatedSearch}>
+                    <XIcon size={18} color="#f1f5f9" />
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+
+            </View>
+
+            {/* RIGHT */}
+            <View style={styles.rightHeaderArea}>
+              <TouchableOpacity
+                onPress={() => setNotifOpen(!notifOpen)}
+                style={{ padding: 9, backgroundColor: "#1e293b", borderRadius: 99 }}>
+                <Bell size={22} color="#f1f5f9" />
+              </TouchableOpacity>
+              {notifOpen && (
+                <View style={styles.notifPanel}>
+                  <Text style={styles.notifText}>Bildirim yok</Text>
                 </View>
-              ))}
+              )}
             </View>
-            <Text style={styles.chartFooterText}>
-              Bugünün tahmini doluluk oranı: %72 (uydurma).
-            </Text>
           </View>
+        </View>
 
-          {/* KART 5 – Son aktiviteler (dummy log) */}
-          <View style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <Activity size={18} color="#a855f7" />
-              <Text style={styles.cardTitle}>Son Aktiviteler (Dummy)</Text>
-            </View>
-
-            {[
-              "Ayşe Y. için Tanita ölçümü eklendi",
-              "Can B. kuvvet testleri güncellendi",
-              "Zehra K. postür notu kaydedildi",
-              "Mert A. için yeni program oluşturuldu",
-            ].map((text, index) => (
-              <View
-                key={index}
+        {/* LİSTE */}
+        <TouchableWithoutFeedback onPress={closeAnimatedSearch}>
+          <View style={styles.listWrapper}>
+            {/* FİLTRELER */}
+            <View style={styles.filterBoxRow}>
+              <TouchableOpacity
+                onPress={() => setFilterDurum("")}
                 style={[
-                  styles.activityRow,
-                  index > 0 && styles.activityRowBorder,
+                  styles.filterBox,
+                  { backgroundColor: "#0f172a", borderColor: "rgba(255,255,255,0.08)" },
+                  filterDurum === "" && styles.filterBoxActive,
                 ]}
               >
-                <View style={styles.activityDot} />
-                <Text style={styles.activityText}>{text}</Text>
+                <Text style={styles.filterBoxNumber}>{totalCount}</Text>
+                <Text style={styles.filterBoxText}>Tümü</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setFilterDurum("Aktif")}
+                style={[
+                  styles.filterBox,
+                  { backgroundColor: "#166534", borderColor: "rgba(34,197,94,0.6)" },
+                  filterDurum === "Aktif" && styles.filterBoxActive,
+                ]}
+              >
+                <Text style={styles.filterBoxNumber}>{activeCount}</Text>
+                <Text style={styles.filterBoxText}>Aktif</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setFilterDurum("Pasif")}
+                style={[
+                  styles.filterBox,
+                  { backgroundColor: "#EF4444", borderColor: "rgba(251,191,36,0.6)" },
+                  filterDurum === "Pasif" && styles.filterBoxActive,
+                ]}
+              >
+                <Text style={styles.filterBoxNumber}>{passiveCount}</Text>
+                <Text style={styles.filterBoxText}>Pasif</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* LİSTE */}
+            {filteredStudents.length > 0 ? (
+              <FlatList
+                data={filteredStudents}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContent}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.card}
+                    onPress={() => handleViewDetails(item.id)}
+                  >
+                    <View style={styles.cardLeft}>
+                      <Text style={styles.cardName}>{item.name}</Text>
+
+                      <View style={styles.cardRow}>
+                        <Phone size={16} color="#9ca3af" />
+                        <Text style={styles.cardRowText}>{item.number}</Text>
+                      </View>
+
+                      <View style={styles.cardRow}>
+                        <Calendar size={16} color="#9ca3af" />
+                        <Text style={styles.cardRowText}>
+                          {new Date(item.assessmentDate).toLocaleDateString(
+                            "tr-TR"
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardRight}>
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          item.aktif === "Aktif"
+                            ? styles.statusBadgeActive
+                            : styles.statusBadgeInactive,
+                        ]}
+                      >
+                        <Text
+                          style={
+                            item.aktif === "Aktif"
+                              ? styles.statusTextActive
+                              : styles.statusTextInactive
+                          }
+                        >
+                          {item.aktif}
+                        </Text>
+                      </View>
+
+                      <View style={styles.detailPill}>
+                        <Eye size={16} color="#e5e7eb" />
+                        <Text style={styles.detailPillText}>Detay</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>Sonuç yok</Text>
+                <Text style={styles.emptySubtitle}>
+                  Arama kriterlerine uygun öğrenci bulunamadı.
+                </Text>
               </View>
-            ))}
+            )}
           </View>
-        </ScrollView>
+        </TouchableWithoutFeedback>
+
+        <TouchableOpacity style={styles.fab} onPress={handleAddStudent}>
+          <Plus size={24} color="#0f172a" />
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
-
-/* Küçük bileşenler */
-
-function RangeChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[
-        styles.rangeChip,
-        active && styles.rangeChipActive,
-      ]}
-    >
-      <Text
-        style={[
-          styles.rangeChipText,
-          active && styles.rangeChipTextActive,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-function StatRow({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <View style={styles.statRow}>
-      <View>
-        <Text style={styles.statLabel}>{label}</Text>
-        {sub ? <Text style={styles.statSub}>{sub}</Text> : null}
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-    </View>
-  );
-}
-
-function ProgressRow({ label, percent }: { label: string; percent: number }) {
-  return (
-    <View style={styles.progressRow}>
-      <View style={styles.progressHeader}>
-        <Text style={styles.progressLabel}>{label}</Text>
-        <Text style={styles.progressLabel}>{percent}%</Text>
-      </View>
-      <View style={styles.progressBar}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${percent}%` },
-          ]}
-        />
-      </View>
-    </View>
-  );
-}
-
-function TagRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.tagRow}>
-      <Text style={styles.tagLabel}>{label}</Text>
-      <View style={styles.tagPill}>
-        <Text style={styles.tagPillText}>{value}</Text>
-      </View>
-    </View>
-  );
-}
-
-/* STYLES */
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -248,178 +341,331 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    backgroundColor: "#0A0F1A",
+  },
+  headerWrapper: {
+    paddingHorizontal: 20,
+    paddingTop: 8,      // daha sıkı
+    paddingBottom: 10,
     backgroundColor: "#020617",
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 6,
+
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
   },
-  pageTitle: {
-    color: "#f9fafb",
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  titleIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#0b1120",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: "#1e293b",
+  },
+  title: {
     fontSize: 20,
     fontWeight: "700",
+    color: "#e5e7eb",
   },
-  pageSubtitle: {
+  subtitle: {
+    fontSize: 13,
     color: "#9ca3af",
-    fontSize: 12,
-    marginTop: 4,
+    marginTop: 2,
   },
-  rangeRow: {
+
+  searchIcon: {
+    position: "absolute",
+    left: 12,
+    top: "50%",
+    marginTop: -9,
+    zIndex: 1,
+  },
+  searchInput: {
+    backgroundColor: "#020617",
+    borderWidth: 1,
+    borderColor: "#1f2937",
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 40,
+    fontSize: 14,
+    color: "#e5e7eb",
+  },
+  filterRow: {
     flexDirection: "row",
-    marginTop: 10,
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 12,
   },
-  rangeChip: {
-    paddingHorizontal: 10,
+  filterChip: {
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "#1f2937",
-    marginRight: 6,
     backgroundColor: "#020617",
   },
-  rangeChipActive: {
-    backgroundColor: "rgba(37,99,235,0.15)",
-    borderColor: "#3b82f6",
+  filterChipActive: {
+    backgroundColor: "#1d4ed8",
+    borderColor: "#1d4ed8",
   },
-  rangeChipText: {
-    fontSize: 11,
+  filterChipText: {
+    fontSize: 12,
     color: "#9ca3af",
   },
-  rangeChipTextActive: {
-    color: "#bfdbfe",
+  filterChipTextActive: {
+    color: "#f9fafb",
     fontWeight: "600",
   },
-  card: {
-    marginHorizontal: 16,
-    marginTop: 10,
+  statsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  statCard: {
+    flex: 1,
     backgroundColor: "#020617",
-    borderRadius: 18,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: "#1f2937",
-    padding: 14,
-  },
-  cardTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  cardTitle: {
-    color: "#e5e7eb",
-    fontSize: 15,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  cardHint: {
-    color: "#6b7280",
-    fontSize: 11,
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  statRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#0f172a",
-  },
-  statLabel: {
-    color: "#9ca3af",
-    fontSize: 12,
-  },
-  statSub: {
-    color: "#6b7280",
-    fontSize: 11,
-    marginTop: 2,
   },
   statValue: {
-    color: "#e5e7eb",
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
   },
-  progressRow: {
-    marginTop: 8,
-  },
-  progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  progressLabel: {
-    color: "#e5e7eb",
-    fontSize: 12,
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: "#0f172a",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 999,
-    backgroundColor: "#3b82f6",
-  },
-  tagRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#0f172a",
-  },
-  tagLabel: {
-    color: "#9ca3af",
-    fontSize: 12,
-  },
-  tagPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: "rgba(148,163,184,0.15)",
-  },
-  tagPillText: {
-    color: "#e5e7eb",
+  statLabel: {
     fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 2,
   },
-  chartContainer: {
+  listWrapper: {
+    flex: 1,
+    backgroundColor: "#020617",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 8,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 80,
+  },
+  card: {
+    backgroundColor: "#0f172a",   // premium surface
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginBottom: 16, // daha fazla spacing
     flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  cardLeft: {
+    flex: 1,
+  },
+  cardName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#f9fafb",
+    marginBottom: 6,
+  },
+  cardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 3,
+  },
+  cardRowText: {
+    fontSize: 14,
+    color: "#cbd5e1",
+  },
+
+  cardRight: {
     alignItems: "flex-end",
     justifyContent: "space-between",
-    marginTop: 12,
-    paddingHorizontal: 2,
   },
-  chartBarWrapper: {
-    flex: 1,
-    alignItems: "center",
-  },
-  chartBar: {
-    width: 10,
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "#3b82f6",
   },
-  chartFooterText: {
-    color: "#6b7280",
+  statusBadgeActive: {
+    backgroundColor: "rgba(34,197,94,0.18)",
+  },
+  statusBadgeInactive: {
+    backgroundColor: "rgba(248,113,113,0.18)",
+  },
+  statusTextActive: {
     fontSize: 11,
-    marginTop: 8,
+    fontWeight: "600",
+    color: "#22C55E",
   },
-  activityRow: {
+  statusTextInactive: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#EF4444",
+  },
+  detailPill: {
+    marginTop: 10,
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#020617",
+    borderWidth: 1,
+    borderColor: "#1f2937",
   },
-  activityRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: "#0f172a",
-  },
-  activityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#22c55e",
-    marginRight: 8,
-  },
-  activityText: {
-    color: "#e5e7eb",
+  detailPillText: {
     fontSize: 12,
+    color: "#e5e7eb",
+    fontWeight: "500",
+  },
+  emptyState: {
+    alignItems: "center",
+    marginTop: 40,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#e5e7eb",
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: "#9ca3af",
+    textAlign: "center",
+    paddingHorizontal: 20,
+  },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#38bdf8",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
+  },
+  searchPanel: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#0f172a",
+    paddingTop: 60,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    zIndex: 999,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1e293b",
+  },
+
+  searchHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  filterBoxRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginBottom: 14,
+    marginTop: 6,
+  },
+
+  filterBox: {
     flex: 1,
+    marginHorizontal: 4,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "#0A0F1A",
+  },
+
+
+  filterBoxActive: {
+    borderColor: "#fff",
+    opacity: 1,
+  },
+
+  filterBoxText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#EDEDED",
+
+  },
+
+  filterBoxTextActive: {
+    color: "#EDEDED",
+    fontWeight: "700",
+  },
+  filterBoxNumber: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#EDEDED",
+    marginBottom: 4,
+  },
+  notifPanel: {
+    position: "absolute",
+    top: 70,
+    right: 20,
+    backgroundColor: "rgba(30,30,30,0.95)",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    width: 200,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    zIndex: 999,
+  },
+
+
+  notifItem: {
+    paddingVertical: 10,
+  },
+
+  notifText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  leftHeaderArea: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  rightHeaderArea: {
+    width: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
   },
 });

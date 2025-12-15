@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: '(tabs)/kolpa',
 };
 
 export default function RootLayout() {
@@ -48,9 +48,9 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack >
         <Stack.Screen name="login" options={{ title: 'Login', headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="student/[id]" options={{ title: 'Öğrenci', headerShown: false }} />
         <Stack.Screen name="newrecord/[id]" options={{ title: 'Yeni Kayıt', headerShown: false }} />
         <Stack.Screen name="record/[id]" options={{ title: 'Kayıt', headerShown: false }} />

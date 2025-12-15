@@ -15,20 +15,23 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#020617",  // koyu tema
-          borderTopColor: "#1e293b"    // tab bar çizgisi (opsiyonel)
+          backgroundColor: "#020617",
+          borderTopColor: "#1e293b"
         },
         tabBarButton: HapticTab,
-      }}>
+      }}
+      initialRouteName="kolpa"
+
+    >
       <Tabs.Screen
-        name="explore"
+        name="index"
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="kolpa"
         options={{
           title: 'Kolpa',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,

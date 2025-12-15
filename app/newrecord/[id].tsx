@@ -1,3 +1,6 @@
+// ---------------------
+// UI FIXED + THEME UPDATED VERSION
+// ---------------------
 
 import { db } from "@/services/firebase";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -10,7 +13,7 @@ import {
     Phone,
     Ruler,
     Save,
-    User,
+    User
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -88,7 +91,6 @@ export default function NewRecordScreen() {
                 }
             } catch (err) {
                 console.error("Öğrenci çekme hatası:", err);
-                setStudent(null);
             } finally {
                 setLoadingStudent(false);
             }
@@ -98,7 +100,7 @@ export default function NewRecordScreen() {
     }, [id]);
 
     const handleChange = (field: keyof FormData, value: string | boolean) => {
-        setFormData((prev) => ({ ...prev, [field]: value } as FormData));
+        setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
     const handleSubmit = async () => {
@@ -107,7 +109,6 @@ export default function NewRecordScreen() {
             return;
         }
 
-        // Basit validasyon
         if (!formData.goal.trim()) {
             Alert.alert("Uyarı", "Öğrencinin hedefini yazman lazım.");
             return;
@@ -116,19 +117,13 @@ export default function NewRecordScreen() {
         try {
             setSubmitting(true);
 
-            // 🔹 ŞİMDİLİK DUMMY: sadece console.log + alert
-            console.log("Yeni kayıt (dummy):", {
-                studentId: id,
-                formData,
-            });
-
             await addDoc(collection(db, "records"), {
                 studentId: id,
                 ...formData,
                 createdAt: serverTimestamp(),
             });
 
-            Alert.alert("Tamamdır", "Değerlendirme (dummy) olarak kaydedildi.");
+            Alert.alert("Tamamdır", "Değerlendirme kaydedildi (dummy).");
             router.back();
         } catch (err) {
             console.error("Kayıt hata:", err);
@@ -138,15 +133,11 @@ export default function NewRecordScreen() {
         }
     };
 
-    const handleGoBack = () => {
-        router.back();
-    };
-
     if (loadingStudent) {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" />
+                    <ActivityIndicator size="large" color="#60a5fa" />
                     <Text style={styles.loadingText}>Öğrenci bilgileri yükleniyor...</Text>
                 </View>
             </SafeAreaView>
@@ -158,7 +149,7 @@ export default function NewRecordScreen() {
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
                     <Text style={styles.errorText}>Öğrenci bulunamadı.</Text>
-                    <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+                    <TouchableOpacity style={styles.backButton} onPress={router.back}>
                         <ArrowLeft size={18} color="#e5e7eb" />
                         <Text style={styles.backButtonText}>Geri</Text>
                     </TouchableOpacity>
@@ -172,56 +163,60 @@ export default function NewRecordScreen() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
+
                 {/* HEADER */}
                 <View style={styles.header}>
                     <View style={styles.headerTopRow}>
-                        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+                        <TouchableOpacity style={styles.backButton} onPress={router.back}>
                             <ArrowLeft size={18} color="#e5e7eb" />
                             <Text style={styles.backButtonText}>Geri</Text>
                         </TouchableOpacity>
 
                         <View style={styles.dateRow}>
                             <Calendar size={16} color="#9ca3af" />
-                            <Text style={styles.dateText}>Değerlendirme Tarihi: {today}</Text>
+                            <Text style={styles.dateText}>Tarih: {today}</Text>
                         </View>
                     </View>
 
-                    {/* Öğrenci kartı */}
+                    {/* STUDENT CARD */}
                     <View style={styles.studentRow}>
                         <View style={styles.avatar}>
                             <Text style={styles.avatarText}>
                                 {student.name?.[0]?.toUpperCase() ?? "?"}
                             </Text>
                         </View>
+
                         <View style={{ flex: 1 }}>
                             <Text style={styles.studentName}>{student.name}</Text>
+
                             <View style={styles.studentMetaRow}>
-                                {student.email ? (
+                                {student.email && (
                                     <View style={styles.metaItem}>
                                         <Mail size={14} color="#9ca3af" />
                                         <Text style={styles.metaText}>{student.email}</Text>
                                     </View>
-                                ) : null}
-                                {student.number ? (
+                                )}
+                                {student.number && (
                                     <View style={styles.metaItem}>
                                         <Phone size={14} color="#9ca3af" />
                                         <Text style={styles.metaText}>{student.number}</Text>
                                     </View>
-                                ) : null}
+                                )}
                             </View>
+
                             <View style={styles.studentMetaRow}>
-                                {student.boy ? (
+                                {student.boy && (
                                     <View style={styles.metaItem}>
                                         <Ruler size={14} color="#9ca3af" />
                                         <Text style={styles.metaText}>{student.boy} cm</Text>
                                     </View>
-                                ) : null}
-                                {student.gender ? (
+                                )}
+                                {student.gender && (
                                     <View style={styles.metaItem}>
                                         <User size={14} color="#9ca3af" />
                                         <Text style={styles.metaText}>{student.gender}</Text>
                                     </View>
-                                ) : null}
+                                )}
                             </View>
                         </View>
                     </View>
@@ -230,10 +225,10 @@ export default function NewRecordScreen() {
                 {/* FORM */}
                 <ScrollView
                     style={styles.formWrapper}
-                    contentContainerStyle={{ paddingBottom: 32 }}
+                    contentContainerStyle={{ paddingBottom: 40 }}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Bölüm: Genel Hedef */}
+                    {/* KART 1 */}
                     <View style={styles.card}>
                         <View style={styles.cardTitleRow}>
                             <HeartPulse size={18} color="#38bdf8" />
@@ -244,9 +239,9 @@ export default function NewRecordScreen() {
                             <Text style={styles.label}>Antrenman hedefi</Text>
                             <TextInput
                                 placeholder="Örn: Yağ yakımı, kas kazanımı..."
-                                placeholderTextColor="#6b7280"
+                                placeholderTextColor="#64748b"
                                 value={formData.goal}
-                                onChangeText={(text) => handleChange("goal", text)}
+                                onChangeText={(t) => handleChange("goal", t)}
                                 style={styles.input}
                             />
                         </View>
@@ -254,10 +249,10 @@ export default function NewRecordScreen() {
                         <View style={styles.field}>
                             <Text style={styles.label}>Şikayet / Rahatsızlık</Text>
                             <TextInput
-                                placeholder="Bel, diz, omuz vs. varsa yaz..."
-                                placeholderTextColor="#6b7280"
+                                placeholder="Bel, diz, omuz varsa yaz..."
+                                placeholderTextColor="#64748b"
                                 value={formData.complaint}
-                                onChangeText={(text) => handleChange("complaint", text)}
+                                onChangeText={(t) => handleChange("complaint", t)}
                                 style={[styles.input, styles.inputMultiline]}
                                 multiline
                             />
@@ -267,15 +262,15 @@ export default function NewRecordScreen() {
                             <Text style={styles.label}>Haftalık antrenman sıklığı</Text>
                             <TextInput
                                 placeholder="Örn: Haftada 3 gün"
-                                placeholderTextColor="#6b7280"
+                                placeholderTextColor="#64748b"
                                 value={formData.trainingFrequency}
-                                onChangeText={(text) => handleChange("trainingFrequency", text)}
+                                onChangeText={(t) => handleChange("trainingFrequency", t)}
                                 style={styles.input}
                             />
                         </View>
                     </View>
 
-                    {/* Bölüm: Yaşam alışkanlıkları */}
+                    {/* KART 2 */}
                     <View style={styles.card}>
                         <View style={styles.cardTitleRow}>
                             <HeartPulse size={18} color="#22c55e" />
@@ -285,10 +280,10 @@ export default function NewRecordScreen() {
                         <View style={styles.field}>
                             <Text style={styles.label}>Uyku kalitesi</Text>
                             <TextInput
-                                placeholder="Örn: Gecede ortalama 6–7 saat, sık bölünüyor..."
-                                placeholderTextColor="#6b7280"
+                                placeholder="Gecede 6–7 saat, bölünme var mı?"
+                                placeholderTextColor="#64748b"
                                 value={formData.sleepQuality}
-                                onChangeText={(text) => handleChange("sleepQuality", text)}
+                                onChangeText={(t) => handleChange("sleepQuality", t)}
                                 style={[styles.input, styles.inputMultiline]}
                                 multiline
                             />
@@ -297,51 +292,51 @@ export default function NewRecordScreen() {
                         <View style={styles.field}>
                             <Text style={styles.label}>Beslenme notu</Text>
                             <TextInput
-                                placeholder="Günlük beslenme alışkanlıklarını kısaca yaz..."
-                                placeholderTextColor="#6b7280"
+                                placeholder="Günlük beslenme alışkanlıkları..."
+                                placeholderTextColor="#64748b"
                                 value={formData.nutritionNote}
-                                onChangeText={(text) => handleChange("nutritionNote", text)}
+                                onChangeText={(t) => handleChange("nutritionNote", t)}
                                 style={[styles.input, styles.inputMultiline]}
                                 multiline
                             />
                         </View>
                     </View>
 
-                    {/* Bölüm: Sağlık Geçmişi (dummy switch’ler) */}
+                    {/* KART 3 */}
                     <View style={styles.card}>
                         <View style={styles.cardTitleRow}>
                             <HeartPulse size={18} color="#f97316" />
-                            <Text style={styles.cardTitle}>Sağlık Geçmişi (Özet)</Text>
+                            <Text style={styles.cardTitle}>Sağlık Geçmişi</Text>
                         </View>
 
                         <View style={styles.switchRow}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.label}>Ağrı / yaralanma var mı?</Text>
+                                <Text style={styles.label}>Ağrı var mı?</Text>
                                 <Text style={styles.helpText}>
-                                    Bel, diz, omuz gibi bölgelerde düzenli ağrı yaşıyor mu?
+                                    Bel, diz, omuz gibi bölgelerde düzenli ağrı?
                                 </Text>
                             </View>
                             <Switch
                                 value={formData.hasPain}
-                                onValueChange={(val) => handleChange("hasPain", val)}
+                                onValueChange={(v) => handleChange("hasPain", v)}
                             />
                         </View>
 
                         <View style={styles.switchRow}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.label}>Geçirilmiş ameliyat var mı?</Text>
+                                <Text style={styles.label}>Ameliyat geçmişi?</Text>
                                 <Text style={styles.helpText}>
-                                    Son yıllarda ortopedik ya da başka bir ameliyat.
+                                    Son yıllarda ortopedik veya başka bir ameliyat.
                                 </Text>
                             </View>
                             <Switch
                                 value={formData.hadSurgery}
-                                onValueChange={(val) => handleChange("hadSurgery", val)}
+                                onValueChange={(v) => handleChange("hadSurgery", v)}
                             />
                         </View>
                     </View>
 
-                    {/* Bölüm: Eğitmen Notu */}
+                    {/* KART 4 */}
                     <View style={styles.card}>
                         <View style={styles.cardTitleRow}>
                             <HeartPulse size={18} color="#a855f7" />
@@ -352,16 +347,16 @@ export default function NewRecordScreen() {
                             <Text style={styles.label}>Notlar</Text>
                             <TextInput
                                 placeholder="Genel izlenim, dikkat edilmesi gerekenler..."
-                                placeholderTextColor="#6b7280"
+                                placeholderTextColor="#64748b"
                                 value={formData.notes}
-                                onChangeText={(text) => handleChange("notes", text)}
+                                onChangeText={(t) => handleChange("notes", t)}
                                 style={[styles.input, styles.inputMultiline]}
                                 multiline
                             />
                         </View>
                     </View>
 
-                    {/* Kaydet butonu */}
+                    {/* SUBMIT BUTTON */}
                     <View style={styles.submitWrapper}>
                         <TouchableOpacity
                             style={[styles.saveButton, submitting && { opacity: 0.6 }]}
@@ -373,7 +368,9 @@ export default function NewRecordScreen() {
                             ) : (
                                 <>
                                     <Save size={18} color="#0f172a" />
-                                    <Text style={styles.saveButtonText}>Değerlendirmeyi Kaydet (Dummy)</Text>
+                                    <Text style={styles.saveButtonText}>
+                                        Değerlendirmeyi Kaydet
+                                    </Text>
                                 </>
                             )}
                         </TouchableOpacity>
@@ -384,6 +381,8 @@ export default function NewRecordScreen() {
     );
 }
 
+/* ------------------- STYLES ------------------- */
+
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
@@ -393,44 +392,47 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: "#020617",
     },
+
     center: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#020617",
+        padding: 20,
     },
     loadingText: {
-        color: "#e5e7eb",
-        marginTop: 8,
+        color: "#94a3b8",
+        marginTop: 10,
     },
     errorText: {
-        color: "#fca5a5",
-        marginBottom: 12,
+        color: "#f87171",
+        marginBottom: 10,
     },
+
+    /* HEADER */
     header: {
         paddingHorizontal: 16,
         paddingTop: 14,
-        paddingBottom: 10,
+        paddingBottom: 6,
     },
     headerTopRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 12,
+        marginBottom: 14,
     },
     backButton: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        paddingHorizontal: 10,
+        paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 999,
-        backgroundColor: "#020617",
+        backgroundColor: "#0f172a",
         borderWidth: 1,
-        borderColor: "#1f2937",
+        borderColor: "#1e293b",
     },
     backButtonText: {
-        color: "#e5e7eb",
+        color: "#f1f5f9",
         fontSize: 13,
     },
     dateRow: {
@@ -439,30 +441,32 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     dateText: {
-        color: "#9ca3af",
+        color: "#94a3b8",
         fontSize: 12,
     },
+
+    /* STUDENT CARD */
     studentRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
-        marginTop: 4,
+        gap: 14,
+        marginTop: 6,
     },
     avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: "#1d4ed8",
-        alignItems: "center",
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: "#60a5fa",
         justifyContent: "center",
+        alignItems: "center",
     },
     avatarText: {
-        color: "#f9fafb",
-        fontSize: 22,
+        color: "#0f172a",
+        fontSize: 20,
         fontWeight: "700",
     },
     studentName: {
-        color: "#f9fafb",
+        color: "#f1f5f9",
         fontSize: 18,
         fontWeight: "700",
     },
@@ -478,78 +482,86 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     metaText: {
-        color: "#9ca3af",
+        color: "#94a3b8",
         fontSize: 12,
     },
+
+    /* FORM CARD */
     formWrapper: {
         flex: 1,
     },
+
     card: {
         marginHorizontal: 16,
-        marginBottom: 10,
-        backgroundColor: "#020617",
+        marginBottom: 12,
+        backgroundColor: "#0f172a",
         borderRadius: 18,
         borderWidth: 1,
-        borderColor: "#1f2937",
-        padding: 14,
+        borderColor: "#1e293b",
+        padding: 16,
     },
     cardTitleRow: {
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
-        marginBottom: 8,
+        marginBottom: 12,
     },
     cardTitle: {
-        color: "#e5e7eb",
+        color: "#f1f5f9",
         fontSize: 15,
         fontWeight: "600",
     },
+
+    /* INPUTS */
     field: {
-        marginTop: 8,
+        marginTop: 10,
     },
     label: {
-        color: "#e5e7eb",
+        color: "#f1f5f9",
         fontSize: 12,
-        marginBottom: 4,
+        marginBottom: 5,
     },
     input: {
         borderWidth: 1,
-        borderColor: "#1f2937",
-        borderRadius: 10,
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        color: "#e5e7eb",
+        borderColor: "#1e293b",
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
         fontSize: 13,
-        backgroundColor: "#020617",
+        backgroundColor: "#0f172a",
+        color: "#f1f5f9",
     },
     inputMultiline: {
-        minHeight: 70,
+        minHeight: 80,
         textAlignVertical: "top",
     },
     helpText: {
-        color: "#9ca3af",
+        color: "#64748b",
         fontSize: 11,
         marginTop: 2,
     },
+
+    /* SWITCH ROW */
     switchRow: {
         flexDirection: "row",
-        alignItems: "center",
         justifyContent: "space-between",
-        gap: 12,
-        marginTop: 10,
+        alignItems: "center",
+        marginTop: 12,
+        paddingVertical: 4,
     },
+
+    /* SUBMIT */
     submitWrapper: {
         marginHorizontal: 16,
-        marginTop: 4,
+        marginTop: 10,
     },
     saveButton: {
-        marginTop: 8,
-        borderRadius: 999,
         backgroundColor: "#38bdf8",
-        paddingVertical: 12,
+        paddingVertical: 14,
+        borderRadius: 999,
+        flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        flexDirection: "row",
         gap: 8,
     },
     saveButtonText: {
