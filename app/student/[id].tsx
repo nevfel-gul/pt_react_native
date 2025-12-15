@@ -33,6 +33,10 @@ import {
     where
 } from "firebase/firestore";
 
+// -------------------------
+// TYPES
+// -------------------------
+
 type Student = {
     id: string;
     name: string;
@@ -43,21 +47,13 @@ type Student = {
     gender?: string;
     aktif?: "Aktif" | "Pasif";
     assessmentDate?: string;
-    // PAR-Q + kişisel detaylar varsa:
+
     q1?: string;
     q1aciklama?: string;
     q2?: string;
     q2aciklama?: string;
     q3?: string;
     q3aciklama?: string;
-    q4?: string;
-    q4aciklama?: string;
-    q5?: string;
-    q5aciklama?: string;
-    q6?: string;
-    q6aciklama?: string;
-    q7?: string;
-    q7aciklama?: string;
 
     qq1?: string;
     qq1aciklama?: string;
@@ -77,8 +73,8 @@ type Student = {
     qq10?: string;
     qq11?: string;
     qq12?: string;
-    qq13?: string[]; // hedefler listesi
-    qq14?: string; // diğer
+    qq13?: string[];
+    qq14?: string;
 };
 
 type RecordItem = {
@@ -88,6 +84,10 @@ type RecordItem = {
     status?: "Aktif" | "Pasif";
     note?: string;
 };
+
+// -------------------------
+// MAIN COMPONENT
+// -------------------------
 
 export default function StudentDetailScreen() {
     const router = useRouter();
@@ -99,153 +99,130 @@ export default function StudentDetailScreen() {
     const [loadingRecords, setLoadingRecords] = useState(true);
     const [toggling, setToggling] = useState(false);
 
-    // Öğrenci bilgisi
+    // -------------------------
+    // LOAD STUDENT
+    // -------------------------
     useEffect(() => {
         if (!id) return;
 
-        const loadStudent = async () => {
+        const load = async () => {
             try {
                 const ref = doc(db, "students", id);
                 const snap = await getDoc(ref);
 
-                if (snap.exists()) {
-                    const data = snap.data() as any;
-                    setStudent({
-                        id: snap.id,
-                        name: data.name ?? "",
-                        email: data.email,
-                        number: data.number,
-                        boy: data.boy,
-                        dateOfBirth: data.dateOfBirth,
-                        gender: data.gender,
-                        aktif: (data.aktif as "Aktif" | "Pasif") ?? "Aktif",
-                        assessmentDate: data.assessmentDate,
-                        q1: data.q1,
-                        q1aciklama: data.q1aciklama,
-                        q2: data.q2,
-                        q2aciklama: data.q2aciklama,
-                        q3: data.q3,
-                        q3aciklama: data.q3aciklama,
-                        q4: data.q4,
-                        q4aciklama: data.q4aciklama,
-                        q5: data.q5,
-                        q5aciklama: data.q5aciklama,
-                        q6: data.q6,
-                        q6aciklama: data.q6aciklama,
-                        q7: data.q7,
-                        q7aciklama: data.q7aciklama,
-                        qq1: data.qq1,
-                        qq1aciklama: data.qq1aciklama,
-                        qq2: data.qq2,
-                        qq2aciklama: data.qq2aciklama,
-                        qq3: data.qq3,
-                        qq3aciklama: data.qq3aciklama,
-                        qq4: data.qq4,
-                        qq4aciklama: data.qq4aciklama,
-                        qq5: data.qq5,
-                        qq5aciklama: data.qq5aciklama,
-                        qq6: data.qq6,
-                        qq6aciklama: data.qq6aciklama,
-                        qq7: data.qq7,
-                        qq8: data.qq8,
-                        qq9: data.qq9,
-                        qq10: data.qq10,
-                        qq11: data.qq11,
-                        qq12: data.qq12,
-                        qq13: data.qq13 ?? [],
-                        qq14: data.qq14,
-                    });
-                } else {
-                    setStudent(null);
-                }
+                if (!snap.exists()) return setStudent(null);
+
+                const d = snap.data() as any;
+
+                setStudent({
+                    id: snap.id,
+                    name: d.name,
+                    email: d.email,
+                    number: d.number,
+                    boy: d.boy,
+                    gender: d.gender,
+                    dateOfBirth: d.dateOfBirth,
+                    aktif: d.aktif ?? "Aktif",
+                    assessmentDate: d.assessmentDate,
+
+                    q1: d.q1,
+                    q1aciklama: d.q1aciklama,
+                    q2: d.q2,
+                    q2aciklama: d.q2aciklama,
+                    q3: d.q3,
+                    q3aciklama: d.q3aciklama,
+
+                    qq1: d.qq1,
+                    qq1aciklama: d.qq1aciklama,
+                    qq2: d.qq2,
+                    qq2aciklama: d.qq2aciklama,
+                    qq3: d.qq3,
+                    qq3aciklama: d.qq3aciklama,
+                    qq4: d.qq4,
+                    qq4aciklama: d.qq4aciklama,
+                    qq5: d.qq5,
+                    qq5aciklama: d.qq5aciklama,
+                    qq6: d.qq6,
+                    qq6aciklama: d.qq6aciklama,
+                    qq7: d.qq7,
+                    qq8: d.qq8,
+                    qq9: d.qq9,
+                    qq10: d.qq10,
+                    qq11: d.qq11,
+                    qq12: d.qq12,
+                    qq13: d.qq13 ?? [],
+                    qq14: d.qq14,
+                });
             } catch (err) {
-                console.error("Öğrenci detay hata:", err);
-                setStudent(null);
+                console.error(err);
             } finally {
                 setLoadingStudent(false);
             }
         };
 
-        loadStudent();
-    }, [id]);
+        load();
+    }, []);
 
-    // Kayıtlar (records) – Firestore yapını buna göre ayarlarsın
+    // -------------------------
+    // LOAD STUDENT RECORDS
+    // -------------------------
     useEffect(() => {
         if (!id) return;
 
-        // Örn: records koleksiyonu, içinde studentId field’ı var
-        const q = query(
-            collection(db, "records"),
-            where("studentId", "==", id),
-            // orderBy("createdAt", "desc")
-        );
+        const qy = query(collection(db, "records"), where("studentId", "==", id));
 
         const unsub = onSnapshot(
-            q,
+            qy,
             (snap) => {
-                const list: RecordItem[] = snap.docs.map((d) => {
-                    const data = d.data() as any;
-                    return {
+                setRecords(
+                    snap.docs.map((d) => ({
                         id: d.id,
-                        studentId: data.studentId,
-                        createdAt: data.createdAt,
-                        status: data.status,
-                        note: data.note,
-                    };
-                });
-                setRecords(list);
+                        ...d.data(),
+                    })) as any
+                );
                 setLoadingRecords(false);
             },
-            (err) => {
-                console.error("Records dinleme hata:", err);
-                setLoadingRecords(false);
-            }
+            () => setLoadingRecords(false)
         );
 
         return () => unsub();
-    }, [id]);
+    }, []);
 
-    const handleGoBack = () => {
-        router.replace("/(tabs)/explore");
-    };
+    const goBack = () => router.replace("/(tabs)/kolpa");
 
-    const handleToggleAktifPasif = async () => {
+    const toggleAktif = async () => {
         if (!student) return;
+
         try {
             setToggling(true);
             const newStatus = student.aktif === "Aktif" ? "Pasif" : "Aktif";
-            await updateDoc(doc(db, "students", student.id), {
-                aktif: newStatus,
-            });
-            setStudent((prev) =>
-                prev ? { ...prev, aktif: newStatus } : prev
-            );
+
+            await updateDoc(doc(db, "students", student.id), { aktif: newStatus });
+
+            setStudent({ ...student, aktif: newStatus });
         } catch (err) {
-            console.error("Aktif/Pasif hata:", err);
+            console.error(err);
         } finally {
             setToggling(false);
         }
     };
 
-    const handleAddRecord = () => {
+    const addRecord = () => {
         if (!student) return;
-
-        router.push({
-            pathname: "/newrecord/[id]",
-            params: { id: student.id },
-        });
+        router.push({ pathname: "/newrecord/[id]", params: { id: student.id } });
     };
 
-    const handleRecordDetail = (recordId: string) => {
-        router.push({ pathname: "/record/[id]", params: { id: recordId } });
-        console.log("Kayıt detay:", recordId);
-    };
+    const viewRecord = (id: string) =>
+        router.push({ pathname: "/record/[id]", params: { id } });
 
+    // -------------------------
+    // LOADING / ERROR
+    // -------------------------
     if (loadingStudent) {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" />
+                    <ActivityIndicator size="large" color="#60a5fa" />
                     <Text style={styles.loadingText}>Öğrenci yükleniyor...</Text>
                 </View>
             </SafeAreaView>
@@ -257,8 +234,9 @@ export default function StudentDetailScreen() {
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
                     <Text style={styles.errorText}>Öğrenci bulunamadı.</Text>
-                    <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-                        <ArrowLeft size={18} color="#e5e7eb" />
+
+                    <TouchableOpacity style={styles.backButton} onPress={goBack}>
+                        <ArrowLeft size={18} color="#f1f5f9" />
                         <Text style={styles.backButtonText}>Geri</Text>
                     </TouchableOpacity>
                 </View>
@@ -268,278 +246,161 @@ export default function StudentDetailScreen() {
 
     const firstLetter = student.name?.[0]?.toUpperCase() ?? "?";
 
+    // -------------------------
+    // UI
+    // -------------------------
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
+
                 {/* HEADER */}
                 <View style={styles.header}>
                     <View style={styles.headerTopRow}>
-                        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-                            <ArrowLeft size={18} color="#e5e7eb" />
+                        <TouchableOpacity style={styles.backButton} onPress={goBack}>
+                            <ArrowLeft size={18} color="#f1f5f9" />
                             <Text style={styles.backButtonText}>Geri</Text>
                         </TouchableOpacity>
 
                         <View style={styles.headerActions}>
                             <TouchableOpacity
                                 style={styles.toggleButton}
-                                onPress={handleToggleAktifPasif}
+                                onPress={toggleAktif}
                                 disabled={toggling}
                             >
-                                <Power size={16} color="#022c22" />
+                                <Power size={14} color="#022c22" />
                                 <Text style={styles.toggleButtonText}>
                                     {student.aktif === "Aktif" ? "Pasif Yap" : "Aktif Yap"}
                                 </Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={styles.editButton}
-                                onPress={handleAddRecord}
-                            >
-                                <Edit size={16} color="#e5e7eb" />
+                            <TouchableOpacity style={styles.editButton} onPress={addRecord}>
+                                <Edit size={14} color="#f1f5f9" />
                                 <Text style={styles.editButtonText}>Kayıt Ekle</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
 
+                    {/* STUDENT CARD */}
                     <View style={styles.studentRow}>
                         <View style={styles.avatar}>
                             <Text style={styles.avatarText}>{firstLetter}</Text>
                         </View>
+
                         <View style={{ flex: 1 }}>
                             <Text style={styles.studentName}>{student.name}</Text>
-                            <View style={styles.statusRow}>
-                                <View
-                                    style={[
-                                        styles.statusBadge,
+
+                            <View
+                                style={[
+                                    styles.statusBadge,
+                                    student.aktif === "Aktif"
+                                        ? styles.statusActive
+                                        : styles.statusPassive,
+                                ]}
+                            >
+                                <Text
+                                    style={
                                         student.aktif === "Aktif"
-                                            ? styles.statusBadgeActive
-                                            : styles.statusBadgeInactive,
-                                    ]}
+                                            ? styles.statusActiveText
+                                            : styles.statusPassiveText
+                                    }
                                 >
-                                    <Text
-                                        style={
-                                            student.aktif === "Aktif"
-                                                ? styles.statusTextActive
-                                                : styles.statusTextInactive
-                                        }
-                                    >
-                                        {student.aktif === "Aktif"
-                                            ? "Aktif Öğrenci"
-                                            : "Pasif Öğrenci"}
-                                    </Text>
-                                </View>
+                                    {student.aktif === "Aktif"
+                                        ? "Aktif Öğrenci"
+                                        : "Pasif Öğrenci"}
+                                </Text>
                             </View>
                         </View>
                     </View>
                 </View>
 
-                {/* İÇERİK – Scrollable */}
+                {/* LIST + DETAIL */}
                 <FlatList
                     ListHeaderComponent={
                         <View>
-                            {/* Kişisel Bilgiler Kartı */}
+
+                            {/* PERSONAL INFO */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>Kişisel Bilgiler</Text>
-                                <InfoRow
-                                    icon={<Mail size={16} color="#9ca3af" />}
-                                    label="Email"
-                                    value={student.email || "-"}
+
+                                <InfoRow label="Email" value={student.email || "-"} icon={<Mail size={16} color="#60a5fa" />} />
+                                <InfoRow label="Telefon" value={student.number || "-"} icon={<Phone size={16} color="#60a5fa" />} />
+                                <InfoRow label="Cinsiyet" value={student.gender || "-"} icon={<User size={16} color="#60a5fa" />} />
+                                <InfoRow label="Doğum Tarihi"
+                                    value={student.dateOfBirth
+                                        ? new Date(student.dateOfBirth).toLocaleDateString("tr-TR")
+                                        : "-"}
+                                    icon={<Calendar size={16} color="#60a5fa" />}
                                 />
                                 <InfoRow
-                                    icon={<Phone size={16} color="#9ca3af" />}
-                                    label="Telefon"
-                                    value={student.number || "-"}
-                                />
-                                <InfoRow
-                                    icon={<User size={16} color="#9ca3af" />}
-                                    label="Cinsiyet"
-                                    value={student.gender || "-"}
-                                />
-                                <InfoRow
-                                    icon={<Calendar size={16} color="#9ca3af" />}
-                                    label="Doğum Tarihi"
-                                    value={
-                                        student.dateOfBirth
-                                            ? new Date(student.dateOfBirth).toLocaleDateString(
-                                                "tr-TR"
-                                            )
-                                            : "-"
-                                    }
-                                />
-                                <InfoRow
-                                    icon={<Calendar size={16} color="#9ca3af" />}
                                     label="Değerlendirme Tarihi"
                                     value={
                                         student.assessmentDate
-                                            ? new Date(student.assessmentDate).toLocaleDateString(
-                                                "tr-TR"
-                                            )
+                                            ? new Date(student.assessmentDate).toLocaleDateString("tr-TR")
                                             : "-"
                                     }
+                                    icon={<Calendar size={16} color="#60a5fa" />}
                                 />
-                                <InfoRow
-                                    icon={<User size={16} color="#9ca3af" />}
-                                    label="Boy (cm)"
-                                    value={student.boy || "-"}
-                                />
+
+                                <InfoRow label="Boy (cm)" value={student.boy || "-"} icon={<User size={16} color="#60a5fa" />} />
                             </View>
 
-                            {/* PAR-Q (özet) – elindeki field’lere göre genişletebilirsin */}
+                            {/* PAR-Q */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>PAR-Q Testi</Text>
-                                <InfoRow
-                                    label="Soru 1"
-                                    value={
-                                        student.q1
-                                            ? `${student.q1}${student.q1aciklama ? ` - ${student.q1aciklama}` : ""
-                                            }`
-                                            : "-"
-                                    }
-                                />
-                                <InfoRow
-                                    label="Soru 2"
-                                    value={
-                                        student.q2
-                                            ? `${student.q2}${student.q2aciklama ? ` - ${student.q2aciklama}` : ""
-                                            }`
-                                            : "-"
-                                    }
-                                />
-                                <InfoRow
-                                    label="Soru 3"
-                                    value={
-                                        student.q3
-                                            ? `${student.q3}${student.q3aciklama ? ` - ${student.q3aciklama}` : ""
-                                            }`
-                                            : "-"
-                                    }
-                                />
-                                {/* İstersen q4–q7’yi de aynı şekilde eklersin */}
+
+                                <InfoRow label="Soru 1" value={student.q1 ? `${student.q1} ${student.q1aciklama || ""}` : "-"} />
+                                <InfoRow label="Soru 2" value={student.q2 ? `${student.q2} ${student.q2aciklama || ""}` : "-"} />
+                                <InfoRow label="Soru 3" value={student.q3 ? `${student.q3} ${student.q3aciklama || ""}` : "-"} />
                             </View>
 
-                            {/* Kişisel Detaylar */}
+                            {/* PERSONAL DETAILS */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>Kişisel Detaylar</Text>
+
+                                <InfoRow label="Ağrı / Yaralanma" value={student.qq1 || "-"} />
+                                <InfoRow label="Ameliyat Geçirdiniz mi?" value={student.qq2 || "-"} />
+                                <InfoRow label="Kronik Hastalık" value={student.qq3 || "-"} />
+                                <InfoRow label="İlaç Kullanımı" value={student.qq4 || "-"} />
+                                <InfoRow label="Haftalık Aktivite" value={student.qq5 || "-"} />
+                                <InfoRow label="Spor Geçmişi" value={student.qq6 || "-"} />
+                                <InfoRow label="Planlanan Gün" value={student.qq7 || "-"} />
+                                <InfoRow label="Meslek" value={student.qq8 || "-"} />
+                                <InfoRow label="Uzun Oturma" value={student.qq9 || "-"} />
+                                <InfoRow label="Tekrarlı Hareket" value={student.qq10 || "-"} />
+                                <InfoRow label="Topuklu Ayakkabı" value={student.qq11 || "-"} />
+                                <InfoRow label="Stres / Endişe" value={student.qq12 || "-"} />
                                 <InfoRow
-                                    label="Ağrı / Yaralanma"
+                                    label="Hedefler"
                                     value={
-                                        student.qq1
-                                            ? `${student.qq1}${student.qq1aciklama ? ` - ${student.qq1aciklama}` : ""
-                                            }`
-                                            : "-"
-                                    }
-                                />
-                                <InfoRow
-                                    label="Ameliyat Geçirdiniz mi?"
-                                    value={
-                                        student.qq2
-                                            ? `${student.qq2}${student.qq2aciklama ? ` - ${student.qq2aciklama}` : ""
-                                            }`
-                                            : "-"
-                                    }
-                                />
-                                <InfoRow
-                                    label="Kronik Hastalık"
-                                    value={
-                                        student.qq3
-                                            ? `${student.qq3}${student.qq3aciklama ? ` - ${student.qq3aciklama}` : ""
-                                            }`
-                                            : "-"
-                                    }
-                                />
-                                <InfoRow
-                                    label="İlaç Kullanımı"
-                                    value={
-                                        student.qq4
-                                            ? `${student.qq4}${student.qq4aciklama ? ` - ${student.qq4aciklama}` : ""
-                                            }`
-                                            : "-"
-                                    }
-                                />
-                                <InfoRow
-                                    label="Haftalık Aktivite 30dk veya daha az mı?"
-                                    value={
-                                        student.qq5
-                                            ? `${student.qq5}${student.qq5aciklama ? ` - ${student.qq5aciklama}` : ""
-                                            }`
-                                            : "-"
-                                    }
-                                />
-                                <InfoRow
-                                    label="Spor Geçmişi"
-                                    value={
-                                        student.qq6
-                                            ? `${student.qq6}${student.qq6aciklama ? ` - ${student.qq6aciklama}` : ""
-                                            }`
-                                            : "-"
-                                    }
-                                />
-                                <InfoRow
-                                    label="Haftalık Planlanan Gün"
-                                    value={student.qq7 || "-"}
-                                />
-                                <InfoRow
-                                    label="Meslek"
-                                    value={student.qq8 || "-"}
-                                />
-                                <InfoRow
-                                    label="İş: Uzun Süre Oturma"
-                                    value={student.qq9 || "-"}
-                                />
-                                <InfoRow
-                                    label="İş: Tekrarlı Hareket"
-                                    value={student.qq10 || "-"}
-                                />
-                                <InfoRow
-                                    label="İş: Topuklu Ayakkabı"
-                                    value={student.qq11 || "-"}
-                                />
-                                <InfoRow
-                                    label="İş: Stres / Endişe"
-                                    value={student.qq12 || "-"}
-                                />
-                                <InfoRow
-                                    label="Antrenman Hedefleri"
-                                    value={
-                                        student.qq13 && student.qq13.length > 0
+                                        student.qq13 && student.qq13.length
                                             ? student.qq13.join(", ")
                                             : "-"
                                     }
                                 />
-                                <InfoRow
-                                    label="Diğer"
-                                    value={student.qq14 || "-"}
-                                />
+                                <InfoRow label="Diğer" value={student.qq14 || "-"} />
                             </View>
 
-                            {/* Kayıtlar başlığı */}
                             <Text style={styles.recordsTitle}>Kayıtlar</Text>
                         </View>
                     }
                     data={records}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(i) => i.id}
                     contentContainerStyle={{ paddingBottom: 40 }}
                     renderItem={({ item }) => {
                         const dateStr = item.createdAt?.toDate
-                            ? `${item.createdAt.toDate().toLocaleDateString(
-                                "tr-TR"
-                            )} ${item.createdAt.toDate().toLocaleTimeString("tr-TR")}`
+                            ? `${item.createdAt.toDate().toLocaleDateString("tr-TR")} • ${item.createdAt
+                                .toDate()
+                                .toLocaleTimeString("tr-TR")}`
                             : "-";
 
                         return (
-                            <TouchableOpacity
-                                style={styles.recordCard}
-                                onPress={() => handleRecordDetail(item.id)}
-                            >
+                            <TouchableOpacity style={styles.recordCard} onPress={() => viewRecord(item.id)}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.recordDate}>{dateStr}</Text>
-                                    <Text style={styles.recordNote}>
-                                        {item.note || "Not yok"}
-                                    </Text>
+                                    <Text style={styles.recordNote}>{item.note || "Not yok"}</Text>
                                 </View>
-                                <View style={styles.recordRight}>
-                                    <Eye size={18} color="#e5e7eb" />
-                                </View>
+                                <Eye size={18} color="#f1f5f9" />
                             </TouchableOpacity>
                         );
                     }}
@@ -553,11 +414,15 @@ export default function StudentDetailScreen() {
                         ) : null
                     }
                 />
+
             </View>
         </SafeAreaView>
     );
 }
 
+// -------------------------
+// ROW COMPONENT
+// -------------------------
 function InfoRow({
     icon,
     label,
@@ -571,12 +436,17 @@ function InfoRow({
         <View style={styles.infoRow}>
             <View style={styles.infoLabelRow}>
                 {icon}
-                <Text style={styles.infoLabelText}>{label}</Text>
+                <Text style={styles.infoLabel}>{label}</Text>
             </View>
-            <Text style={styles.infoValueText}>{value}</Text>
+
+            <Text style={styles.infoValue}>{value}</Text>
         </View>
     );
 }
+
+// -------------------------
+// STYLES
+// -------------------------
 
 const styles = StyleSheet.create({
     safeArea: {
@@ -587,24 +457,20 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: "#020617",
     },
+
     center: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#020617",
     },
-    loadingText: {
-        color: "#e5e7eb",
-        marginTop: 8,
-    },
-    errorText: {
-        color: "#fca5a5",
-        marginBottom: 12,
-    },
+    loadingText: { color: "#94a3b8", marginTop: 10 },
+    errorText: { color: "#f87171", marginBottom: 10 },
+
+    /* HEADER */
     header: {
         paddingHorizontal: 16,
         paddingTop: 14,
-        paddingBottom: 10,
+        paddingBottom: 4,
     },
     headerTopRow: {
         flexDirection: "row",
@@ -616,21 +482,23 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        paddingHorizontal: 10,
+        paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 999,
-        backgroundColor: "#020617",
+        backgroundColor: "#0f172a",
         borderWidth: 1,
-        borderColor: "#1f2937",
+        borderColor: "#1e293b",
     },
     backButtonText: {
-        color: "#e5e7eb",
+        color: "#f1f5f9",
         fontSize: 13,
     },
+
     headerActions: {
         flexDirection: "row",
         gap: 8,
     },
+
     toggleButton: {
         flexDirection: "row",
         alignItems: "center",
@@ -643,8 +511,9 @@ const styles = StyleSheet.create({
     toggleButtonText: {
         color: "#022c22",
         fontSize: 12,
-        fontWeight: "600",
+        fontWeight: "700",
     },
+
     editButton: {
         flexDirection: "row",
         alignItems: "center",
@@ -655,133 +524,125 @@ const styles = StyleSheet.create({
         backgroundColor: "#1d4ed8",
     },
     editButtonText: {
-        color: "#e5e7eb",
+        color: "#f1f5f9",
         fontSize: 12,
-        fontWeight: "600",
+        fontWeight: "700",
     },
+
+    /* STUDENT HEADER CARD */
     studentRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
-        marginTop: 4,
+        gap: 14,
     },
     avatar: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: "#1d4ed8",
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        backgroundColor: "#60a5fa",
         alignItems: "center",
         justifyContent: "center",
     },
     avatarText: {
-        color: "#f9fafb",
-        fontSize: 24,
-        fontWeight: "700",
+        color: "#0f172a",
+        fontSize: 23,
+        fontWeight: "800",
     },
     studentName: {
-        color: "#f9fafb",
-        fontSize: 20,
+        color: "#f1f5f9",
+        fontSize: 19,
         fontWeight: "700",
     },
-    statusRow: {
-        marginTop: 4,
-    },
+
     statusBadge: {
+        marginTop: 6,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 999,
+        alignSelf: "flex-start",
     },
-    statusBadgeActive: {
-        backgroundColor: "rgba(22,163,74,0.15)",
+    statusActive: {
+        backgroundColor: "rgba(34,197,94,0.15)",
     },
-    statusBadgeInactive: {
+    statusPassive: {
         backgroundColor: "rgba(248,113,113,0.15)",
     },
-    statusTextActive: {
+    statusActiveText: {
         color: "#4ade80",
         fontSize: 11,
-        fontWeight: "600",
+        fontWeight: "700",
     },
-    statusTextInactive: {
+    statusPassiveText: {
         color: "#fca5a5",
         fontSize: 11,
-        fontWeight: "600",
+        fontWeight: "700",
     },
+
+    /* CARDS */
     card: {
         marginHorizontal: 16,
-        marginBottom: 10,
-        backgroundColor: "#020617",
+        marginTop: 12,
+        backgroundColor: "#0f172a",
         borderRadius: 18,
         borderWidth: 1,
-        borderColor: "#1f2937",
-        padding: 14,
+        borderColor: "#1e293b",
+        padding: 16,
     },
     cardTitle: {
-        color: "#e5e7eb",
+        color: "#f1f5f9",
         fontSize: 15,
-        fontWeight: "600",
-        marginBottom: 8,
+        fontWeight: "700",
+        marginBottom: 10,
     },
+
+    /* INFO ROW */
     infoRow: {
         flexDirection: "row",
         justifyContent: "space-between",
-        paddingVertical: 6,
+        paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: "#0f172a",
+        borderBottomColor: "#1e293b",
     },
-    infoLabelRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-    },
-    infoLabelText: {
-        color: "#9ca3af",
-        fontSize: 12,
-    },
-    infoValueText: {
-        color: "#e5e7eb",
-        fontSize: 13,
-        fontWeight: "500",
-        maxWidth: "55%",
-        textAlign: "right",
-    },
+    infoLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    infoLabel: { color: "#94a3b8", fontSize: 12 },
+    infoValue: { color: "#f1f5f9", fontSize: 13, maxWidth: "55%", textAlign: "right" },
+
+    /* RECORDS */
     recordsTitle: {
         marginHorizontal: 16,
-        marginTop: 8,
-        marginBottom: 4,
-        color: "#3b82f6",
+        marginTop: 16,
+        marginBottom: 8,
+        color: "#60a5fa",
         fontSize: 16,
         fontWeight: "700",
     },
+
     recordCard: {
         marginHorizontal: 16,
-        marginBottom: 8,
-        backgroundColor: "#020617",
+        marginBottom: 10,
+        backgroundColor: "#0f172a",
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: "#1f2937",
-        paddingVertical: 10,
+        borderColor: "#1e293b",
+        paddingVertical: 12,
         paddingHorizontal: 12,
         flexDirection: "row",
         justifyContent: "space-between",
-        gap: 8,
+        gap: 10,
     },
     recordDate: {
-        color: "#e5e7eb",
+        color: "#f1f5f9",
         fontSize: 13,
         fontWeight: "600",
     },
     recordNote: {
-        color: "#9ca3af",
+        color: "#94a3b8",
         fontSize: 12,
         marginTop: 2,
     },
-    recordRight: {
-        alignItems: "flex-end",
-        justifyContent: "space-between",
-    },
+
     emptyText: {
-        color: "#9ca3af",
+        color: "#94a3b8",
         fontSize: 13,
     },
 });

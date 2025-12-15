@@ -30,7 +30,7 @@ export default function Login() {
                 await createUserWithEmailAndPassword(auth, email, password);
             }
 
-            router.replace("/(tabs)");
+            router.replace("/(tabs)/kolpa");
         } catch (error: any) {
             console.error("Auth hatası:", error.message);
             alert(`Bir hata oluştu: ${error.message}`);
