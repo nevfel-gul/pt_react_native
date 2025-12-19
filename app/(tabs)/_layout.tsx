@@ -8,7 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const hasPremium = false;
+  const hasPremium = true;
 
   return (
     <Tabs

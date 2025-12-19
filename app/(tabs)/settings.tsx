@@ -13,7 +13,6 @@ import {
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -21,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { auth } from "../../services/firebase";
 
 type TabKey = "preferences" | "security";

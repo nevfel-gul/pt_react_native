@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
 import { ArrowLeft, Edit3, User } from "lucide-react-native";
 import React from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
     const router = useRouter();

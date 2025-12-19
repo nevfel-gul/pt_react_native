@@ -15,12 +15,12 @@ import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { db } from "@/services/firebase";
 import {
@@ -188,7 +188,7 @@ export default function StudentDetailScreen() {
         return () => unsub();
     }, []);
 
-    const goBack = () => router.replace("/(tabs)/kolpa");
+    const goBack = () => router.replace("/(tabs)");
 
     const toggleAktif = async () => {
         if (!student) return;

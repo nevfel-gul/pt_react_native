@@ -15,7 +15,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -23,6 +22,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Student = {
   id: string;

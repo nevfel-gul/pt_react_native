@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 export const unstable_settings = {
-  anchor: '(tabs)/kolpa',
+  anchor: '/',
 };
 
 export default function RootLayout() {
