@@ -145,9 +145,13 @@ export default function KayitlarScreen() {
           <View style={styles.headerTopRow}>
             <View style={styles.leftHeaderArea}>
               {/* User Icon */}
-              <View style={styles.titleIconWrapper}>
+              <TouchableOpacity
+                style={styles.titleIconWrapper}
+                activeOpacity={0.7}
+                onPress={() => router.push("/profile")}
+              >
                 <Users size={24} color="#60a5fa" />
-              </View>
+              </TouchableOpacity>
 
               {/* Search */}
               {!searchActive && (

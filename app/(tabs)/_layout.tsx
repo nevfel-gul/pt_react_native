@@ -20,7 +20,7 @@ export default function TabLayout() {
         },
         tabBarButton: HapticTab,
       }}
-      initialRouteName="kolpa"
+      initialRouteName="index"
 
     >
       <Tabs.Screen

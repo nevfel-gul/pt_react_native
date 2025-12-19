@@ -50,13 +50,13 @@ export default function Login() {
                     onChangeText={setEmail}
                     style={styles.input}
                     keyboardType="email-address"
-                    placeholderTextColor={"black"}
+                    placeholderTextColor={"slategray"}
                 />
 
                 <View style={styles.passwordContainer}>
                     <TextInput
                         placeholder="••••••••"
-                        placeholderTextColor={"black"}
+                        placeholderTextColor={"slategray"}
                         secureTextEntry={!isPasswordVisible}
                         value={password}
                         onChangeText={setPassword}
