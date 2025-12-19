@@ -11,7 +11,7 @@ import {
     Power,
     User,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
@@ -28,53 +28,78 @@ import {
     doc,
     getDoc,
     onSnapshot,
+    orderBy,
     query,
     updateDoc,
-    where
+    where,
 } from "firebase/firestore";
 
-// -------------------------
-// TYPES
-// -------------------------
+type Bool = boolean | null;
 
 type Student = {
     id: string;
+
+    // Kişisel
     name: string;
     email?: string;
     number?: string;
     boy?: string;
-    dateOfBirth?: string;
+    dateOfBirth?: string; // YYYY-MM-DD
     gender?: string;
     aktif?: "Aktif" | "Pasif";
-    assessmentDate?: string;
+    assessmentDate?: string; // YYYY-MM-DD
 
-    q1?: string;
-    q1aciklama?: string;
-    q2?: string;
-    q2aciklama?: string;
-    q3?: string;
-    q3aciklama?: string;
+    // PAR-Q (7)
+    doctorSaidHeartOrHypertension?: Bool;
+    doctorSaidHeartOrHypertensionNote?: string;
 
-    qq1?: string;
-    qq1aciklama?: string;
-    qq2?: string;
-    qq2aciklama?: string;
-    qq3?: string;
-    qq3aciklama?: string;
-    qq4?: string;
-    qq4aciklama?: string;
-    qq5?: string;
-    qq5aciklama?: string;
-    qq6?: string;
-    qq6aciklama?: string;
-    qq7?: string;
-    qq8?: string;
-    qq9?: string;
-    qq10?: string;
-    qq11?: string;
-    qq12?: string;
-    qq13?: string[];
-    qq14?: string;
+    chestPainDuringActivityOrDaily?: Bool;
+    chestPainDuringActivityOrDailyNote?: string;
+
+    dizzinessOrLostConsciousnessLast12Months?: Bool;
+    dizzinessOrLostConsciousnessLast12MonthsNote?: string;
+
+    diagnosedOtherChronicDisease?: Bool;
+    diagnosedOtherChronicDiseaseNote?: string;
+
+    usesMedicationForChronicDisease?: Bool;
+    usesMedicationForChronicDiseaseNote?: string;
+
+    boneJointSoftTissueProblemWorseWithActivity?: Bool;
+    boneJointSoftTissueProblemWorseWithActivityNote?: string;
+
+    doctorSaidOnlyUnderMedicalSupervision?: Bool;
+    doctorSaidOnlyUnderMedicalSupervisionNote?: string;
+
+    // Kişisel Detaylar
+    hadPainOrInjury?: Bool;
+    hadPainOrInjuryNote?: string;
+
+    hadSurgery?: Bool;
+    hadSurgeryNote?: string;
+
+    diagnosedChronicDiseaseByDoctor?: Bool;
+    diagnosedChronicDiseaseByDoctorNote?: string;
+
+    currentlyUsesMedications?: Bool;
+    currentlyUsesMedicationsNote?: string;
+
+    weeklyPhysicalActivity30MinOrLess?: Bool;
+    weeklyPhysicalActivity30MinOrLessNote?: string;
+
+    hasSportsHistoryOrCurrentlyDoingSport?: Bool;
+    hasSportsHistoryOrCurrentlyDoingSportNote?: string;
+
+    plannedDaysPerWeek?: number | null;
+    jobDescription?: string;
+
+    jobRequiresLongSitting?: Bool;
+    jobRequiresRepetitiveMovement?: Bool;
+    jobRequiresHighHeels?: Bool;
+    jobCausesAnxiety?: Bool;
+
+    trainingGoals?: string[];
+    otherGoal?: string;
 };
 
 type RecordItem = {
@@ -85,9 +110,21 @@ type RecordItem = {
     note?: string;
 };
 
-// -------------------------
-// MAIN COMPONENT
-// -------------------------
+const formatDateTR = (iso?: string) => {
+    if (!iso) return "-";
+    // iOS safe parse (YYYY-MM-DD)
+    const parts = iso.split("-").map((x) => Number(x));
+    if (parts.length !== 3) return "-";
+    const [y, m, d] = parts;
+    if (!y || !m || !d) return "-";
+    return new Date(y, m - 1, d).toLocaleDateString("tr-TR");
+};
+
+const boolText = (v?: Bool) => {
+    if (v === true) return "Evet";
+    if (v === false) return "Hayır";
+    return "-";
+};
 
 export default function StudentDetailScreen() {
     const router = useRouter();
@@ -99,9 +136,95 @@ export default function StudentDetailScreen() {
     const [loadingRecords, setLoadingRecords] = useState(true);
     const [toggling, setToggling] = useState(false);
 
-    // -------------------------
+    // Question definitions (map ile temiz basacağız)
+    const parqQuestions = useMemo(
+        () => [
+            {
+                key: "doctorSaidHeartOrHypertension" as const,
+                noteKey: "doctorSaidHeartOrHypertensionNote" as const,
+                label:
+                    "Doktorunuz kalp hastalığı veya yüksek tansiyon ile ilgili bir sorununuz olduğunu söyledi mi?",
+            },
+            {
+                key: "chestPainDuringActivityOrDaily" as const,
+                noteKey: "chestPainDuringActivityOrDailyNote" as const,
+                label:
+                    "Dinlenme sırasında, günlük aktiviteler sırasında ya da fiziksel aktivite sırasında göğsünüzde ağrı hisseder misiniz?",
+            },
+            {
+                key: "dizzinessOrLostConsciousnessLast12Months" as const,
+                noteKey: "dizzinessOrLostConsciousnessLast12MonthsNote" as const,
+                label:
+                    "Baş dönmesi nedeniyle dengeniz bozulur mu, ya da son 12 ay içerisinde bilincinizi yitirdiniz mi?",
+            },
+            {
+                key: "diagnosedOtherChronicDisease" as const,
+                noteKey: "diagnosedOtherChronicDiseaseNote" as const,
+                label: "Kalp ve tansiyon dışında bir başka kronik hastalık teşhisi aldınız mı?",
+            },
+            {
+                key: "usesMedicationForChronicDisease" as const,
+                noteKey: "usesMedicationForChronicDiseaseNote" as const,
+                label: "Kronik bir hastalık nedeniyle ilaç kullanıyor musunuz?",
+            },
+            {
+                key: "boneJointSoftTissueProblemWorseWithActivity" as const,
+                noteKey: "boneJointSoftTissueProblemWorseWithActivityNote" as const,
+                label:
+                    "Son 12 ay içerisinde fiziksel aktivite artışı ile kötüleşebilecek bir kemik, bağ, yumuşak doku probleminiz oldu mu?",
+            },
+            {
+                key: "doctorSaidOnlyUnderMedicalSupervision" as const,
+                noteKey: "doctorSaidOnlyUnderMedicalSupervisionNote" as const,
+                label:
+                    "Doktorunuz fiziksel aktivitenizi sadece tıbbi gözetim altında yapabileceğinizi söyledi mi?",
+            },
+        ],
+        []
+    );
+
+    const personalQuestions = useMemo(
+        () => [
+            {
+                key: "hadPainOrInjury" as const,
+                noteKey: "hadPainOrInjuryNote" as const,
+                label: "Hiç ağrı veya yaralanman oldu mu? (ayak bileği, diz, kalça, sırt, omuz vb)",
+            },
+            {
+                key: "hadSurgery" as const,
+                noteKey: "hadSurgeryNote" as const,
+                label: "Hiç ameliyat geçirdin mi?",
+            },
+            {
+                key: "diagnosedChronicDiseaseByDoctor" as const,
+                noteKey: "diagnosedChronicDiseaseByDoctorNote" as const,
+                label:
+                    "Bir doktor tarafından kalp hastalığı, yüksek tansiyon, kolesterol, diyabet gibi kronik bir hastalık teşhisi kondu mu?",
+            },
+            {
+                key: "currentlyUsesMedications" as const,
+                noteKey: "currentlyUsesMedicationsNote" as const,
+                label: "Halen almakta olduğun ilaçlar var mı?",
+            },
+            {
+                key: "weeklyPhysicalActivity30MinOrLess" as const,
+                noteKey: "weeklyPhysicalActivity30MinOrLessNote" as const,
+                label: "Haftalık fiziksel aktivite süreniz 30 dakika veya daha az mı?",
+            },
+            {
+                key: "hasSportsHistoryOrCurrentlyDoingSport" as const,
+                noteKey: "hasSportsHistoryOrCurrentlyDoingSportNote" as const,
+                label: "Herhangi bir spor geçmişiniz veya şu an devam ettiğiniz bir spor branşı var mı?",
+            },
+            { key: "jobRequiresLongSitting" as const, label: "Yaptığınız iş uzun süre oturmanızı gerektiriyor mu?" },
+            { key: "jobRequiresRepetitiveMovement" as const, label: "Yaptığınız iş uzun süre tekrarlı hareket gerektiriyor mu?" },
+            { key: "jobRequiresHighHeels" as const, label: "Yaptığınız iş topuklu ayakkabı giymenizi gerektiriyor mu?" },
+            { key: "jobCausesAnxiety" as const, label: "Yaptığınız iş endişeye yol açıyor mu?" },
+        ],
+        []
+    );
+
     // LOAD STUDENT
-    // -------------------------
     useEffect(() => {
         if (!id) return;
 
@@ -110,66 +233,39 @@ export default function StudentDetailScreen() {
                 const ref = doc(db, "students", id);
                 const snap = await getDoc(ref);
 
-                if (!snap.exists()) return setStudent(null);
+                if (!snap.exists()) {
+                    setStudent(null);
+                    return;
+                }
 
                 const d = snap.data() as any;
-
                 setStudent({
                     id: snap.id,
-                    name: d.name,
-                    email: d.email,
-                    number: d.number,
-                    boy: d.boy,
-                    gender: d.gender,
-                    dateOfBirth: d.dateOfBirth,
+                    ...d,
+                    // fallbackler
                     aktif: d.aktif ?? "Aktif",
-                    assessmentDate: d.assessmentDate,
-
-                    q1: d.q1,
-                    q1aciklama: d.q1aciklama,
-                    q2: d.q2,
-                    q2aciklama: d.q2aciklama,
-                    q3: d.q3,
-                    q3aciklama: d.q3aciklama,
-
-                    qq1: d.qq1,
-                    qq1aciklama: d.qq1aciklama,
-                    qq2: d.qq2,
-                    qq2aciklama: d.qq2aciklama,
-                    qq3: d.qq3,
-                    qq3aciklama: d.qq3aciklama,
-                    qq4: d.qq4,
-                    qq4aciklama: d.qq4aciklama,
-                    qq5: d.qq5,
-                    qq5aciklama: d.qq5aciklama,
-                    qq6: d.qq6,
-                    qq6aciklama: d.qq6aciklama,
-                    qq7: d.qq7,
-                    qq8: d.qq8,
-                    qq9: d.qq9,
-                    qq10: d.qq10,
-                    qq11: d.qq11,
-                    qq12: d.qq12,
-                    qq13: d.qq13 ?? [],
-                    qq14: d.qq14,
+                    trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
                 });
             } catch (err) {
                 console.error(err);
+                setStudent(null);
             } finally {
                 setLoadingStudent(false);
             }
         };
 
         load();
-    }, []);
+    }, [id]);
 
-    // -------------------------
-    // LOAD STUDENT RECORDS
-    // -------------------------
+    // LOAD RECORDS
     useEffect(() => {
         if (!id) return;
 
-        const qy = query(collection(db, "records"), where("studentId", "==", id));
+        const qy = query(
+            collection(db, "records"),
+            where("studentId", "==", id),
+            orderBy("createdAt", "desc")
+        );
 
         const unsub = onSnapshot(
             qy,
@@ -177,18 +273,21 @@ export default function StudentDetailScreen() {
                 setRecords(
                     snap.docs.map((d) => ({
                         id: d.id,
-                        ...d.data(),
-                    })) as any
+                        ...(d.data() as any),
+                    }))
                 );
                 setLoadingRecords(false);
             },
-            () => setLoadingRecords(false)
+            (err) => {
+                console.error(err);
+                setLoadingRecords(false);
+            }
         );
 
         return () => unsub();
-    }, []);
+    }, [id]);
 
-    const goBack = () => router.replace("/(tabs)");
+    const goBack = () => router.back();
 
     const toggleAktif = async () => {
         if (!student) return;
@@ -196,9 +295,7 @@ export default function StudentDetailScreen() {
         try {
             setToggling(true);
             const newStatus = student.aktif === "Aktif" ? "Pasif" : "Aktif";
-
             await updateDoc(doc(db, "students", student.id), { aktif: newStatus });
-
             setStudent({ ...student, aktif: newStatus });
         } catch (err) {
             console.error(err);
@@ -212,12 +309,10 @@ export default function StudentDetailScreen() {
         router.push({ pathname: "/newrecord/[id]", params: { id: student.id } });
     };
 
-    const viewRecord = (id: string) =>
-        router.push({ pathname: "/record/[id]", params: { id } });
+    const viewRecord = (recordId: string) =>
+        router.push({ pathname: "/record/[id]", params: { id: recordId } });
 
-    // -------------------------
     // LOADING / ERROR
-    // -------------------------
     if (loadingStudent) {
         return (
             <SafeAreaView style={styles.safeArea}>
@@ -246,14 +341,9 @@ export default function StudentDetailScreen() {
 
     const firstLetter = student.name?.[0]?.toUpperCase() ?? "?";
 
-    // -------------------------
-    // UI
-    // -------------------------
-
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
-
                 {/* HEADER */}
                 <View style={styles.header}>
                     <View style={styles.headerTopRow}>
@@ -293,9 +383,7 @@ export default function StudentDetailScreen() {
                             <View
                                 style={[
                                     styles.statusBadge,
-                                    student.aktif === "Aktif"
-                                        ? styles.statusActive
-                                        : styles.statusPassive,
+                                    student.aktif === "Aktif" ? styles.statusActive : styles.statusPassive,
                                 ]}
                             >
                                 <Text
@@ -305,43 +393,51 @@ export default function StudentDetailScreen() {
                                             : styles.statusPassiveText
                                     }
                                 >
-                                    {student.aktif === "Aktif"
-                                        ? "Aktif Öğrenci"
-                                        : "Pasif Öğrenci"}
+                                    {student.aktif === "Aktif" ? "Aktif Öğrenci" : "Pasif Öğrenci"}
+                                </Text>
+                            </View>
+
+                            <View style={styles.metaLine}>
+                                <Calendar size={14} color="#94a3b8" />
+                                <Text style={styles.metaText}>
+                                    Değerlendirme: {formatDateTR(student.assessmentDate)}
                                 </Text>
                             </View>
                         </View>
                     </View>
                 </View>
 
-                {/* LIST + DETAIL */}
+                {/* CONTENT */}
                 <FlatList
+                    data={records}
+                    keyExtractor={(i) => i.id}
+                    contentContainerStyle={{ paddingBottom: 40 }}
                     ListHeaderComponent={
                         <View>
-
-                            {/* PERSONAL INFO */}
+                            {/* Kişisel Bilgiler */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>Kişisel Bilgiler</Text>
 
-                                <InfoRow label="Email" value={student.email || "-"} icon={<Mail size={16} color="#60a5fa" />} />
-                                <InfoRow label="Telefon" value={student.number || "-"} icon={<Phone size={16} color="#60a5fa" />} />
-                                <InfoRow label="Cinsiyet" value={student.gender || "-"} icon={<User size={16} color="#60a5fa" />} />
-                                <InfoRow label="Doğum Tarihi"
-                                    value={student.dateOfBirth
-                                        ? new Date(student.dateOfBirth).toLocaleDateString("tr-TR")
-                                        : "-"}
-                                    icon={<Calendar size={16} color="#60a5fa" />}
+                                <InfoRow
+                                    label="E-posta"
+                                    value={student.email || "-"}
+                                    icon={<Mail size={16} color="#60a5fa" />}
                                 />
                                 <InfoRow
-                                    label="Değerlendirme Tarihi"
-                                    value={
-                                        student.assessmentDate
-                                            ? new Date(student.assessmentDate).toLocaleDateString("tr-TR")
-                                            : "-"
-                                    }
+                                    label="Telefon"
+                                    value={student.number || "-"}
+                                    icon={<Phone size={16} color="#60a5fa" />}
+                                />
+                                <InfoRow
+                                    label="Cinsiyet"
+                                    value={student.gender || "-"}
+                                    icon={<User size={16} color="#60a5fa" />}
+                                />
+                                <InfoRow
+                                    label="Doğum Tarihi"
+                                    value={formatDateTR(student.dateOfBirth)}
                                     icon={<Calendar size={16} color="#60a5fa" />}
                                 />
-
                                 <InfoRow label="Boy (cm)" value={student.boy || "-"} icon={<User size={16} color="#60a5fa" />} />
                             </View>
 
@@ -349,53 +445,89 @@ export default function StudentDetailScreen() {
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>PAR-Q Testi</Text>
 
-                                <InfoRow label="Soru 1" value={student.q1 ? `${student.q1} ${student.q1aciklama || ""}` : "-"} />
-                                <InfoRow label="Soru 2" value={student.q2 ? `${student.q2} ${student.q2aciklama || ""}` : "-"} />
-                                <InfoRow label="Soru 3" value={student.q3 ? `${student.q3} ${student.q3aciklama || ""}` : "-"} />
+                                {parqQuestions.map((q, idx) => {
+                                    const answer = (student as any)[q.key] as Bool;
+                                    const note = q.noteKey ? ((student as any)[q.noteKey] as string) : "";
+                                    return (
+                                        <QAItem
+                                            key={q.key}
+                                            index={idx + 1}
+                                            question={q.label}
+                                            answer={answer}
+                                            note={note}
+                                        />
+                                    );
+                                })}
                             </View>
 
-                            {/* PERSONAL DETAILS */}
+                            {/* Kişisel Detaylar */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>Kişisel Detaylar</Text>
 
-                                <InfoRow label="Ağrı / Yaralanma" value={student.qq1 || "-"} />
-                                <InfoRow label="Ameliyat Geçirdiniz mi?" value={student.qq2 || "-"} />
-                                <InfoRow label="Kronik Hastalık" value={student.qq3 || "-"} />
-                                <InfoRow label="İlaç Kullanımı" value={student.qq4 || "-"} />
-                                <InfoRow label="Haftalık Aktivite" value={student.qq5 || "-"} />
-                                <InfoRow label="Spor Geçmişi" value={student.qq6 || "-"} />
-                                <InfoRow label="Planlanan Gün" value={student.qq7 || "-"} />
-                                <InfoRow label="Meslek" value={student.qq8 || "-"} />
-                                <InfoRow label="Uzun Oturma" value={student.qq9 || "-"} />
-                                <InfoRow label="Tekrarlı Hareket" value={student.qq10 || "-"} />
-                                <InfoRow label="Topuklu Ayakkabı" value={student.qq11 || "-"} />
-                                <InfoRow label="Stres / Endişe" value={student.qq12 || "-"} />
+                                {personalQuestions.map((q, idx) => {
+                                    const answer = (student as any)[q.key] as Bool;
+                                    const note = (q as any).noteKey ? ((student as any)[(q as any).noteKey] as string) : "";
+                                    return (
+                                        <QAItem
+                                            key={q.key}
+                                            index={idx + 1}
+                                            question={q.label}
+                                            answer={answer}
+                                            note={note}
+                                        />
+                                    );
+                                })}
+
                                 <InfoRow
-                                    label="Hedefler"
-                                    value={
-                                        student.qq13 && student.qq13.length
-                                            ? student.qq13.join(", ")
-                                            : "-"
-                                    }
+                                    label="Haftada kaç gün gelmeyi planlıyor?"
+                                    value={student.plannedDaysPerWeek ? String(student.plannedDaysPerWeek) : "-"}
+                                    icon={<Calendar size={16} color="#60a5fa" />}
                                 />
-                                <InfoRow label="Diğer" value={student.qq14 || "-"} />
+
+                                <InfoRow
+                                    label="Meslek"
+                                    value={student.jobDescription || "-"}
+                                    icon={<User size={16} color="#60a5fa" />}
+                                />
+
+                                <View style={{ marginTop: 12 }}>
+                                    <Text style={styles.subTitle}>Antrenman Hedefleri</Text>
+
+                                    <View style={styles.chipWrap}>
+                                        {student.trainingGoals && student.trainingGoals.length ? (
+                                            student.trainingGoals.map((g) => (
+                                                <Chip key={g} label={g} />
+                                            ))
+                                        ) : (
+                                            <Text style={styles.mutedText}>-</Text>
+                                        )}
+                                    </View>
+
+                                    {!!student.otherGoal?.trim() && (
+                                        <View style={{ marginTop: 10 }}>
+                                            <Text style={styles.miniLabel}>Diğer</Text>
+                                            <Text style={styles.noteText}>{student.otherGoal}</Text>
+                                        </View>
+                                    )}
+                                </View>
                             </View>
 
                             <Text style={styles.recordsTitle}>Kayıtlar</Text>
                         </View>
                     }
-                    data={records}
-                    keyExtractor={(i) => i.id}
-                    contentContainerStyle={{ paddingBottom: 40 }}
                     renderItem={({ item }) => {
-                        const dateStr = item.createdAt?.toDate
-                            ? `${item.createdAt.toDate().toLocaleDateString("tr-TR")} • ${item.createdAt
-                                .toDate()
-                                .toLocaleTimeString("tr-TR")}`
-                            : "-";
+                        const dateStr =
+                            item.createdAt?.toDate
+                                ? `${item.createdAt.toDate().toLocaleDateString("tr-TR")} • ${item.createdAt
+                                    .toDate()
+                                    .toLocaleTimeString("tr-TR")}`
+                                : "-";
 
                         return (
-                            <TouchableOpacity style={styles.recordCard} onPress={() => viewRecord(item.id)}>
+                            <TouchableOpacity
+                                style={styles.recordCard}
+                                onPress={() => viewRecord(item.id)}
+                            >
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.recordDate}>{dateStr}</Text>
                                     <Text style={styles.recordNote}>{item.note || "Not yok"}</Text>
@@ -414,15 +546,13 @@ export default function StudentDetailScreen() {
                         ) : null
                     }
                 />
-
             </View>
         </SafeAreaView>
     );
 }
 
-// -------------------------
-// ROW COMPONENT
-// -------------------------
+/* ----------------- UI PIECES ----------------- */
+
 function InfoRow({
     icon,
     label,
@@ -438,46 +568,90 @@ function InfoRow({
                 {icon}
                 <Text style={styles.infoLabel}>{label}</Text>
             </View>
-
             <Text style={styles.infoValue}>{value}</Text>
         </View>
     );
 }
 
-// -------------------------
-// STYLES
-// -------------------------
+function QAItem({
+    index,
+    question,
+    answer,
+    note,
+}: {
+    index: number;
+    question: string;
+    answer: Bool;
+    note?: string;
+}) {
+    const val = boolText(answer);
+    const isYes = answer === true;
+
+    return (
+        <View style={styles.qaItem}>
+            <View style={styles.qaTop}>
+                <Text style={styles.qaQuestion}>
+                    {index}. {question}
+                </Text>
+
+                <View
+                    style={[
+                        styles.badge,
+                        isYes ? styles.badgeYes : answer === false ? styles.badgeNo : styles.badgeNA,
+                    ]}
+                >
+                    <Text
+                        style={[
+                            styles.badgeText,
+                            isYes
+                                ? styles.badgeTextYes
+                                : answer === false
+                                    ? styles.badgeTextNo
+                                    : styles.badgeTextNA,
+                        ]}
+                    >
+                        {val}
+                    </Text>
+                </View>
+            </View>
+
+            {isYes && !!note?.trim() && (
+                <View style={styles.noteBox}>
+                    <Text style={styles.miniLabel}>Açıklama</Text>
+                    <Text style={styles.noteText}>{note}</Text>
+                </View>
+            )}
+        </View>
+    );
+}
+
+function Chip({ label }: { label: string }) {
+    return (
+        <View style={styles.chip}>
+            <Text style={styles.chipText}>{label}</Text>
+        </View>
+    );
+}
+
+/* ----------------- STYLES ----------------- */
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: "#020617",
-    },
-    container: {
-        flex: 1,
-        backgroundColor: "#020617",
-    },
+    safeArea: { flex: 1, backgroundColor: "#020617" },
+    container: { flex: 1, backgroundColor: "#020617" },
 
-    center: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-    },
+    center: { flex: 1, justifyContent: "center", alignItems: "center" },
     loadingText: { color: "#94a3b8", marginTop: 10 },
     errorText: { color: "#f87171", marginBottom: 10 },
 
     /* HEADER */
-    header: {
-        paddingHorizontal: 16,
-        paddingTop: 14,
-        paddingBottom: 4,
-    },
+    header: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
     headerTopRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
         marginBottom: 12,
     },
+
     backButton: {
         flexDirection: "row",
         alignItems: "center",
@@ -489,15 +663,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#1e293b",
     },
-    backButtonText: {
-        color: "#f1f5f9",
-        fontSize: 13,
-    },
+    backButtonText: { color: "#f1f5f9", fontSize: 13 },
 
-    headerActions: {
-        flexDirection: "row",
-        gap: 8,
-    },
+    headerActions: { flexDirection: "row", gap: 8 },
 
     toggleButton: {
         flexDirection: "row",
@@ -508,11 +676,7 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         backgroundColor: "#22c55e",
     },
-    toggleButtonText: {
-        color: "#022c22",
-        fontSize: 12,
-        fontWeight: "700",
-    },
+    toggleButtonText: { color: "#022c22", fontSize: 12, fontWeight: "700" },
 
     editButton: {
         flexDirection: "row",
@@ -523,18 +687,10 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         backgroundColor: "#1d4ed8",
     },
-    editButtonText: {
-        color: "#f1f5f9",
-        fontSize: 12,
-        fontWeight: "700",
-    },
+    editButtonText: { color: "#f1f5f9", fontSize: 12, fontWeight: "700" },
 
     /* STUDENT HEADER CARD */
-    studentRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
-    },
+    studentRow: { flexDirection: "row", alignItems: "center", gap: 14 },
     avatar: {
         width: 58,
         height: 58,
@@ -543,16 +699,8 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    avatarText: {
-        color: "#0f172a",
-        fontSize: 23,
-        fontWeight: "800",
-    },
-    studentName: {
-        color: "#f1f5f9",
-        fontSize: 19,
-        fontWeight: "700",
-    },
+    avatarText: { color: "#0f172a", fontSize: 23, fontWeight: "800" },
+    studentName: { color: "#f1f5f9", fontSize: 19, fontWeight: "700" },
 
     statusBadge: {
         marginTop: 6,
@@ -561,22 +709,13 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         alignSelf: "flex-start",
     },
-    statusActive: {
-        backgroundColor: "rgba(34,197,94,0.15)",
-    },
-    statusPassive: {
-        backgroundColor: "rgba(248,113,113,0.15)",
-    },
-    statusActiveText: {
-        color: "#4ade80",
-        fontSize: 11,
-        fontWeight: "700",
-    },
-    statusPassiveText: {
-        color: "#fca5a5",
-        fontSize: 11,
-        fontWeight: "700",
-    },
+    statusActive: { backgroundColor: "rgba(34,197,94,0.15)" },
+    statusPassive: { backgroundColor: "rgba(248,113,113,0.15)" },
+    statusActiveText: { color: "#4ade80", fontSize: 11, fontWeight: "700" },
+    statusPassiveText: { color: "#fca5a5", fontSize: 11, fontWeight: "700" },
+
+    metaLine: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
+    metaText: { color: "#94a3b8", fontSize: 12 },
 
     /* CARDS */
     card: {
@@ -594,6 +733,8 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         marginBottom: 10,
     },
+    subTitle: { color: "#f1f5f9", fontSize: 13, fontWeight: "700" },
+    mutedText: { color: "#94a3b8", fontSize: 13, marginTop: 8 },
 
     /* INFO ROW */
     infoRow: {
@@ -607,6 +748,52 @@ const styles = StyleSheet.create({
     infoLabel: { color: "#94a3b8", fontSize: 12 },
     infoValue: { color: "#f1f5f9", fontSize: 13, maxWidth: "55%", textAlign: "right" },
 
+    /* QA */
+    qaItem: {
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: "#1e293b",
+    },
+    qaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+    qaQuestion: { color: "#f1f5f9", fontSize: 13, fontWeight: "600", flex: 1, lineHeight: 18 },
+
+    badge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 999,
+        borderWidth: 1,
+        alignSelf: "flex-start",
+    },
+    badgeYes: { backgroundColor: "rgba(34,197,94,0.15)", borderColor: "rgba(34,197,94,0.35)" },
+    badgeNo: { backgroundColor: "rgba(248,113,113,0.15)", borderColor: "rgba(248,113,113,0.35)" },
+    badgeNA: { backgroundColor: "rgba(148,163,184,0.12)", borderColor: "rgba(148,163,184,0.25)" },
+    badgeText: { fontSize: 11, fontWeight: "800" },
+    badgeTextYes: { color: "#4ade80" },
+    badgeTextNo: { color: "#fca5a5" },
+    badgeTextNA: { color: "#94a3b8" },
+
+    noteBox: {
+        marginTop: 10,
+        padding: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: "#1e293b",
+        backgroundColor: "#0b1220",
+    },
+    miniLabel: { color: "#94a3b8", fontSize: 11, marginBottom: 4 },
+    noteText: { color: "#f1f5f9", fontSize: 12, lineHeight: 17 },
+
+    chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+    chip: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: "#1e293b",
+        backgroundColor: "rgba(96,165,250,0.12)",
+    },
+    chipText: { color: "#bfdbfe", fontSize: 11, fontWeight: "600" },
+
     /* RECORDS */
     recordsTitle: {
         marginHorizontal: 16,
@@ -616,7 +803,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "700",
     },
-
     recordCard: {
         marginHorizontal: 16,
         marginBottom: 10,
@@ -630,19 +816,7 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         gap: 10,
     },
-    recordDate: {
-        color: "#f1f5f9",
-        fontSize: 13,
-        fontWeight: "600",
-    },
-    recordNote: {
-        color: "#94a3b8",
-        fontSize: 12,
-        marginTop: 2,
-    },
-
-    emptyText: {
-        color: "#94a3b8",
-        fontSize: 13,
-    },
+    recordDate: { color: "#f1f5f9", fontSize: 13, fontWeight: "600" },
+    recordNote: { color: "#94a3b8", fontSize: 12, marginTop: 2 },
+    emptyText: { color: "#94a3b8", fontSize: 13 },
 });
