@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const hasPremium = false;
 
   return (
     <Tabs
@@ -44,6 +45,17 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="premium"
+        options={{
+          title: "Premium Al",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="star.fill" color={color} />
+          ),
+          href: hasPremium ? null : "/premium",
+        }}
+      />
+
     </Tabs>
   );
 }

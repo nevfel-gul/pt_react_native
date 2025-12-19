@@ -1,7 +1,6 @@
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import {
-  ArrowLeft,
   Bell,
   ChevronRight,
   Globe,
@@ -315,11 +314,6 @@ export default function SettingsScreen() {
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <ArrowLeft size={18} color="#f1f5f9" />
-              <Text style={styles.backButtonText}>Geri</Text>
-            </TouchableOpacity>
-
             <Text style={styles.headerTitle}>Ayarlar</Text>
             <View style={{ width: 60 }} />
           </View>
