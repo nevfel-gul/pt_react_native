@@ -1,5 +1,4 @@
 import { db } from "@/services/firebase";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import {
@@ -143,85 +142,78 @@ export default function KayitlarScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.headerWrapper}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.leftHeaderArea}>
-              {/* User Icon */}
-              <TouchableOpacity
-                style={styles.titleIconWrapper}
-                activeOpacity={0.7}
-                onPress={() => router.push("/profile")}
-              >
-                <Users size={24} color="#60a5fa" />
-              </TouchableOpacity>
+  <View style={styles.headerTopRow}>
 
-              {/* Search */}
-              {!searchActive && (
-                <TouchableOpacity
-                  onPress={openAnimatedSearch}
-                  style={{
-                    backgroundColor: "#1e293b",
-                    height: 40,
-                    paddingHorizontal: 10,
-                    alignItems: "center",
-                    borderRadius: 99,
-                    justifyContent: "center",
-                  }}
-                >
-                  <Search size={22} color="#f1f5f9" />
-                </TouchableOpacity>
-              )}
+    {/* LEFT : LOGO */}
+    <View style={styles.leftHeaderArea}>
+      <Text style={styles.logoText}>ATHLETRACK</Text>
+    </View>
 
-              {searchActive && (
-                <Animated.View
-                  style={{
-                    width: searchWidth,
-                    height: 40,
-                    backgroundColor: "#1e293b",
-                    borderRadius: 99,
-                    paddingHorizontal: 10,
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  {/* Input solda büyüsün */}
-                  <TextInput
-                    placeholder="Ara..."
-                    placeholderTextColor="#94a3b8"
-                    value={searchTerm}
-                    onChangeText={setSearchTerm}
-                    style={{
-                      color: "#f1f5f9",
-                      flex: 1, // otomatik genişletir
-                    }}
-                    autoFocus
-                  />
+    <View style={styles.rightHeaderArea}>
+      {/* NOTIFICATION */}
+      <TouchableOpacity
+        onPress={() => setNotifOpen(!notifOpen)}
+        style={styles.titleIconWrapper}
+      >
+        <Bell size={22} color="#f1f5f9" />
+      </TouchableOpacity>
 
-                  {/* X ikon sağa otomatik yaslanır */}
-                  <TouchableOpacity onPress={closeAnimatedSearch}>
-                    <XIcon size={18} color="#f1f5f9" />
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
-            </View>
+      {/* SEARCH */}
+      {!searchActive && (
+        <TouchableOpacity
+          onPress={openAnimatedSearch}
+          style={{
+            backgroundColor: "#1e293b",
+            height: 40,
+            paddingHorizontal: 10,
+            alignItems: "center",
+            borderRadius: 99,
+            justifyContent: "center",
+          }}
+        >
+          <Search size={22} color="#f1f5f9" />
+        </TouchableOpacity>
+      )}
 
-            {/* RIGHT */}
-            <View style={styles.rightHeaderArea}>
-              <TouchableOpacity
-                onPress={() => setNotifOpen(!notifOpen)}
-                style={{
-                  padding: 9,
-                  backgroundColor: "#1e293b",
-                  borderRadius: 99,
-                }}
-              >
-                <Bell size={22} color="#f1f5f9" />
-              </TouchableOpacity>
-              {notifOpen && (
-                <View style={styles.notifPanel}>
-                  <Text style={styles.notifText}>Bildirim yok</Text>
-                </View>
-              )}
-            </View>
+      {searchActive && (
+        <Animated.View
+          style={{
+            width: searchWidth,
+            height: 40,
+            backgroundColor: "#1e293b",
+            borderRadius: 99,
+            paddingHorizontal: 10,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <TextInput
+            placeholder="Ara..."
+            placeholderTextColor="#94a3b8"
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            style={{
+              color: "#f1f5f9",
+              flex: 1,
+            }}
+            autoFocus
+          />
+
+          <TouchableOpacity onPress={closeAnimatedSearch}>
+            <XIcon size={18} color="#f1f5f9" />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {/* PROFILE */}
+      <TouchableOpacity
+        style={styles.titleIconWrapper}
+        activeOpacity={0.7}
+        onPress={() => router.push("/profile")}
+      >
+        <Users size={24} color="#60a5fa" />
+      </TouchableOpacity>
+    </View>
           </View>
         </View>
 
@@ -237,13 +229,10 @@ export default function KayitlarScreen() {
                   {
                     backgroundColor: "#0f172a",
                   },
-                  filterDurum === "" && styles.filterBoxActive,
+                  filterDurum === "" && styles.filterBoxActiveALL,
                 ]}
               >
-                <LinearGradient
-                  colors={["rgba(255,255,255,0.25)", "rgba(255,255,255,0)"]}
-                  style={styles.LinearGradient}
-                />
+                
                 <Text
                   style={[
                     styles.filterBoxNumber,
@@ -266,15 +255,12 @@ export default function KayitlarScreen() {
                 style={[
                   styles.filterBox,
                   {
-                    backgroundColor: "#20644d",
+                    backgroundColor: "#3a8b55",
                   },
-                  filterDurum === "Aktif" && styles.filterBoxActive,
+                  filterDurum === "Aktif" && styles.filterBoxActiveA,
                 ]}
               >
-                <LinearGradient
-                  colors={["rgba(255,255,255,0.25)", "rgba(255,255,255,0)"]}
-                  style={styles.LinearGradient}
-                />
+
                 <Text
                   style={[
                     styles.filterBoxNumber,
@@ -298,15 +284,12 @@ export default function KayitlarScreen() {
                 style={[
                   styles.filterBox,
                   {
-                    backgroundColor: "#7c3636",
+                    backgroundColor: "#993131",
                   },
-                  filterDurum === "Pasif" && styles.filterBoxActive,
+                  filterDurum === "Pasif" && styles.filterBoxActiveP,
                 ]}
               >
-                <LinearGradient
-                  colors={["rgba(255,255,255,0.25)", "rgba(255,255,255,0)"]}
-                  style={styles.LinearGradient}
-                />
+
                 <Text
                   style={[
                     styles.filterBoxNumber,
@@ -526,6 +509,8 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 80,
+    paddingTop: 12,
+
   },
   card: {
     backgroundColor: "#0f172a", // premium surface
@@ -673,11 +658,28 @@ const styles = StyleSheet.create({
     backgroundColor: "#0A0F1A",
   },
 
-  filterBoxActive: {
+  filterBoxActiveALL: {
     shadowColor: "#3B82F6",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 12,
+    shadowRadius: 16,
+    zIndex: -5,
+    elevation: 10,
+  },
+  filterBoxActiveA: {
+    shadowColor: "#82cd00",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    zIndex: -5,
+    elevation: 10,
+  },
+    filterBoxActiveP: {
+    shadowColor: "#cd6118ff",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    zIndex: -5,
     elevation: 10,
   },
 
@@ -724,7 +726,11 @@ const styles = StyleSheet.create({
   notifItem: {
     paddingVertical: 10,
   },
-
+logoText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#60a5fa",
+  },
   notifText: {
     color: "#fff",
     fontSize: 16,
@@ -743,13 +749,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end",
   },
-  LinearGradient: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "5%",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
+  
 });
