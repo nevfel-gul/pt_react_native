@@ -1,4 +1,5 @@
 import { db } from "@/services/firebase";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import {
@@ -60,7 +61,7 @@ export default function KayitlarScreen() {
 
   const closeAnimatedSearch = () => {
     Animated.timing(searchWidth, {
-      toValue: 40,   // 🔵 Tamamen 0 yapma! Büyüteç ikonunun genişliği kadar kalsın
+      toValue: 40,
       duration: 220,
       useNativeDriver: false,
     }).start(() => {
@@ -164,11 +165,11 @@ export default function KayitlarScreen() {
                     alignItems: "center",
                     borderRadius: 99,
                     justifyContent: "center",
-                  }}>
+                  }}
+                >
                   <Search size={22} color="#f1f5f9" />
                 </TouchableOpacity>
               )}
-
 
               {searchActive && (
                 <Animated.View
@@ -190,7 +191,7 @@ export default function KayitlarScreen() {
                     onChangeText={setSearchTerm}
                     style={{
                       color: "#f1f5f9",
-                      flex: 1,        // otomatik genişletir
+                      flex: 1, // otomatik genişletir
                     }}
                     autoFocus
                   />
@@ -201,14 +202,18 @@ export default function KayitlarScreen() {
                   </TouchableOpacity>
                 </Animated.View>
               )}
-
             </View>
 
             {/* RIGHT */}
             <View style={styles.rightHeaderArea}>
               <TouchableOpacity
                 onPress={() => setNotifOpen(!notifOpen)}
-                style={{ padding: 9, backgroundColor: "#1e293b", borderRadius: 99 }}>
+                style={{
+                  padding: 9,
+                  backgroundColor: "#1e293b",
+                  borderRadius: 99,
+                }}
+              >
                 <Bell size={22} color="#f1f5f9" />
               </TouchableOpacity>
               {notifOpen && (
@@ -229,36 +234,95 @@ export default function KayitlarScreen() {
                 onPress={() => setFilterDurum("")}
                 style={[
                   styles.filterBox,
-                  { backgroundColor: "#0f172a", borderColor: "rgba(255,255,255,0.08)" },
+                  {
+                    backgroundColor: "#0f172a",
+                  },
                   filterDurum === "" && styles.filterBoxActive,
                 ]}
               >
-                <Text style={styles.filterBoxNumber}>{totalCount}</Text>
-                <Text style={styles.filterBoxText}>Tümü</Text>
+                <LinearGradient
+                  colors={["rgba(255,255,255,0.25)", "rgba(255,255,255,0)"]}
+                  style={styles.LinearGradient}
+                />
+                <Text
+                  style={[
+                    styles.filterBoxNumber,
+                    filterDurum === "" && styles.filterBoxNumberActive,
+                  ]}
+                >
+                  {totalCount}
+                </Text>
+                <Text
+                  style={[
+                    styles.filterBoxText,
+                    filterDurum === "" && styles.filterBoxTextActive,
+                  ]}
+                >
+                  Tümü
+                </Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={() => setFilterDurum("Aktif")}
                 style={[
                   styles.filterBox,
-                  { backgroundColor: "#166534", borderColor: "rgba(34,197,94,0.6)" },
+                  {
+                    backgroundColor: "#20644d",
+                  },
                   filterDurum === "Aktif" && styles.filterBoxActive,
                 ]}
               >
-                <Text style={styles.filterBoxNumber}>{activeCount}</Text>
-                <Text style={styles.filterBoxText}>Aktif</Text>
+                <LinearGradient
+                  colors={["rgba(255,255,255,0.25)", "rgba(255,255,255,0)"]}
+                  style={styles.LinearGradient}
+                />
+                <Text
+                  style={[
+                    styles.filterBoxNumber,
+                    filterDurum === "Aktif" && styles.filterBoxNumberActive,
+                  ]}
+                >
+                  {activeCount}
+                </Text>
+                <Text
+                  style={[
+                    styles.filterBoxText,
+                    filterDurum === "Aktif" && styles.filterBoxTextActive,
+                  ]}
+                >
+                  Aktif
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setFilterDurum("Pasif")}
                 style={[
                   styles.filterBox,
-                  { backgroundColor: "#EF4444", borderColor: "rgba(251,191,36,0.6)" },
+                  {
+                    backgroundColor: "#7c3636",
+                  },
                   filterDurum === "Pasif" && styles.filterBoxActive,
                 ]}
               >
-                <Text style={styles.filterBoxNumber}>{passiveCount}</Text>
-                <Text style={styles.filterBoxText}>Pasif</Text>
+                <LinearGradient
+                  colors={["rgba(255,255,255,0.25)", "rgba(255,255,255,0)"]}
+                  style={styles.LinearGradient}
+                />
+                <Text
+                  style={[
+                    styles.filterBoxNumber,
+                    filterDurum === "Pasif" && styles.filterBoxNumberActive,
+                  ]}
+                >
+                  {passiveCount}
+                </Text>
+                <Text
+                  style={[
+                    styles.filterBoxText,
+                    filterDurum === "Pasif" && styles.filterBoxTextActive,
+                  ]}
+                >
+                  Pasif
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -349,7 +413,7 @@ const styles = StyleSheet.create({
   },
   headerWrapper: {
     paddingHorizontal: 20,
-    paddingTop: 8,      // daha sıkı
+    paddingTop: 8, // daha sıkı
     paddingBottom: 10,
     backgroundColor: "#020617",
   },
@@ -464,7 +528,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   card: {
-    backgroundColor: "#0f172a",   // premium surface
+    backgroundColor: "#0f172a", // premium surface
     borderRadius: 18,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -600,7 +664,7 @@ const styles = StyleSheet.create({
   filterBox: {
     flex: 1,
     marginHorizontal: 4,
-    paddingVertical: 16,
+    height: 92,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -609,27 +673,35 @@ const styles = StyleSheet.create({
     backgroundColor: "#0A0F1A",
   },
 
-
   filterBoxActive: {
-    borderColor: "#fff",
-    opacity: 1,
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 10,
   },
 
   filterBoxText: {
     fontSize: 13,
     fontWeight: "600",
     color: "#EDEDED",
-
   },
 
   filterBoxTextActive: {
-    color: "#EDEDED",
+    fontSize: 16,
     fontWeight: "700",
+    color: "#EDEDED",
   },
   filterBoxNumber: {
     fontSize: 26,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#EDEDED",
+    marginBottom: 4,
+  },
+  filterBoxNumberActive: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   notifPanel: {
@@ -648,7 +720,6 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 999,
   },
-
 
   notifItem: {
     paddingVertical: 10,
@@ -671,5 +742,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
+  },
+  LinearGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "5%",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
 });
