@@ -2,9 +2,9 @@
 // UI FIXED + THEME UPDATED VERSION
 // ---------------------
 
-import { db } from "@/services/firebase";
+import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { addDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import {
     ArrowLeft,
     Calendar,
@@ -73,7 +73,8 @@ export default function NewRecordScreen() {
         const fetchStudent = async () => {
             if (!id) return;
             try {
-                const ref = doc(db, "students", id);
+                const ref = studentDocRef(id);
+
                 const snap = await getDoc(ref);
                 if (snap.exists()) {
                     const data = snap.data() as any;
@@ -117,7 +118,7 @@ export default function NewRecordScreen() {
         try {
             setSubmitting(true);
 
-            await addDoc(collection(db, "records"), {
+            await addDoc(recordsColRef(), {
                 studentId: id,
                 ...formData,
                 createdAt: serverTimestamp(),

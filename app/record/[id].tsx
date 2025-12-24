@@ -25,6 +25,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { db } from "@/services/firebase";
+import { studentDocRef } from "@/services/firestorePaths";
 import { doc, getDoc } from "firebase/firestore";
 
 type Student = {
@@ -81,7 +82,7 @@ export default function RecordDetailScreen() {
 
                 // 2) öğrenci dokümanı
                 if (recData.studentId) {
-                    const stuRef = doc(db, "students", recData.studentId);
+                    const stuRef = studentDocRef(recData.studentId);
                     const stuSnap = await getDoc(stuRef);
                     if (stuSnap.exists()) {
                         const s = stuSnap.data() as any;

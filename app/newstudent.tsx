@@ -1,8 +1,10 @@
-import { db } from "@/services/firebase";
+import { auth } from "@/services/firebase";
+import { studentsColRef } from "@/services/firestorePaths";
+import { User as FirebaseUser, onAuthStateChanged } from "@firebase/auth";
 import { useRouter } from "expo-router";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { ArrowLeft, Calendar, Save, User } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import { addDoc, serverTimestamp } from "firebase/firestore";
+import { ArrowLeft, Calendar, Save, User as UserIcon } from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     Alert,
     ScrollView,
@@ -99,6 +101,10 @@ const YeniOgrenciScreen = () => {
         []
     );
 
+
+    const [user, setUser] = useState<FirebaseUser | null>(null);
+    const [loading, setLoading] = useState(true); // <-- burada true olmalı
+
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState<FormState>({
         // Kişisel Bilgiler
@@ -164,6 +170,15 @@ const YeniOgrenciScreen = () => {
         otherGoal: "",
     });
 
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            setUser(firebaseUser);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
     const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }));
     };
@@ -191,8 +206,9 @@ const YeniOgrenciScreen = () => {
         try {
             setSaving(true);
 
-            await addDoc(collection(db, "students"), {
+            await addDoc(studentsColRef(), {
                 ...form,
+                ownerUid: auth.currentUser?.uid,   // opsiyonel ama iyi
                 createdAt: serverTimestamp(),
             });
 
@@ -223,7 +239,7 @@ const YeniOgrenciScreen = () => {
 
                         <View style={styles.headerTitleRow}>
                             <View style={styles.iconCircle}>
-                                <User size={22} color="#60a5fa" />
+                                <UserIcon size={22} color="#60a5fa" />
                             </View>
 
                             <View>
