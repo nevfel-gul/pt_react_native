@@ -15,7 +15,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -23,6 +22,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Student = {
   id: string;
@@ -145,9 +145,13 @@ export default function KayitlarScreen() {
           <View style={styles.headerTopRow}>
             <View style={styles.leftHeaderArea}>
               {/* User Icon */}
-              <View style={styles.titleIconWrapper}>
+              <TouchableOpacity
+                style={styles.titleIconWrapper}
+                activeOpacity={0.7}
+                onPress={() => router.push("/profile")}
+              >
                 <Users size={24} color="#60a5fa" />
-              </View>
+              </TouchableOpacity>
 
               {/* Search */}
               {!searchActive && (
