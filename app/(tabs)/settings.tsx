@@ -1,20 +1,18 @@
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import {
-  ArrowLeft,
   Bell,
+  ChevronRight,
   Globe,
   Info,
   LogOut,
   Moon,
   Palette,
   Shield,
-  Smartphone,
-  User,
+  Smartphone
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -22,14 +20,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { auth } from "../../services/firebase";
 
-type TabKey = "profile" | "preferences" | "security";
+type TabKey = "preferences" | "security";
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>("profile");
-
+  const [activeTab, setActiveTab] = useState<TabKey>("preferences");
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
@@ -83,108 +81,34 @@ export default function SettingsScreen() {
     subtitle,
     right,
     onPress,
+    isLast,
+    showChevron = false,
   }: {
     label: string;
     subtitle?: string;
     right?: React.ReactNode;
     onPress?: () => void;
+    isLast?: boolean;
+    showChevron?: boolean;
   }) => (
     <TouchableOpacity
       activeOpacity={onPress ? 0.7 : 1}
-      style={styles.settingRow}
+      style={[styles.settingRow, isLast && styles.settingRowLast]}
       onPress={onPress}
     >
       <View style={{ flex: 1 }}>
         <Text style={styles.settingLabel}>{label}</Text>
         {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
       </View>
+
       {right}
+
+      {showChevron ? (
+        <ChevronRight size={16} color="#64748b" style={{ marginLeft: 6 }} />
+      ) : null}
     </TouchableOpacity>
   );
 
-  // -------------------------
-  // TAB SCREENS
-  // -------------------------
-  const renderProfileTab = () => (
-    <>
-      <Section title="Profil" icon={<User size={18} color="#60a5fa" />} />
-
-      {/* PROFILE CARD */}
-      <View style={styles.card}>
-        <View style={styles.profileRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>Y</Text>
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>Yağmur Öztürk</Text>
-            <Text style={styles.profileEmail}>yagmur.ozturk@example.com</Text>
-            <Text style={styles.profileTag}>
-              PT • Reformer Pilates • Online Coaching
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.profileMetaRow}>
-          <View style={styles.profileMetaItem}>
-            <Text style={styles.profileMetaLabel}>Üyelik</Text>
-            <Text style={styles.profileMetaValue}>Pro</Text>
-          </View>
-          <View style={styles.profileMetaItem}>
-            <Text style={styles.profileMetaLabel}>Müşteri</Text>
-            <Text style={styles.profileMetaValue}>32 aktif</Text>
-          </View>
-          <View style={styles.profileMetaItem}>
-            <Text style={styles.profileMetaLabel}>Kayıt</Text>
-            <Text style={styles.profileMetaValue}>2024</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* USER INFO SETTINGS */}
-      <View style={styles.card}>
-        <SettingRow
-          label="İsim"
-          subtitle="Uygulamada gözükecek adın"
-          right={<Text style={styles.settingValueText}>Yağmur Öztürk</Text>}
-        />
-        <SettingRow
-          label="Kullanıcı Adı"
-          subtitle="Profil linkinde kullanılacak"
-          right={<Text style={styles.settingValueText}>@pt.yagmur</Text>}
-        />
-        <SettingRow
-          label="E-posta"
-          subtitle="Giriş ve bildirimler için"
-          right={<Text style={styles.settingValueText}>yagmur.ozturk@example.com</Text>}
-        />
-        <SettingRow
-          label="Telefon"
-          subtitle="Müşteri iletişimi için"
-          right={<Text style={styles.settingValueText}>+90 5xx xxx xx xx</Text>}
-        />
-      </View>
-
-      {/* BIO */}
-      <View style={styles.card}>
-        <SettingRow
-          label="Biyografi"
-          subtitle="Kendini kısaca tanıt"
-          right={<Text style={styles.badgeMuted}>Düzenle</Text>}
-        />
-        <SettingRow
-          label="Uzmanlık Alanların"
-          subtitle="Reformer, Fonksiyonel Antrenman..."
-          right={<Text style={styles.badgeMuted}>Düzenle</Text>}
-        />
-        <SettingRow
-          label="İşletme Adı"
-          subtitle="Müşterilerin göreceği marka"
-          right={<Text style={styles.settingValueText}>PT Lab</Text>}
-        />
-      </View>
-    </>
-  );
 
   // -------------------------
   // PREFERENCES TAB
@@ -206,17 +130,18 @@ export default function SettingsScreen() {
             />
           }
         />
-
         <SettingRow
           label="Dil"
           subtitle="Uygulama dili"
           right={<Text style={styles.settingValueText}>Türkçe</Text>}
+          onPress={() => { }}
         />
 
         <SettingRow
           label="Bölge"
           subtitle="Tarih & saat formatı"
           right={<Text style={styles.settingValueText}>Türkiye</Text>}
+          isLast={true}
         />
       </View>
 
@@ -260,6 +185,7 @@ export default function SettingsScreen() {
               thumbColor={hapticEnabled ? "#02268a" : "#e5e7eb"}
             />
           }
+          isLast={true}
         />
       </View>
 
@@ -282,6 +208,7 @@ export default function SettingsScreen() {
           label="Önbelleği Temizle"
           subtitle="Geçici verileri sil"
           right={<Text style={styles.badgeMuted}>Temizle</Text>}
+          isLast={true}
         />
       </View>
     </>
@@ -325,6 +252,8 @@ export default function SettingsScreen() {
           label="Şifre Değiştir"
           subtitle="Giriş şifreni güncelle"
           right={<Text style={styles.badgeMuted}>Değiştir</Text>}
+          isLast={true}
+
         />
       </View>
 
@@ -347,6 +276,7 @@ export default function SettingsScreen() {
           label="Hesabı Sil"
           subtitle="Geri alınamaz işlem"
           right={<Text style={[styles.badgeMuted, { color: "#f97316" }]}>Sil</Text>}
+          isLast={true}
         />
       </View>
 
@@ -355,7 +285,7 @@ export default function SettingsScreen() {
 
         <SettingRow label="Sürüm" right={<Text style={styles.settingValueText}>v0.0.0</Text>} />
         <SettingRow label="Lisans" right={<Text style={styles.settingValueText}>PT Lab</Text>} />
-        <SettingRow label="Gizlilik Politikası" right={<Text style={styles.badgeMuted}>Aç</Text>} />
+        <SettingRow label="Gizlilik Politikası" right={<Text style={styles.badgeMuted}>Aç</Text>} isLast={true} />
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={() => { handleLogout(); }}>
@@ -367,8 +297,6 @@ export default function SettingsScreen() {
 
   const renderActiveTab = () => {
     switch (activeTab) {
-      case "profile":
-        return renderProfileTab();
       case "preferences":
         return renderPreferencesTab();
       case "security":
@@ -386,18 +314,12 @@ export default function SettingsScreen() {
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <ArrowLeft size={18} color="#f1f5f9" />
-              <Text style={styles.backButtonText}>Geri</Text>
-            </TouchableOpacity>
-
             <Text style={styles.headerTitle}>Ayarlar</Text>
             <View style={{ width: 60 }} />
           </View>
 
           {/* TABS */}
           <View style={styles.tabsRow}>
-            {renderTabButton("profile", "Profil", <User size={16} color="#bfdbfe" />)}
             {renderTabButton("preferences", "Tercihler", <Moon size={16} color="#bfdbfe" />)}
             {renderTabButton("security", "Güvenlik", <Shield size={16} color="#bfdbfe" />)}
           </View>
@@ -631,5 +553,9 @@ const styles = StyleSheet.create({
     color: "#fca5a5",
     fontSize: 14,
     fontWeight: "700",
+  },
+  settingRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 4,
   },
 });

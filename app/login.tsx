@@ -30,7 +30,7 @@ export default function Login() {
                 await createUserWithEmailAndPassword(auth, email, password);
             }
 
-            router.replace("/(tabs)/kolpa");
+            router.replace("/(tabs)");
         } catch (error: any) {
             console.error("Auth hatası:", error.message);
             alert(`Bir hata oluştu: ${error.message}`);
@@ -50,13 +50,13 @@ export default function Login() {
                     onChangeText={setEmail}
                     style={styles.input}
                     keyboardType="email-address"
-                    placeholderTextColor={"black"}
+                    placeholderTextColor={"slategray"}
                 />
 
                 <View style={styles.passwordContainer}>
                     <TextInput
                         placeholder="••••••••"
-                        placeholderTextColor={"black"}
+                        placeholderTextColor={"slategray"}
                         secureTextEntry={!isPasswordVisible}
                         value={password}
                         onChangeText={setPassword}
