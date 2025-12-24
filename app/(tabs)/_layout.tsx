@@ -9,7 +9,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const hasPremium = true;
+  const hasPremium = false;
 
   return (
     <Tabs
@@ -19,6 +19,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: "#020617",
           borderTopColor: "#1e293b",
+          paddingTop: 10,
         },
         tabBarButton: HapticTab,
       }}
@@ -113,8 +114,8 @@ export default function TabLayout() {
         name="premium"
         options={{
           title: "Premium Al",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="star.fill" color={color} />
+          tabBarIcon: () => (
+            <IconSymbol size={28} name="star.fill" color={"gold"} />
           ),
           href: hasPremium ? null : "/premium",
         }}
