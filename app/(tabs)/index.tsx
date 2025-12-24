@@ -1,6 +1,6 @@
-import { db } from "@/services/firebase";
+import { studentsColRef } from "@/services/firestorePaths";
 import { useRouter } from "expo-router";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { onSnapshot, orderBy, query } from "firebase/firestore";
 import {
   Bell,
   Calendar,
@@ -82,7 +82,7 @@ export default function KayitlarScreen() {
   }, [students, safeSearch, filterDurum]);
 
   useEffect(() => {
-    const q = query(collection(db, "students"), orderBy("createdAt", "desc"));
+    const q = query(studentsColRef(), orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
       q,

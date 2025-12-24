@@ -22,16 +22,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { db } from "@/services/firebase";
+import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import {
-    collection,
-    doc,
     getDoc,
     onSnapshot,
     orderBy,
     query,
     updateDoc,
-    where,
+    where
 } from "firebase/firestore";
 
 type Bool = boolean | null;
@@ -230,7 +228,7 @@ export default function StudentDetailScreen() {
 
         const load = async () => {
             try {
-                const ref = doc(db, "students", id);
+                const ref = studentDocRef(id);
                 const snap = await getDoc(ref);
 
                 if (!snap.exists()) {
@@ -261,11 +259,8 @@ export default function StudentDetailScreen() {
     useEffect(() => {
         if (!id) return;
 
-        const qy = query(
-            collection(db, "records"),
-            where("studentId", "==", id),
-            orderBy("createdAt", "desc")
-        );
+        const qy = query(recordsColRef(), where("studentId", "==", id), orderBy("createdAt", "desc"));
+
 
         const unsub = onSnapshot(
             qy,
@@ -295,7 +290,7 @@ export default function StudentDetailScreen() {
         try {
             setToggling(true);
             const newStatus = student.aktif === "Aktif" ? "Pasif" : "Aktif";
-            await updateDoc(doc(db, "students", student.id), { aktif: newStatus });
+            await updateDoc(studentDocRef(student.id), { aktif: newStatus });
             setStudent({ ...student, aktif: newStatus });
         } catch (err) {
             console.error(err);
