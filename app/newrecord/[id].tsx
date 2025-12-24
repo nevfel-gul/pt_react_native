@@ -7,7 +7,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { addDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import {
     ArrowLeft,
-    Calendar,
     HeartPulse,
     Mail,
     Phone,
@@ -19,6 +18,8 @@ import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     StyleSheet,
     Switch,
@@ -163,200 +164,203 @@ export default function NewRecordScreen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <View style={styles.container}>
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0} // header varsa 80-100 dene
+            >
+                <View style={styles.container}>
 
-                {/* HEADER */}
-                <View style={styles.header}>
-                    <View style={styles.headerTopRow}>
-                        <TouchableOpacity style={styles.backButton} onPress={router.back}>
-                            <ArrowLeft size={18} color="#e5e7eb" />
-                            <Text style={styles.backButtonText}>Geri</Text>
-                        </TouchableOpacity>
-
-                        <View style={styles.dateRow}>
-                            <Calendar size={16} color="#9ca3af" />
-                            <Text style={styles.dateText}>Tarih: {today}</Text>
+                    {/* HEADER */}
+                    <View style={styles.header}>
+                        <View style={styles.headerTopRow}>
+                            <TouchableOpacity style={styles.backButton} onPress={router.back}>
+                                <ArrowLeft size={18} color="#e5e7eb" />
+                                <Text style={styles.backButtonText}>Geri</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
-                    {/* STUDENT CARD */}
-                    <View style={styles.studentRow}>
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>
-                                {student.name?.[0]?.toUpperCase() ?? "?"}
-                            </Text>
+                    {/* FORM */}
+                    <ScrollView
+                        style={styles.formWrapper}
+                        contentContainerStyle={{ paddingBottom: 40 }}
+                        showsVerticalScrollIndicator={false}
+                    >
+
+                        {/* HEADER */}
+                        <View style={styles.header}>
+                            {/* STUDENT CARD */}
+                            <View style={styles.studentRow}>
+                                <View style={styles.avatar}>
+                                    <Text style={styles.avatarText}>
+                                        {student.name?.[0]?.toUpperCase() ?? "?"}
+                                    </Text>
+                                </View>
+
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.studentName}>{student.name}</Text>
+
+                                    <View style={styles.studentMetaRow}>
+                                        {student.email && (
+                                            <View style={styles.metaItem}>
+                                                <Mail size={14} color="#9ca3af" />
+                                                <Text style={styles.metaText}>{student.email}</Text>
+                                            </View>
+                                        )}
+                                        {student.number && (
+                                            <View style={styles.metaItem}>
+                                                <Phone size={14} color="#9ca3af" />
+                                                <Text style={styles.metaText}>{student.number}</Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    <View style={styles.studentMetaRow}>
+                                        {student.boy && (
+                                            <View style={styles.metaItem}>
+                                                <Ruler size={14} color="#9ca3af" />
+                                                <Text style={styles.metaText}>{student.boy} cm</Text>
+                                            </View>
+                                        )}
+                                        {student.gender && (
+                                            <View style={styles.metaItem}>
+                                                <User size={14} color="#9ca3af" />
+                                                <Text style={styles.metaText}>{student.gender}</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                            </View>
                         </View>
-
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.studentName}>{student.name}</Text>
-
-                            <View style={styles.studentMetaRow}>
-                                {student.email && (
-                                    <View style={styles.metaItem}>
-                                        <Mail size={14} color="#9ca3af" />
-                                        <Text style={styles.metaText}>{student.email}</Text>
-                                    </View>
-                                )}
-                                {student.number && (
-                                    <View style={styles.metaItem}>
-                                        <Phone size={14} color="#9ca3af" />
-                                        <Text style={styles.metaText}>{student.number}</Text>
-                                    </View>
-                                )}
+                        {/* KART 1 */}
+                        <View style={styles.card}>
+                            <View style={styles.cardTitleRow}>
+                                <HeartPulse size={18} color="#38bdf8" />
+                                <Text style={styles.cardTitle}>Genel Bilgiler</Text>
                             </View>
 
-                            <View style={styles.studentMetaRow}>
-                                {student.boy && (
-                                    <View style={styles.metaItem}>
-                                        <Ruler size={14} color="#9ca3af" />
-                                        <Text style={styles.metaText}>{student.boy} cm</Text>
-                                    </View>
-                                )}
-                                {student.gender && (
-                                    <View style={styles.metaItem}>
-                                        <User size={14} color="#9ca3af" />
-                                        <Text style={styles.metaText}>{student.gender}</Text>
-                                    </View>
-                                )}
+                            <View style={styles.field}>
+                                <Text style={styles.label}>Antrenman hedefi</Text>
+                                <TextInput
+                                    placeholder="Örn: Yağ yakımı, kas kazanımı..."
+                                    placeholderTextColor="#64748b"
+                                    value={formData.goal}
+                                    onChangeText={(t) => handleChange("goal", t)}
+                                    style={styles.input}
+                                />
+                            </View>
+
+                            <View style={styles.field}>
+                                <Text style={styles.label}>Şikayet / Rahatsızlık</Text>
+                                <TextInput
+                                    placeholder="Bel, diz, omuz varsa yaz..."
+                                    placeholderTextColor="#64748b"
+                                    value={formData.complaint}
+                                    onChangeText={(t) => handleChange("complaint", t)}
+                                    style={[styles.input, styles.inputMultiline]}
+                                    multiline
+                                />
+                            </View>
+
+                            <View style={styles.field}>
+                                <Text style={styles.label}>Haftalık antrenman sıklığı</Text>
+                                <TextInput
+                                    placeholder="Örn: Haftada 3 gün"
+                                    placeholderTextColor="#64748b"
+                                    value={formData.trainingFrequency}
+                                    onChangeText={(t) => handleChange("trainingFrequency", t)}
+                                    style={styles.input}
+                                />
                             </View>
                         </View>
-                    </View>
-                </View>
 
-                {/* FORM */}
-                <ScrollView
-                    style={styles.formWrapper}
-                    contentContainerStyle={{ paddingBottom: 40 }}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* KART 1 */}
-                    <View style={styles.card}>
-                        <View style={styles.cardTitleRow}>
-                            <HeartPulse size={18} color="#38bdf8" />
-                            <Text style={styles.cardTitle}>Genel Bilgiler</Text>
-                        </View>
-
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Antrenman hedefi</Text>
-                            <TextInput
-                                placeholder="Örn: Yağ yakımı, kas kazanımı..."
-                                placeholderTextColor="#64748b"
-                                value={formData.goal}
-                                onChangeText={(t) => handleChange("goal", t)}
-                                style={styles.input}
-                            />
-                        </View>
-
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Şikayet / Rahatsızlık</Text>
-                            <TextInput
-                                placeholder="Bel, diz, omuz varsa yaz..."
-                                placeholderTextColor="#64748b"
-                                value={formData.complaint}
-                                onChangeText={(t) => handleChange("complaint", t)}
-                                style={[styles.input, styles.inputMultiline]}
-                                multiline
-                            />
-                        </View>
-
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Haftalık antrenman sıklığı</Text>
-                            <TextInput
-                                placeholder="Örn: Haftada 3 gün"
-                                placeholderTextColor="#64748b"
-                                value={formData.trainingFrequency}
-                                onChangeText={(t) => handleChange("trainingFrequency", t)}
-                                style={styles.input}
-                            />
-                        </View>
-                    </View>
-
-                    {/* KART 2 */}
-                    <View style={styles.card}>
-                        <View style={styles.cardTitleRow}>
-                            <HeartPulse size={18} color="#22c55e" />
-                            <Text style={styles.cardTitle}>Yaşam Alışkanlıkları</Text>
-                        </View>
-
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Uyku kalitesi</Text>
-                            <TextInput
-                                placeholder="Gecede 6–7 saat, bölünme var mı?"
-                                placeholderTextColor="#64748b"
-                                value={formData.sleepQuality}
-                                onChangeText={(t) => handleChange("sleepQuality", t)}
-                                style={[styles.input, styles.inputMultiline]}
-                                multiline
-                            />
-                        </View>
-
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Beslenme notu</Text>
-                            <TextInput
-                                placeholder="Günlük beslenme alışkanlıkları..."
-                                placeholderTextColor="#64748b"
-                                value={formData.nutritionNote}
-                                onChangeText={(t) => handleChange("nutritionNote", t)}
-                                style={[styles.input, styles.inputMultiline]}
-                                multiline
-                            />
-                        </View>
-                    </View>
-
-                    {/* KART 3 */}
-                    <View style={styles.card}>
-                        <View style={styles.cardTitleRow}>
-                            <HeartPulse size={18} color="#f97316" />
-                            <Text style={styles.cardTitle}>Sağlık Geçmişi</Text>
-                        </View>
-
-                        <View style={styles.switchRow}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.label}>Ağrı var mı?</Text>
-                                <Text style={styles.helpText}>
-                                    Bel, diz, omuz gibi bölgelerde düzenli ağrı?
-                                </Text>
+                        {/* KART 2 */}
+                        <View style={styles.card}>
+                            <View style={styles.cardTitleRow}>
+                                <HeartPulse size={18} color="#22c55e" />
+                                <Text style={styles.cardTitle}>Yaşam Alışkanlıkları</Text>
                             </View>
-                            <Switch
-                                value={formData.hasPain}
-                                onValueChange={(v) => handleChange("hasPain", v)}
-                            />
-                        </View>
 
-                        <View style={styles.switchRow}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.label}>Ameliyat geçmişi?</Text>
-                                <Text style={styles.helpText}>
-                                    Son yıllarda ortopedik veya başka bir ameliyat.
-                                </Text>
+                            <View style={styles.field}>
+                                <Text style={styles.label}>Uyku kalitesi</Text>
+                                <TextInput
+                                    placeholder="Gecede 6–7 saat, bölünme var mı?"
+                                    placeholderTextColor="#64748b"
+                                    value={formData.sleepQuality}
+                                    onChangeText={(t) => handleChange("sleepQuality", t)}
+                                    style={[styles.input, styles.inputMultiline]}
+                                    multiline
+                                />
                             </View>
-                            <Switch
-                                value={formData.hadSurgery}
-                                onValueChange={(v) => handleChange("hadSurgery", v)}
-                            />
-                        </View>
-                    </View>
 
-                    {/* KART 4 */}
-                    <View style={styles.card}>
-                        <View style={styles.cardTitleRow}>
-                            <HeartPulse size={18} color="#a855f7" />
-                            <Text style={styles.cardTitle}>Eğitmen Notu</Text>
+                            <View style={styles.field}>
+                                <Text style={styles.label}>Beslenme notu</Text>
+                                <TextInput
+                                    placeholder="Günlük beslenme alışkanlıkları..."
+                                    placeholderTextColor="#64748b"
+                                    value={formData.nutritionNote}
+                                    onChangeText={(t) => handleChange("nutritionNote", t)}
+                                    style={[styles.input, styles.inputMultiline]}
+                                    multiline
+                                />
+                            </View>
                         </View>
 
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Notlar</Text>
-                            <TextInput
-                                placeholder="Genel izlenim, dikkat edilmesi gerekenler..."
-                                placeholderTextColor="#64748b"
-                                value={formData.notes}
-                                onChangeText={(t) => handleChange("notes", t)}
-                                style={[styles.input, styles.inputMultiline]}
-                                multiline
-                            />
-                        </View>
-                    </View>
+                        {/* KART 3 */}
+                        <View style={styles.card}>
+                            <View style={styles.cardTitleRow}>
+                                <HeartPulse size={18} color="#f97316" />
+                                <Text style={styles.cardTitle}>Sağlık Geçmişi</Text>
+                            </View>
 
+                            <View style={styles.switchRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.label}>Ağrı var mı?</Text>
+                                    <Text style={styles.helpText}>
+                                        Bel, diz, omuz gibi bölgelerde düzenli ağrı?
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={formData.hasPain}
+                                    onValueChange={(v) => handleChange("hasPain", v)}
+                                />
+                            </View>
+
+                            <View style={styles.switchRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.label}>Ameliyat geçmişi?</Text>
+                                    <Text style={styles.helpText}>
+                                        Son yıllarda ortopedik veya başka bir ameliyat.
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={formData.hadSurgery}
+                                    onValueChange={(v) => handleChange("hadSurgery", v)}
+                                />
+                            </View>
+                        </View>
+
+                        {/* KART 4 */}
+                        <View style={styles.card}>
+                            <View style={styles.cardTitleRow}>
+                                <HeartPulse size={18} color="#a855f7" />
+                                <Text style={styles.cardTitle}>Eğitmen Notu</Text>
+                            </View>
+
+                            <View style={styles.field}>
+                                <Text style={styles.label}>Notlar</Text>
+                                <TextInput
+                                    placeholder="Genel izlenim, dikkat edilmesi gerekenler..."
+                                    placeholderTextColor="#64748b"
+                                    value={formData.notes}
+                                    onChangeText={(t) => handleChange("notes", t)}
+                                    style={[styles.input, styles.inputMultiline]}
+                                    multiline
+                                />
+                            </View>
+                        </View>
+                    </ScrollView>
                     {/* SUBMIT BUTTON */}
                     <View style={styles.submitWrapper}>
                         <TouchableOpacity
@@ -376,8 +380,8 @@ export default function NewRecordScreen() {
                             )}
                         </TouchableOpacity>
                     </View>
-                </ScrollView>
-            </View>
+                </View>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -553,21 +557,22 @@ const styles = StyleSheet.create({
 
     /* SUBMIT */
     submitWrapper: {
-        marginHorizontal: 16,
-        marginTop: 10,
+        paddingHorizontal: 18,
+        paddingVertical: 12,
+        backgroundColor: "#020617",
     },
     saveButton: {
         backgroundColor: "#38bdf8",
-        paddingVertical: 14,
         borderRadius: 999,
+        paddingVertical: 14,
         flexDirection: "row",
-        alignItems: "center",
         justifyContent: "center",
+        alignItems: "center",
         gap: 8,
     },
     saveButtonText: {
         color: "#0f172a",
-        fontWeight: "700",
         fontSize: 14,
+        fontWeight: "700",
     },
 });
