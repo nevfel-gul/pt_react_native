@@ -3,6 +3,9 @@ export const themeui = {
     background: "#020617",
     surface: "#0f172a",
     surfaceSoft: "#1e293b",
+    surfaceDark: "#0A0F1A",
+    surfaceHover: "#122031",
+    surfaceElevated: "rgba(30,41,59,0.65)",
 
     text: {
       primary: "#f1f5f9",
@@ -19,6 +22,7 @@ export const themeui = {
     dangerSoft: "rgba(248,113,113,0.15)",
 
     border: "#1e293b",
+
     premium: "#7c3aed",
     premiumSoft: "rgba(124,58,237,0.15)",
 
@@ -27,6 +31,13 @@ export const themeui = {
 
     info: "#3b82f6",
     warning: "#f59e0b",
+
+    // FILTER COLORS (Artık raw renk yerine buradan alınacak)
+    filterAll: "#0A0F1A",
+    filterActive: "#3a8b55",
+    filterPassive: "#993131",
+
+    overlay: "rgba(0,0,0,0.55)", // search açılınca
   },
 
   radius: {

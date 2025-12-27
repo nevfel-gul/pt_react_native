@@ -3,12 +3,14 @@ import { studentsColRef } from "@/services/firestorePaths";
 import { useRouter } from "expo-router";
 import { onSnapshot, orderBy, query } from "firebase/firestore";
 import {
+  ArrowLeft,
   Bell,
   Calendar,
   Eye,
   Phone,
   Plus,
   Search,
+  Sparkles,
   Users,
   XIcon,
 } from "lucide-react-native";
@@ -36,9 +38,9 @@ type Student = {
 
 export default function KayitlarScreen() {
   const [searchTerm, setSearchTerm] = useState("");
-  const searchWidth = useRef(new Animated.Value(0)).current;
   const [searchActive, setSearchActive] = useState(false);
   const safeSearch = searchTerm ?? "";
+  const searchAnim = useRef(new Animated.Value(0)).current;
 
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,28 +49,37 @@ export default function KayitlarScreen() {
   const activeCount = students.filter((s) => s.aktif === "Aktif").length;
   const passiveCount = students.filter((s) => s.aktif === "Pasif").length;
   const [notifOpen, setNotifOpen] = useState(false);
-
-  const router = useRouter();
+  const overlayOpacity = searchAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.55],
+  });
 
   const openAnimatedSearch = () => {
     setSearchActive(true);
-    Animated.timing(searchWidth, {
-      toValue: 200,
-      duration: 220,
+    Animated.timing(searchAnim, {
+      toValue: 1,
+      duration: 300,
       useNativeDriver: false,
     }).start();
   };
 
   const closeAnimatedSearch = () => {
-    Animated.timing(searchWidth, {
-      toValue: 40,
-      duration: 220,
+    Animated.timing(searchAnim, {
+      toValue: 0,
+      duration: 300,
       useNativeDriver: false,
     }).start(() => {
       setSearchActive(false);
       setSearchTerm("");
     });
   };
+  const router = useRouter();
+
+  // Logo ve diğer iconlar için opacity animasyonu
+  const iconsOpacity = searchAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
+  });
 
   const filteredStudents = useMemo(() => {
     return students.filter((student) => {
@@ -141,242 +152,313 @@ export default function KayitlarScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* TÜM EKRANI KAPLAYAN OVERLAY - Search açıkken her yere tıklayınca kapansın */}
+      {searchActive && (
+        <TouchableWithoutFeedback onPress={closeAnimatedSearch}>
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "black",
+              opacity: overlayOpacity,
+              zIndex: 998,
+            }}
+          />
+        </TouchableWithoutFeedback>
+      )}
+
       <View style={styles.container}>
         <View style={styles.headerWrapper}>
   <View style={styles.headerTopRow}>
-
-    {/* LEFT : LOGO */}
-    <View style={styles.leftHeaderArea}>
+    {/* LEFT : LOGO - Animasyonlu opacity */}
+    <Animated.View
+      style={[styles.leftHeaderArea, { opacity: iconsOpacity }]}
+      pointerEvents={searchActive ? "none" : "auto"}
+    >
       <Text style={styles.logoText}>ATHLETRACK</Text>
-    </View>
+    </Animated.View>
 
     <View style={styles.rightHeaderArea}>
-      {/* NOTIFICATION */}
-      <TouchableOpacity
-        onPress={() => setNotifOpen(!notifOpen)}
-        style={styles.titleIconWrapper}
-      >
-        <Bell size={22} color="#f1f5f9" />
-      </TouchableOpacity>
+      {/* NOTIFICATION - Animasyonlu opacity */}
+      <Animated.View style={{ opacity: iconsOpacity }}>
+        <TouchableOpacity
+          onPress={() => setNotifOpen(!notifOpen)}
+          style={styles.titleIconWrapper}
+          disabled={searchActive}
+        >
+          <Bell size={22} color="#f1f5f9" />
+        </TouchableOpacity>
+      </Animated.View>
 
-      {/* SEARCH */}
+      {/* SEARCH - Sadece ikonu burada */}
       {!searchActive && (
         <TouchableOpacity
           onPress={openAnimatedSearch}
           style={{
             backgroundColor: "#1e293b",
             height: 40,
-            paddingHorizontal: 10,
+            width: 40,
             alignItems: "center",
             borderRadius: 99,
             justifyContent: "center",
+            marginLeft: 6,
           }}
         >
           <Search size={22} color="#f1f5f9" />
         </TouchableOpacity>
       )}
 
-      {searchActive && (
-        <Animated.View
-          style={{
-            width: searchWidth,
-            height: 40,
-            backgroundColor: "#1e293b",
-            borderRadius: 99,
-            paddingHorizontal: 10,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
+      {/* PROFILE - Animasyonlu opacity */}
+      <Animated.View style={{ opacity: iconsOpacity }}>
+        <TouchableOpacity
+          style={styles.titleIconWrapper}
+          activeOpacity={0.7}
+          onPress={() => router.push("/profile")}
+          disabled={searchActive}
         >
-          <TextInput
-            placeholder="Ara..."
-            placeholderTextColor="#94a3b8"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            style={{
-              color: "#f1f5f9",
-              flex: 1,
-            }}
-            autoFocus
-          />
-
-          <TouchableOpacity onPress={closeAnimatedSearch}>
-            <XIcon size={18} color="#f1f5f9" />
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-
-      {/* PROFILE */}
-      <TouchableOpacity
-        style={styles.titleIconWrapper}
-        activeOpacity={0.7}
-        onPress={() => router.push("/profile")}
-      >
-        <Users size={24} color="#60a5fa" />
-      </TouchableOpacity>
+          <Users size={24} color="#60a5fa" />
+        </TouchableOpacity>
+      </Animated.View>
     </View>
-          </View>
-        </View>
+
+    {/* SEARCH BAR - headerTopRow'un içinde ama dışarıda (absolute) */}
+    {searchActive && (
+  <Animated.View
+    style={{
+      position: "absolute",
+      left: 10,
+      right: 10,
+      top: 0,
+      height: 48,
+      backgroundColor: "#1e293b",
+      borderRadius: 99,
+      paddingHorizontal: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: "#475569",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+      zIndex: 999,
+      opacity: searchAnim,
+    }}
+  >
+    {/* Geri Butonu */}
+    <TouchableOpacity
+      onPress={closeAnimatedSearch}
+      style={{ marginRight: 8 }}
+    >
+      <ArrowLeft size={20} color="#f1f5f9" />
+    </TouchableOpacity>
+
+    {/* TextInput */}
+    <TextInput
+      placeholder="Öğrenci ara..."
+      placeholderTextColor="#94a3b8"
+      value={searchTerm}
+      onChangeText={setSearchTerm}
+      autoFocus
+      style={{
+        flex: 1,
+        color: "#f1f5f9",
+        fontSize: 15,
+        fontWeight: "500",
+      }}
+    />
+
+    {/* AI Butonu - SAĞ TARAF */}
+    <TouchableOpacity
+      onPress={() => {
+        // not: AI fonks buraa eklencek
+        console.log("AI butonu tıklandı");
+      }}
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 99,
+        backgroundColor: "#7c3aed", 
+        alignItems: "center",
+        justifyContent: "center",
+        marginLeft: 8,
+      }}
+    >
+      <Sparkles size={18} color="#fff" />
+    </TouchableOpacity>
+
+    {/* Temizle butonu - Sağda AI butonundan önce */}
+    {searchTerm.length > 0 && (
+      <TouchableOpacity
+        onPress={() => setSearchTerm("")}
+        style={{ marginLeft: 8 }}
+      >
+        <XIcon size={18} color="#94a3b8" />
+      </TouchableOpacity>
+    )}
+  </Animated.View>
+)}
+  </View>
+</View>
 
         {/* LİSTE */}
-        <TouchableWithoutFeedback onPress={closeAnimatedSearch}>
-          <View style={styles.listWrapper}>
-            {/* FİLTRELER */}
-            <View style={styles.filterBoxRow}>
-              <TouchableOpacity
-                onPress={() => setFilterDurum("")}
+        <View style={styles.listWrapper}>
+          {/* FİLTRELER */}
+          <View style={styles.filterBoxRow}>
+            <TouchableOpacity
+              onPress={() => setFilterDurum("")}
+              style={[
+                styles.filterBox,
+                {
+                  backgroundColor: "#0f172a",
+                },
+                filterDurum === "" && styles.filterBoxActiveALL,
+              ]}
+            >
+              <Text
                 style={[
-                  styles.filterBox,
-                  {
-                    backgroundColor: "#0f172a",
-                  },
-                  filterDurum === "" && styles.filterBoxActiveALL,
+                  styles.filterBoxNumber,
+                  filterDurum === "" && styles.filterBoxNumberActive,
                 ]}
               >
-                
-                <Text
-                  style={[
-                    styles.filterBoxNumber,
-                    filterDurum === "" && styles.filterBoxNumberActive,
-                  ]}
-                >
-                  {totalCount}
-                </Text>
-                <Text
-                  style={[
-                    styles.filterBoxText,
-                    filterDurum === "" && styles.filterBoxTextActive,
-                  ]}
-                >
-                  Tümü
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setFilterDurum("Aktif")}
+                {totalCount}
+              </Text>
+              <Text
                 style={[
-                  styles.filterBox,
-                  {
-                    backgroundColor: "#3a8b55",
-                  },
-                  filterDurum === "Aktif" && styles.filterBoxActiveA,
+                  styles.filterBoxText,
+                  filterDurum === "" && styles.filterBoxTextActive,
                 ]}
               >
-
-                <Text
-                  style={[
-                    styles.filterBoxNumber,
-                    filterDurum === "Aktif" && styles.filterBoxNumberActive,
-                  ]}
-                >
-                  {activeCount}
-                </Text>
-                <Text
-                  style={[
-                    styles.filterBoxText,
-                    filterDurum === "Aktif" && styles.filterBoxTextActive,
-                  ]}
-                >
-                  Aktif
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setFilterDurum("Pasif")}
+                Tümü
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setFilterDurum("Aktif")}
+              style={[
+                styles.filterBox,
+                {
+                  backgroundColor: "#3a8b55",
+                },
+                filterDurum === "Aktif" && styles.filterBoxActiveA,
+              ]}
+            >
+              <Text
                 style={[
-                  styles.filterBox,
-                  {
-                    backgroundColor: "#993131",
-                  },
-                  filterDurum === "Pasif" && styles.filterBoxActiveP,
+                  styles.filterBoxNumber,
+                  filterDurum === "Aktif" && styles.filterBoxNumberActive,
                 ]}
               >
+                {activeCount}
+              </Text>
+              <Text
+                style={[
+                  styles.filterBoxText,
+                  filterDurum === "Aktif" && styles.filterBoxTextActive,
+                ]}
+              >
+                Aktif
+              </Text>
+            </TouchableOpacity>
 
-                <Text
-                  style={[
-                    styles.filterBoxNumber,
-                    filterDurum === "Pasif" && styles.filterBoxNumberActive,
-                  ]}
-                >
-                  {passiveCount}
-                </Text>
-                <Text
-                  style={[
-                    styles.filterBoxText,
-                    filterDurum === "Pasif" && styles.filterBoxTextActive,
-                  ]}
-                >
-                  Pasif
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* LİSTE */}
-            {filteredStudents.length > 0 ? (
-              <FlatList
-                data={filteredStudents}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.card}
-                    onPress={() => handleViewDetails(item.id)}
-                  >
-                    <View style={styles.cardLeft}>
-                      <Text style={styles.cardName}>{item.name}</Text>
-
-                      <View style={styles.cardRow}>
-                        <Phone size={16} color="#9ca3af" />
-                        <Text style={styles.cardRowText}>{item.number}</Text>
-                      </View>
-
-                      <View style={styles.cardRow}>
-                        <Calendar size={16} color="#9ca3af" />
-                        <Text style={styles.cardRowText}>
-                          {new Date(item.assessmentDate).toLocaleDateString(
-                            "tr-TR"
-                          )}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardRight}>
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          item.aktif === "Aktif"
-                            ? styles.statusBadgeActive
-                            : styles.statusBadgeInactive,
-                        ]}
-                      >
-                        <Text
-                          style={
-                            item.aktif === "Aktif"
-                              ? styles.statusTextActive
-                              : styles.statusTextInactive
-                          }
-                        >
-                          {item.aktif}
-                        </Text>
-                      </View>
-
-                      <View style={styles.detailPill}>
-                        <Eye size={16} color="#e5e7eb" />
-                        <Text style={styles.detailPillText}>Detay</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              />
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>Sonuç yok</Text>
-                <Text style={styles.emptySubtitle}>
-                  Arama kriterlerine uygun öğrenci bulunamadı.
-                </Text>
-              </View>
-            )}
+            <TouchableOpacity
+              onPress={() => setFilterDurum("Pasif")}
+              style={[
+                styles.filterBox,
+                {
+                  backgroundColor: "#993131",
+                },
+                filterDurum === "Pasif" && styles.filterBoxActiveP,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterBoxNumber,
+                  filterDurum === "Pasif" && styles.filterBoxNumberActive,
+                ]}
+              >
+                {passiveCount}
+              </Text>
+              <Text
+                style={[
+                  styles.filterBoxText,
+                  filterDurum === "Pasif" && styles.filterBoxTextActive,
+                ]}
+              >
+                Pasif
+              </Text>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
+
+          {/* LİSTE */}
+          {filteredStudents.length > 0 ? (
+            <FlatList
+              data={filteredStudents}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.card}
+                  onPress={() => handleViewDetails(item.id)}
+                >
+                  <View style={styles.cardLeft}>
+                    <Text style={styles.cardName}>{item.name}</Text>
+
+                    <View style={styles.cardRow}>
+                      <Phone size={16} color="#9ca3af" />
+                      <Text style={styles.cardRowText}>{item.number}</Text>
+                    </View>
+
+                    <View style={styles.cardRow}>
+                      <Calendar size={16} color="#9ca3af" />
+                      <Text style={styles.cardRowText}>
+                        {new Date(item.assessmentDate).toLocaleDateString(
+                          "tr-TR"
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.cardRight}>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        item.aktif === "Aktif"
+                          ? styles.statusBadgeActive
+                          : styles.statusBadgeInactive,
+                      ]}
+                    >
+                      <Text
+                        style={
+                          item.aktif === "Aktif"
+                            ? styles.statusTextActive
+                            : styles.statusTextInactive
+                        }
+                      >
+                        {item.aktif}
+                      </Text>
+                    </View>
+
+                    <View style={styles.detailPill}>
+                      <Eye size={16} color="#e5e7eb" />
+                      <Text style={styles.detailPillText}>Detay</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>Sonuç yok</Text>
+              <Text style={styles.emptySubtitle}>
+                Arama kriterlerine uygun öğrenci bulunamadı.
+              </Text>
+            </View>
+          )}
+        </View>
 
         <TouchableOpacity style={styles.fab} onPress={handleAddStudent}>
           <Plus size={24} color="#0f172a" />
@@ -392,7 +474,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: "#0A0F1A", // isteğe bağlı: themeui.colors.surface kullanabilirsin
+    backgroundColor: "#0A0F1A",
   },
 
   headerWrapper: {
@@ -744,7 +826,7 @@ const styles = StyleSheet.create({
     paddingVertical: themeui.spacing.sm - 2,
   },
 
-logoText: {
+  logoText: {
     fontSize: themeui.fontSize.lg,
     fontWeight: "700",
     color: themeui.colors.primary,
@@ -763,9 +845,10 @@ logoText: {
     gap: themeui.spacing.md - 4,
   },
   rightHeaderArea: {
-    width: 50,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
+    gap: themeui.spacing.xs,
+    flex: 1,
   },
 });
