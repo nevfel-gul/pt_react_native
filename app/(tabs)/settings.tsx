@@ -414,6 +414,10 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: "#bfdbfe",
+    textDecorationColor: "#22C55E",
+    textDecorationStyle: "solid",
+
+
   },
 
   /* CARDS */

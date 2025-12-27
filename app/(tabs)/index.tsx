@@ -1,6 +1,6 @@
-import { db } from "@/services/firebase";
+import { studentsColRef } from "@/services/firestorePaths";
 import { useRouter } from "expo-router";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { onSnapshot, orderBy, query } from "firebase/firestore";
 import {
   Bell,
   Calendar,
@@ -60,7 +60,7 @@ export default function KayitlarScreen() {
 
   const closeAnimatedSearch = () => {
     Animated.timing(searchWidth, {
-      toValue: 40,   // 🔵 Tamamen 0 yapma! Büyüteç ikonunun genişliği kadar kalsın
+      toValue: 40,
       duration: 220,
       useNativeDriver: false,
     }).start(() => {
@@ -82,7 +82,7 @@ export default function KayitlarScreen() {
   }, [students, safeSearch, filterDurum]);
 
   useEffect(() => {
-    const q = query(collection(db, "students"), orderBy("createdAt", "desc"));
+    const q = query(studentsColRef(), orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
       q,
@@ -142,81 +142,78 @@ export default function KayitlarScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.headerWrapper}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.leftHeaderArea}>
-              {/* User Icon */}
-              <TouchableOpacity
-                style={styles.titleIconWrapper}
-                activeOpacity={0.7}
-                onPress={() => router.push("/profile")}
-              >
-                <Users size={24} color="#60a5fa" />
-              </TouchableOpacity>
+  <View style={styles.headerTopRow}>
 
-              {/* Search */}
-              {!searchActive && (
-                <TouchableOpacity
-                  onPress={openAnimatedSearch}
-                  style={{
-                    backgroundColor: "#1e293b",
-                    height: 40,
-                    paddingHorizontal: 10,
-                    alignItems: "center",
-                    borderRadius: 99,
-                    justifyContent: "center",
-                  }}>
-                  <Search size={22} color="#f1f5f9" />
-                </TouchableOpacity>
-              )}
+    {/* LEFT : LOGO */}
+    <View style={styles.leftHeaderArea}>
+      <Text style={styles.logoText}>ATHLETRACK</Text>
+    </View>
 
+    <View style={styles.rightHeaderArea}>
+      {/* NOTIFICATION */}
+      <TouchableOpacity
+        onPress={() => setNotifOpen(!notifOpen)}
+        style={styles.titleIconWrapper}
+      >
+        <Bell size={22} color="#f1f5f9" />
+      </TouchableOpacity>
 
-              {searchActive && (
-                <Animated.View
-                  style={{
-                    width: searchWidth,
-                    height: 40,
-                    backgroundColor: "#1e293b",
-                    borderRadius: 99,
-                    paddingHorizontal: 10,
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  {/* Input solda büyüsün */}
-                  <TextInput
-                    placeholder="Ara..."
-                    placeholderTextColor="#94a3b8"
-                    value={searchTerm}
-                    onChangeText={setSearchTerm}
-                    style={{
-                      color: "#f1f5f9",
-                      flex: 1,        // otomatik genişletir
-                    }}
-                    autoFocus
-                  />
+      {/* SEARCH */}
+      {!searchActive && (
+        <TouchableOpacity
+          onPress={openAnimatedSearch}
+          style={{
+            backgroundColor: "#1e293b",
+            height: 40,
+            paddingHorizontal: 10,
+            alignItems: "center",
+            borderRadius: 99,
+            justifyContent: "center",
+          }}
+        >
+          <Search size={22} color="#f1f5f9" />
+        </TouchableOpacity>
+      )}
 
-                  {/* X ikon sağa otomatik yaslanır */}
-                  <TouchableOpacity onPress={closeAnimatedSearch}>
-                    <XIcon size={18} color="#f1f5f9" />
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
+      {searchActive && (
+        <Animated.View
+          style={{
+            width: searchWidth,
+            height: 40,
+            backgroundColor: "#1e293b",
+            borderRadius: 99,
+            paddingHorizontal: 10,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <TextInput
+            placeholder="Ara..."
+            placeholderTextColor="#94a3b8"
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            style={{
+              color: "#f1f5f9",
+              flex: 1,
+            }}
+            autoFocus
+          />
 
-            </View>
+          <TouchableOpacity onPress={closeAnimatedSearch}>
+            <XIcon size={18} color="#f1f5f9" />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
-            {/* RIGHT */}
-            <View style={styles.rightHeaderArea}>
-              <TouchableOpacity
-                onPress={() => setNotifOpen(!notifOpen)}
-                style={{ padding: 9, backgroundColor: "#1e293b", borderRadius: 99 }}>
-                <Bell size={22} color="#f1f5f9" />
-              </TouchableOpacity>
-              {notifOpen && (
-                <View style={styles.notifPanel}>
-                  <Text style={styles.notifText}>Bildirim yok</Text>
-                </View>
-              )}
-            </View>
+      {/* PROFILE */}
+      <TouchableOpacity
+        style={styles.titleIconWrapper}
+        activeOpacity={0.7}
+        onPress={() => router.push("/profile")}
+      >
+        <Users size={24} color="#60a5fa" />
+      </TouchableOpacity>
+    </View>
           </View>
         </View>
 
@@ -229,36 +226,86 @@ export default function KayitlarScreen() {
                 onPress={() => setFilterDurum("")}
                 style={[
                   styles.filterBox,
-                  { backgroundColor: "#0f172a", borderColor: "rgba(255,255,255,0.08)" },
-                  filterDurum === "" && styles.filterBoxActive,
+                  {
+                    backgroundColor: "#0f172a",
+                  },
+                  filterDurum === "" && styles.filterBoxActiveALL,
                 ]}
               >
-                <Text style={styles.filterBoxNumber}>{totalCount}</Text>
-                <Text style={styles.filterBoxText}>Tümü</Text>
+                
+                <Text
+                  style={[
+                    styles.filterBoxNumber,
+                    filterDurum === "" && styles.filterBoxNumberActive,
+                  ]}
+                >
+                  {totalCount}
+                </Text>
+                <Text
+                  style={[
+                    styles.filterBoxText,
+                    filterDurum === "" && styles.filterBoxTextActive,
+                  ]}
+                >
+                  Tümü
+                </Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={() => setFilterDurum("Aktif")}
                 style={[
                   styles.filterBox,
-                  { backgroundColor: "#166534", borderColor: "rgba(34,197,94,0.6)" },
-                  filterDurum === "Aktif" && styles.filterBoxActive,
+                  {
+                    backgroundColor: "#3a8b55",
+                  },
+                  filterDurum === "Aktif" && styles.filterBoxActiveA,
                 ]}
               >
-                <Text style={styles.filterBoxNumber}>{activeCount}</Text>
-                <Text style={styles.filterBoxText}>Aktif</Text>
+
+                <Text
+                  style={[
+                    styles.filterBoxNumber,
+                    filterDurum === "Aktif" && styles.filterBoxNumberActive,
+                  ]}
+                >
+                  {activeCount}
+                </Text>
+                <Text
+                  style={[
+                    styles.filterBoxText,
+                    filterDurum === "Aktif" && styles.filterBoxTextActive,
+                  ]}
+                >
+                  Aktif
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setFilterDurum("Pasif")}
                 style={[
                   styles.filterBox,
-                  { backgroundColor: "#EF4444", borderColor: "rgba(251,191,36,0.6)" },
-                  filterDurum === "Pasif" && styles.filterBoxActive,
+                  {
+                    backgroundColor: "#993131",
+                  },
+                  filterDurum === "Pasif" && styles.filterBoxActiveP,
                 ]}
               >
-                <Text style={styles.filterBoxNumber}>{passiveCount}</Text>
-                <Text style={styles.filterBoxText}>Pasif</Text>
+
+                <Text
+                  style={[
+                    styles.filterBoxNumber,
+                    filterDurum === "Pasif" && styles.filterBoxNumberActive,
+                  ]}
+                >
+                  {passiveCount}
+                </Text>
+                <Text
+                  style={[
+                    styles.filterBoxText,
+                    filterDurum === "Pasif" && styles.filterBoxTextActive,
+                  ]}
+                >
+                  Pasif
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -349,7 +396,7 @@ const styles = StyleSheet.create({
   },
   headerWrapper: {
     paddingHorizontal: 20,
-    paddingTop: 8,      // daha sıkı
+    paddingTop: 8, // daha sıkı
     paddingBottom: 10,
     backgroundColor: "#020617",
   },
@@ -462,9 +509,11 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 80,
+    paddingTop: 12,
+
   },
   card: {
-    backgroundColor: "#0f172a",   // premium surface
+    backgroundColor: "#0f172a", // premium surface
     borderRadius: 18,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -600,7 +649,7 @@ const styles = StyleSheet.create({
   filterBox: {
     flex: 1,
     marginHorizontal: 4,
-    paddingVertical: 16,
+    height: 92,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -609,27 +658,52 @@ const styles = StyleSheet.create({
     backgroundColor: "#0A0F1A",
   },
 
-
-  filterBoxActive: {
-    borderColor: "#fff",
-    opacity: 1,
+  filterBoxActiveALL: {
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    zIndex: -5,
+    elevation: 10,
+  },
+  filterBoxActiveA: {
+    shadowColor: "#82cd00",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    zIndex: -5,
+    elevation: 10,
+  },
+    filterBoxActiveP: {
+    shadowColor: "#cd6118ff",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    zIndex: -5,
+    elevation: 10,
   },
 
   filterBoxText: {
     fontSize: 13,
     fontWeight: "600",
     color: "#EDEDED",
-
   },
 
   filterBoxTextActive: {
-    color: "#EDEDED",
+    fontSize: 16,
     fontWeight: "700",
+    color: "#EDEDED",
   },
   filterBoxNumber: {
     fontSize: 26,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#EDEDED",
+    marginBottom: 4,
+  },
+  filterBoxNumberActive: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   notifPanel: {
@@ -649,11 +723,14 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
 
-
   notifItem: {
     paddingVertical: 10,
   },
-
+logoText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#60a5fa",
+  },
   notifText: {
     color: "#fff",
     fontSize: 16,
@@ -672,4 +749,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end",
   },
+  
 });
