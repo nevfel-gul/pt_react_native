@@ -1,3 +1,4 @@
+import { themeui } from "@/constants/themeui";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import {
@@ -336,109 +337,105 @@ export default function SettingsScreen() {
 // -------------------------
 // STYLES
 // -------------------------
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
   },
 
   /* HEADER */
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingHorizontal: themeui.spacing.md,
+    paddingTop: themeui.spacing.sm + 4,
+    paddingBottom: themeui.spacing.sm - 4,
   },
   headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: themeui.spacing.sm,
   },
   backButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#0f172a",
+    gap: themeui.spacing.xs,
+    paddingHorizontal: themeui.spacing.sm,
+    paddingVertical: themeui.spacing.xs,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.surface,
     borderWidth: 1,
-    borderColor: "#1e293b",
+    borderColor: themeui.colors.border,
   },
   backButtonText: {
-    color: "#f1f5f9",
-    fontSize: 13,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.sm,
   },
   headerTitle: {
-    color: "#f1f5f9",
-    fontSize: 18,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.lg + 2,
     fontWeight: "700",
   },
 
   /* TABS */
   tabsRow: {
     flexDirection: "row",
-    backgroundColor: "#0f172a",
-    borderRadius: 999,
+    backgroundColor: themeui.colors.surface,
+    borderRadius: themeui.radius.pill,
     borderWidth: 1,
-    borderColor: "#1e293b",
-    padding: 4,
-    gap: 6,
+    borderColor: themeui.colors.border,
+    padding: themeui.spacing.xs - 2,
+    gap: themeui.spacing.xs,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 999,
+    paddingVertical: themeui.spacing.xs,
+    borderRadius: themeui.radius.pill,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 6,
+    gap: themeui.spacing.xs,
   },
   tabButtonActive: {
     backgroundColor: "rgba(96,165,250,0.25)",
     borderWidth: 1,
-    borderColor: "#60a5fa",
+    borderColor: themeui.colors.primary,
   },
-  tabIcon: {
-    marginTop: 1,
-  },
+  tabIcon: { marginTop: 1 },
   tabText: {
-    color: "#94a3b8",
-    fontSize: 12,
+    color: themeui.colors.text.secondary,
+    fontSize: themeui.fontSize.sm,
     fontWeight: "500",
   },
   tabTextActive: {
     color: "#bfdbfe",
-    textDecorationColor: "#22C55E",
+    textDecorationColor: themeui.colors.success,
     textDecorationStyle: "solid",
-
-
   },
 
   /* CARDS */
   card: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: "#0f172a",
-    borderRadius: 18,
+    marginHorizontal: themeui.spacing.md,
+    marginBottom: themeui.spacing.sm,
+    backgroundColor: themeui.colors.surface,
+    borderRadius: themeui.radius.lg,
     borderWidth: 1,
-    borderColor: "#1e293b",
-    padding: 16,
+    borderColor: themeui.colors.border,
+    padding: themeui.spacing.md,
+    ...themeui.shadow.soft,
   },
 
   sectionHeader: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 6,
+    marginHorizontal: themeui.spacing.md,
+    marginTop: themeui.spacing.sm,
+    marginBottom: themeui.spacing.xs,
   },
   sectionTitle: {
-    color: "#f1f5f9",
-    fontSize: 14,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.md,
     fontWeight: "600",
   },
 
@@ -446,40 +443,40 @@ const styles = StyleSheet.create({
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    marginBottom: 10,
+    gap: themeui.spacing.md,
+    marginBottom: themeui.spacing.sm,
   },
   avatar: {
     width: 58,
     height: 58,
-    borderRadius: 29,
-    backgroundColor: "#60a5fa",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    color: "#0f172a",
+    color: themeui.colors.surface,
     fontSize: 22,
     fontWeight: "800",
   },
   profileName: {
-    color: "#f1f5f9",
-    fontSize: 18,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.lg + 2,
     fontWeight: "700",
   },
   profileEmail: {
-    color: "#94a3b8",
-    fontSize: 12,
+    color: themeui.colors.text.secondary,
+    fontSize: themeui.fontSize.sm,
   },
   profileTag: {
-    color: "#60a5fa",
-    fontSize: 11,
+    color: themeui.colors.primary,
+    fontSize: themeui.fontSize.xs,
     marginTop: 2,
   },
 
   profileMetaRow: {
     flexDirection: "row",
-    marginTop: 8,
+    marginTop: themeui.spacing.xs,
     justifyContent: "space-between",
   },
   profileMetaItem: {
@@ -487,12 +484,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   profileMetaLabel: {
-    color: "#64748b",
-    fontSize: 11,
+    color: themeui.colors.text.muted,
+    fontSize: themeui.fontSize.xs,
   },
   profileMetaValue: {
-    color: "#f1f5f9",
-    fontSize: 13,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.md - 1,
     fontWeight: "600",
     marginTop: 2,
   },
@@ -501,60 +498,61 @@ const styles = StyleSheet.create({
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: themeui.spacing.sm - 2,
     borderBottomWidth: 1,
-    borderBottomColor: "#1e293b",
-    gap: 8,
+    borderBottomColor: themeui.colors.border,
+    gap: themeui.spacing.xs,
   },
   settingLabel: {
-    color: "#f1f5f9",
-    fontSize: 13,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.md - 1,
     fontWeight: "500",
   },
   settingSubtitle: {
-    color: "#64748b",
-    fontSize: 11,
+    color: themeui.colors.text.muted,
+    fontSize: themeui.fontSize.xs,
     marginTop: 2,
   },
   settingValueText: {
-    color: "#94a3b8",
-    fontSize: 12,
+    color: themeui.colors.text.secondary,
+    fontSize: themeui.fontSize.sm,
     fontWeight: "500",
   },
 
   /* BADGE */
   badgeMuted: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "#0f172a",
+    paddingHorizontal: themeui.spacing.sm - 2,
+    paddingVertical: themeui.spacing.xs - 2,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.surface,
     borderWidth: 1,
-    borderColor: "#1e293b",
-    color: "#f1f5f9",
-    fontSize: 11,
+    borderColor: themeui.colors.border,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.xs,
   },
 
   /* LOGOUT */
   logoutButton: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    paddingVertical: 12,
-    borderRadius: 999,
-    backgroundColor: "rgba(127,29,29,0.35)",
+    marginHorizontal: themeui.spacing.md,
+    marginTop: themeui.spacing.md,
+    paddingVertical: themeui.spacing.sm,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.dangerSoft,
     borderWidth: 1,
-    borderColor: "#7f1d1d",
+    borderColor: themeui.colors.danger,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: themeui.spacing.sm - 2,
   },
   logoutText: {
-    color: "#fca5a5",
-    fontSize: 14,
+    color: themeui.colors.danger,
+    fontSize: themeui.fontSize.md,
     fontWeight: "700",
   },
+
   settingRowLast: {
     borderBottomWidth: 0,
-    paddingBottom: 4,
+    paddingBottom: themeui.spacing.xs,
   },
 });

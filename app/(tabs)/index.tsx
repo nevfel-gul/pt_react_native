@@ -1,3 +1,4 @@
+import { themeui } from "@/constants/themeui";
 import { studentsColRef } from "@/services/firestorePaths";
 import { useRouter } from "expo-router";
 import { onSnapshot, orderBy, query } from "firebase/firestore";
@@ -384,51 +385,55 @@ export default function KayitlarScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: "#0A0F1A",
+    backgroundColor: "#0A0F1A", // isteğe bağlı: themeui.colors.surface kullanabilirsin
   },
+
   headerWrapper: {
-    paddingHorizontal: 20,
-    paddingTop: 8, // daha sıkı
-    paddingBottom: 10,
-    backgroundColor: "#020617",
+    paddingHorizontal: themeui.spacing.lg,
+    paddingTop: themeui.spacing.xs + 2,
+    paddingBottom: themeui.spacing.sm,
+    backgroundColor: themeui.colors.background,
   },
 
   headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: themeui.spacing.md,
   },
+
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
   },
+
   titleIconWrapper: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "#0b1120",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.surfaceSoft,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 10,
+    marginRight: themeui.spacing.sm,
     borderWidth: 1,
-    borderColor: "#1e293b",
+    borderColor: themeui.colors.border,
   },
+
   title: {
-    fontSize: 20,
+    fontSize: themeui.fontSize.title,
     fontWeight: "700",
-    color: "#e5e7eb",
+    color: themeui.colors.text.primary,
   },
+
   subtitle: {
-    fontSize: 13,
-    color: "#9ca3af",
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.secondary,
     marginTop: 2,
   },
 
@@ -439,178 +444,192 @@ const styles = StyleSheet.create({
     marginTop: -9,
     zIndex: 1,
   },
+
   searchInput: {
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
     borderWidth: 1,
-    borderColor: "#1f2937",
-    borderRadius: 999,
-    paddingVertical: 10,
+    borderColor: themeui.colors.border,
+    borderRadius: themeui.radius.pill,
+    paddingVertical: themeui.spacing.sm - 2,
     paddingHorizontal: 40,
-    fontSize: 14,
-    color: "#e5e7eb",
+    fontSize: themeui.fontSize.md,
+    color: themeui.colors.text.primary,
   },
+
   filterRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: themeui.spacing.xs,
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: themeui.spacing.sm,
   },
+
   filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: themeui.spacing.md - 4,
+    paddingVertical: themeui.spacing.xs,
+    borderRadius: themeui.radius.pill,
     borderWidth: 1,
-    borderColor: "#1f2937",
-    backgroundColor: "#020617",
+    borderColor: themeui.colors.border,
+    backgroundColor: themeui.colors.background,
   },
   filterChipActive: {
-    backgroundColor: "#1d4ed8",
-    borderColor: "#1d4ed8",
+    backgroundColor: themeui.colors.primary,
+    borderColor: themeui.colors.primary,
   },
+
   filterChipText: {
-    fontSize: 12,
-    color: "#9ca3af",
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.secondary,
   },
   filterChipTextActive: {
-    color: "#f9fafb",
+    color: themeui.colors.text.primary,
     fontWeight: "600",
   },
+
   statsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: themeui.spacing.sm,
     marginTop: 4,
   },
+
   statCard: {
     flex: 1,
-    backgroundColor: "#020617",
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    backgroundColor: themeui.colors.background,
+    borderRadius: themeui.radius.lg,
+    paddingVertical: themeui.spacing.sm,
+    paddingHorizontal: themeui.spacing.sm,
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: themeui.colors.border,
   },
+
   statValue: {
-    fontSize: 20,
+    fontSize: themeui.fontSize.xl,
     fontWeight: "700",
+    color: themeui.colors.text.primary,
   },
+
   statLabel: {
-    fontSize: 11,
-    color: "#9ca3af",
+    fontSize: themeui.fontSize.xs,
+    color: themeui.colors.text.muted,
     marginTop: 2,
   },
+
   listWrapper: {
     flex: 1,
-    backgroundColor: "#020617",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 8,
+    backgroundColor: themeui.colors.background,
+    borderTopLeftRadius: themeui.radius.xl,
+    borderTopRightRadius: themeui.radius.xl,
+    paddingTop: themeui.spacing.xs,
   },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 80,
-    paddingTop: 12,
 
+  listContent: {
+    paddingHorizontal: themeui.spacing.md,
+    paddingBottom: 80,
+    paddingTop: themeui.spacing.sm,
   },
+
   card: {
-    backgroundColor: "#0f172a", // premium surface
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    backgroundColor: themeui.colors.surface,
+    borderRadius: themeui.radius.lg,
+    paddingVertical: themeui.spacing.sm + 2,
+    paddingHorizontal: themeui.spacing.md,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
-    marginBottom: 16, // daha fazla spacing
+    marginBottom: themeui.spacing.lg - 4,
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    gap: themeui.spacing.sm,
+    ...themeui.shadow.soft,
   },
 
-  cardLeft: {
-    flex: 1,
-  },
+  cardLeft: { flex: 1 },
+
   cardName: {
-    fontSize: 16,
+    fontSize: themeui.fontSize.lg,
     fontWeight: "600",
-    color: "#f9fafb",
-    marginBottom: 6,
+    color: themeui.colors.text.primary,
+    marginBottom: themeui.spacing.xs,
   },
+
   cardRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: themeui.spacing.xs,
     marginBottom: 3,
   },
+
   cardRowText: {
-    fontSize: 14,
-    color: "#cbd5e1",
+    fontSize: themeui.fontSize.md,
+    color: themeui.colors.text.secondary,
   },
 
   cardRight: {
     alignItems: "flex-end",
     justifyContent: "space-between",
   },
+
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
+    paddingHorizontal: themeui.spacing.sm - 4,
+    paddingVertical: themeui.spacing.xs - 2,
+    borderRadius: themeui.radius.pill,
   },
-  statusBadgeActive: {
-    backgroundColor: "rgba(34,197,94,0.18)",
-  },
-  statusBadgeInactive: {
-    backgroundColor: "rgba(248,113,113,0.18)",
-  },
+  statusBadgeActive: { backgroundColor: themeui.colors.successSoft },
+  statusBadgeInactive: { backgroundColor: themeui.colors.dangerSoft },
+
   statusTextActive: {
-    fontSize: 11,
+    fontSize: themeui.fontSize.xs,
     fontWeight: "600",
-    color: "#22C55E",
+    color: themeui.colors.success,
   },
   statusTextInactive: {
-    fontSize: 11,
+    fontSize: themeui.fontSize.xs,
     fontWeight: "600",
-    color: "#EF4444",
+    color: themeui.colors.danger,
   },
+
   detailPill: {
-    marginTop: 10,
+    marginTop: themeui.spacing.sm,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#020617",
+    gap: themeui.spacing.xs,
+    paddingHorizontal: themeui.spacing.sm,
+    paddingVertical: themeui.spacing.xs,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.background,
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: themeui.colors.border,
   },
   detailPillText: {
-    fontSize: 12,
-    color: "#e5e7eb",
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.primary,
     fontWeight: "500",
   },
+
   emptyState: {
     alignItems: "center",
     marginTop: 40,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: themeui.fontSize.lg,
     fontWeight: "600",
-    color: "#e5e7eb",
+    color: themeui.colors.text.primary,
     marginBottom: 4,
   },
   emptySubtitle: {
-    fontSize: 13,
-    color: "#9ca3af",
+    fontSize: themeui.fontSize.md - 1,
+    color: themeui.colors.text.secondary,
     textAlign: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: themeui.spacing.lg,
   },
+
   fab: {
     position: "absolute",
     right: 20,
     bottom: 20,
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: "#38bdf8",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.accent,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -619,38 +638,40 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 6,
   },
+
   searchPanel: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#0f172a",
+    backgroundColor: themeui.colors.surface,
     paddingTop: 60,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: themeui.spacing.md,
+    paddingBottom: themeui.spacing.lg - 4,
     zIndex: 999,
     borderBottomWidth: 1,
-    borderBottomColor: "#1e293b",
+    borderBottomColor: themeui.colors.border,
   },
 
   searchHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: themeui.spacing.md,
   },
+
   filterBoxRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    marginBottom: 14,
-    marginTop: 6,
+    paddingHorizontal: themeui.spacing.md,
+    marginBottom: themeui.spacing.md - 2,
+    marginTop: themeui.spacing.xs,
   },
 
   filterBox: {
     flex: 1,
     marginHorizontal: 4,
     height: 92,
-    borderRadius: 16,
+    borderRadius: themeui.radius.lg,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -660,37 +681,32 @@ const styles = StyleSheet.create({
 
   filterBoxActiveALL: {
     shadowColor: "#3B82F6",
-    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 16,
-    zIndex: -5,
     elevation: 10,
   },
+
   filterBoxActiveA: {
     shadowColor: "#82cd00",
-    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 16,
-    zIndex: -5,
     elevation: 10,
   },
-    filterBoxActiveP: {
+
+  filterBoxActiveP: {
     shadowColor: "#cd6118ff",
-    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 16,
-    zIndex: -5,
     elevation: 10,
   },
 
   filterBoxText: {
-    fontSize: 13,
+    fontSize: themeui.fontSize.sm,
     fontWeight: "600",
     color: "#EDEDED",
   },
-
   filterBoxTextActive: {
-    fontSize: 16,
+    fontSize: themeui.fontSize.lg - 2,
     fontWeight: "700",
     color: "#EDEDED",
   },
@@ -706,14 +722,15 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginBottom: 4,
   },
+
   notifPanel: {
     position: "absolute",
     top: 70,
     right: 20,
     backgroundColor: "rgba(30,30,30,0.95)",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: themeui.radius.lg,
+    paddingHorizontal: themeui.spacing.sm,
+    paddingVertical: themeui.spacing.xs,
     width: 200,
     shadowColor: "#000",
     shadowOpacity: 0.3,
@@ -724,30 +741,31 @@ const styles = StyleSheet.create({
   },
 
   notifItem: {
-    paddingVertical: 10,
+    paddingVertical: themeui.spacing.sm - 2,
   },
+
 logoText: {
-    fontSize: 18,
+    fontSize: themeui.fontSize.lg,
     fontWeight: "700",
-    color: "#60a5fa",
+    color: themeui.colors.primary,
   },
+
   notifText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: themeui.fontSize.lg - 2,
     fontWeight: "500",
   },
+
   leftHeaderArea: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: themeui.spacing.md - 4,
   },
-
   rightHeaderArea: {
     width: 50,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
   },
-  
 });

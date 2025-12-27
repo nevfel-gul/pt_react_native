@@ -1,3 +1,4 @@
+import { themeui } from "@/constants/themeui";
 import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
 import { User as FirebaseUser, onAuthStateChanged } from "@firebase/auth";
@@ -709,16 +710,14 @@ function QuestionBool({
     );
 }
 
-/* ----------------- STYLES ----------------- */
-
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: "#020617" },
-    container: { flex: 1, backgroundColor: "#020617" },
+    safeArea: { flex: 1, backgroundColor: themeui.colors.background },
+    container: { flex: 1, backgroundColor: themeui.colors.background },
 
     headerCard: {
-        paddingHorizontal: 18,
-        paddingTop: 14,
-        paddingBottom: 8,
+        paddingHorizontal: themeui.spacing.md,
+        paddingTop: themeui.spacing.sm,
+        paddingBottom: themeui.spacing.xs,
     },
     headerTopRow: {
         flexDirection: "row",
@@ -730,109 +729,109 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 999,
-        backgroundColor: "#0f172a",
+        paddingHorizontal: themeui.spacing.sm,
+        paddingVertical: themeui.spacing.xs,
+        borderRadius: themeui.radius.pill,
+        backgroundColor: themeui.colors.surface,
         borderWidth: 1,
-        borderColor: "#1e293b",
+        borderColor: themeui.colors.border,
     },
-    backButtonText: { color: "#f1f5f9", fontSize: 13 },
+    backButtonText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm },
 
-    headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    headerTitleRow: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.md },
     iconCircle: {
         width: 42,
         height: 42,
-        borderRadius: 21,
-        backgroundColor: "#0f172a",
+        borderRadius: themeui.radius.pill,
+        backgroundColor: themeui.colors.surface,
         borderWidth: 1,
-        borderColor: "#1e293b",
+        borderColor: themeui.colors.border,
         justifyContent: "center",
         alignItems: "center",
     },
-    headerTitle: { color: "#f1f5f9", fontSize: 18, fontWeight: "700" },
-    dateRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-    dateText: { color: "#94a3b8", fontSize: 12 },
+    headerTitle: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.lg, fontWeight: "700" },
+    dateRow: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.xs },
+    dateText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.xs },
 
     formScroll: { flex: 1 },
 
     sectionCard: {
-        marginHorizontal: 16,
-        marginBottom: 14,
-        backgroundColor: "#0f172a",
-        borderRadius: 18,
+        marginHorizontal: themeui.spacing.md,
+        marginBottom: themeui.spacing.sm,
+        backgroundColor: themeui.colors.surface,
+        borderRadius: themeui.radius.lg,
         borderWidth: 1,
-        borderColor: "#1e293b",
-        padding: 16,
+        borderColor: themeui.colors.border,
+        padding: themeui.spacing.md,
     },
 
     sectionTitle: {
-        color: "#f1f5f9",
-        fontSize: 15,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.md,
         fontWeight: "600",
-        marginBottom: 10,
+        marginBottom: themeui.spacing.sm,
     },
 
-    label: { color: "#f1f5f9", fontSize: 13, marginBottom: 4 },
+    label: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm, marginBottom: 4 },
 
     input: {
-        backgroundColor: "#0f172a",
-        borderColor: "#1e293b",
+        backgroundColor: themeui.colors.surface,
+        borderColor: themeui.colors.border,
         borderWidth: 1,
-        borderRadius: 12,
-        paddingHorizontal: 12,
+        borderRadius: themeui.radius.md,
+        paddingHorizontal: themeui.spacing.sm,
         paddingVertical: 10,
-        color: "#f1f5f9",
-        fontSize: 14,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.md,
     },
     textArea: {
         minHeight: 90,
-        paddingTop: 10,
+        paddingTop: themeui.spacing.xs,
     },
 
-    helperText: { color: "#64748b", fontSize: 11, marginTop: 3 },
+    helperText: { color: themeui.colors.text.muted, fontSize: themeui.fontSize.xs, marginTop: 3 },
 
-    row: { flexDirection: "row", gap: 12, marginBottom: 4 },
+    row: { flexDirection: "row", gap: themeui.spacing.sm, marginBottom: 4 },
     rowItem: { flex: 1 },
 
-    chipRow: { flexDirection: "row", gap: 8, marginTop: 6 },
+    chipRow: { flexDirection: "row", gap: themeui.spacing.xs, marginTop: themeui.spacing.xs },
 
     chip: {
-        paddingHorizontal: 12,
+        paddingHorizontal: themeui.spacing.sm,
         paddingVertical: 7,
-        borderRadius: 999,
+        borderRadius: themeui.radius.pill,
         borderWidth: 1,
-        borderColor: "#1e293b",
-        backgroundColor: "#0f172a",
+        borderColor: themeui.colors.border,
+        backgroundColor: themeui.colors.surface,
         marginBottom: 6,
     },
     chipActive: {
-        backgroundColor: "rgba(96,165,250,0.25)",
-        borderColor: "#60a5fa",
+        backgroundColor: themeui.colors.primary + "33",
+        borderColor: themeui.colors.primary,
     },
-    chipText: { color: "#94a3b8", fontSize: 12 },
-    chipTextActive: { color: "#bfdbfe", fontWeight: "600" },
+    chipText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm },
+    chipTextActive: { color: themeui.colors.primary, fontWeight: "600" },
 
-    questionTitle: { color: "#f1f5f9", fontSize: 13, fontWeight: "600", lineHeight: 18 },
+    questionTitle: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm, fontWeight: "600", lineHeight: 18 },
 
     footer: {
-        paddingHorizontal: 18,
-        paddingVertical: 12,
-        backgroundColor: "#020617",
+        paddingHorizontal: themeui.spacing.md,
+        paddingVertical: themeui.spacing.sm,
+        backgroundColor: themeui.colors.background,
     },
 
     saveButton: {
-        backgroundColor: "#38bdf8",
-        borderRadius: 999,
-        paddingVertical: 14,
+        backgroundColor: themeui.colors.accent,
+        borderRadius: themeui.radius.pill,
+        paddingVertical: themeui.spacing.md,
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        gap: 8,
+        gap: themeui.spacing.xs,
     },
     saveButtonText: {
-        color: "#0f172a",
-        fontSize: 14,
+        color: themeui.colors.surface,
+        fontSize: themeui.fontSize.md,
         fontWeight: "700",
     },
 });

@@ -1,3 +1,4 @@
+import { themeui } from "@/constants/themeui";
 import { Activity, BarChart2, Users } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -250,57 +251,56 @@ function TagRow({ label, value }: { label: string; value: string }) {
 }
 
 /* STYLES ------------------------------------------------------ */
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
   },
 
   /* HEADER */
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 6,
+    paddingHorizontal: themeui.spacing.md,
+    paddingTop: themeui.spacing.sm + 4,
+    paddingBottom: themeui.spacing.xs,
   },
   pageTitle: {
-    color: "#f1f5f9",
-    fontSize: 20,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.title,
     fontWeight: "700",
   },
   pageSubtitle: {
-    color: "#94a3b8",
-    fontSize: 12,
-    marginTop: 4,
+    color: themeui.colors.text.secondary,
+    fontSize: themeui.fontSize.xs,
+    marginTop: themeui.spacing.xs - 2,
   },
   rangeRow: {
     flexDirection: "row",
-    marginTop: 10,
+    marginTop: themeui.spacing.sm - 2,
   },
 
   /* RANGE CHIPS */
   rangeChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#0f172a",
+    paddingHorizontal: themeui.spacing.md - 4,
+    paddingVertical: themeui.spacing.xs,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.surface,
     borderWidth: 1,
-    borderColor: "#1e293b",
-    marginRight: 6,
+    borderColor: themeui.colors.border,
+    marginRight: themeui.spacing.xs,
     alignItems: "center",
     justifyContent: "center",
   },
   rangeChipActive: {
     backgroundColor: "rgba(96,165,250,0.25)",
-    borderColor: "#60a5fa",
+    borderColor: themeui.colors.primary,
   },
   rangeChipText: {
-    fontSize: 12,
-    color: "#94a3b8",
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.secondary,
   },
   rangeChipTextActive: {
     color: "#bfdbfe",
@@ -309,100 +309,99 @@ const styles = StyleSheet.create({
 
   /* CARD */
   card: {
-    marginHorizontal: 16,
-    marginTop: 14,
-    backgroundColor: "#0f172a",
-    borderRadius: 18,
+    marginHorizontal: themeui.spacing.md,
+    marginTop: themeui.spacing.md - 2,
+    backgroundColor: themeui.colors.surface,
+    borderRadius: themeui.radius.lg,
     borderWidth: 1,
-    borderColor: "#1e293b",
-    padding: 16,
+    borderColor: themeui.colors.border,
+    padding: themeui.spacing.md,
+    ...themeui.shadow.soft,
   },
   cardTitleRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   cardTitle: {
-    color: "#f1f5f9",
-    fontSize: 15,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.lg - 1,
     fontWeight: "600",
-    marginLeft: 8,
+    marginLeft: themeui.spacing.xs,
   },
   cardHint: {
-    color: "#64748b",
-    fontSize: 11,
-    marginTop: 4,
-    marginBottom: 10,
+    color: themeui.colors.text.muted,
+    fontSize: themeui.fontSize.xs,
+    marginTop: themeui.spacing.xs - 2,
+    marginBottom: themeui.spacing.sm - 2,
   },
 
   /* STAT ROW */
   statRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 10,
+    paddingVertical: themeui.spacing.sm - 2,
     borderTopWidth: 1,
-    borderTopColor: "#1e293b",
+    borderTopColor: themeui.colors.border,
   },
   statLabel: {
-    color: "#94a3b8",
-    fontSize: 12,
+    color: themeui.colors.text.secondary,
+    fontSize: themeui.fontSize.sm,
   },
   statSub: {
-    color: "#64748b",
-    fontSize: 11,
+    color: themeui.colors.text.muted,
+    fontSize: themeui.fontSize.xs,
     marginTop: 2,
   },
   statValue: {
-    color: "#f1f5f9",
-    fontSize: 14,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.md,
     fontWeight: "600",
   },
 
   /* PROGRESS */
-  progressRow: {
-    marginTop: 10,
-  },
+  progressRow: { marginTop: themeui.spacing.sm - 2 },
   progressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: themeui.spacing.xs - 2,
   },
   progressLabel: {
-    color: "#f1f5f9",
-    fontSize: 12,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.sm,
   },
   progressBar: {
     height: 8,
-    borderRadius: 999,
-    backgroundColor: "#1e293b",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.border,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    borderRadius: 999,
-    backgroundColor: "#60a5fa",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.primary,
   },
 
   /* TAG ROW */
   tagRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 10,
+    paddingVertical: themeui.spacing.sm - 2,
     borderTopWidth: 1,
-    borderTopColor: "#1e293b",
+    borderTopColor: themeui.colors.border,
   },
   tagLabel: {
-    color: "#94a3b8",
-    fontSize: 12,
+    color: themeui.colors.text.secondary,
+    fontSize: themeui.fontSize.sm,
   },
   tagPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: themeui.spacing.sm - 4,
+    paddingVertical: themeui.spacing.xs - 2,
     backgroundColor: "rgba(148,163,184,0.15)",
-    borderRadius: 999,
+    borderRadius: themeui.radius.pill,
   },
   tagPillText: {
-    color: "#f1f5f9",
-    fontSize: 11,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.xs,
   },
 
   /* CHART */
@@ -410,7 +409,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    marginTop: 12,
+    marginTop: themeui.spacing.sm,
   },
   chartBarWrapper: {
     flex: 1,
@@ -418,35 +417,35 @@ const styles = StyleSheet.create({
   },
   chartBar: {
     width: 12,
-    borderRadius: 999,
-    backgroundColor: "#60a5fa",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.primary,
   },
   chartFooterText: {
-    color: "#64748b",
-    fontSize: 11,
-    marginTop: 10,
+    color: themeui.colors.text.muted,
+    fontSize: themeui.fontSize.xs,
+    marginTop: themeui.spacing.sm - 2,
   },
 
   /* ACTIVITY */
   activityRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: themeui.spacing.sm - 2,
   },
   activityRowBorder: {
     borderTopWidth: 1,
-    borderTopColor: "#1e293b",
+    borderTopColor: themeui.colors.border,
   },
   activityDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
-    backgroundColor: "#22c55e",
-    marginRight: 10,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.success,
+    marginRight: themeui.spacing.sm - 4,
   },
   activityText: {
-    color: "#f1f5f9",
-    fontSize: 12,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.sm,
     flex: 1,
   },
 });

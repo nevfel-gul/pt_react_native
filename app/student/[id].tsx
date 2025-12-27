@@ -1,6 +1,16 @@
 // app/student/[id].tsx
 
+import { themeui } from "@/constants/themeui";
+import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+    getDoc,
+    onSnapshot,
+    orderBy,
+    query,
+    updateDoc,
+    where
+} from "firebase/firestore";
 import {
     ArrowLeft,
     Calendar,
@@ -21,16 +31,6 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
-import {
-    getDoc,
-    onSnapshot,
-    orderBy,
-    query,
-    updateDoc,
-    where
-} from "firebase/firestore";
 
 type Bool = boolean | null;
 
@@ -629,189 +629,189 @@ function Chip({ label }: { label: string }) {
 }
 
 /* ----------------- STYLES ----------------- */
-
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: "#020617" },
-    container: { flex: 1, backgroundColor: "#020617" },
+    safeArea: { flex: 1, backgroundColor: themeui.colors.background },
+    container: { flex: 1, backgroundColor: themeui.colors.background },
 
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    loadingText: { color: "#94a3b8", marginTop: 10 },
-    errorText: { color: "#f87171", marginBottom: 10 },
+    loadingText: { color: themeui.colors.text.secondary, marginTop: themeui.spacing.xs },
+    errorText: { color: themeui.colors.danger, marginBottom: themeui.spacing.xs },
 
     /* HEADER */
-    header: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
+    header: { paddingHorizontal: themeui.spacing.md, paddingTop: themeui.spacing.sm + 4, paddingBottom: themeui.spacing.xs },
     headerTopRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 12,
+        marginBottom: themeui.spacing.sm - 2,
     },
 
     backButton: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 999,
-        backgroundColor: "#0f172a",
+        gap: themeui.spacing.xs,
+        paddingHorizontal: themeui.spacing.sm,
+        paddingVertical: themeui.spacing.xs,
+        borderRadius: themeui.radius.pill,
+        backgroundColor: themeui.colors.surface,
         borderWidth: 1,
-        borderColor: "#1e293b",
+        borderColor: themeui.colors.border,
     },
-    backButtonText: { color: "#f1f5f9", fontSize: 13 },
+    backButtonText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm },
 
-    headerActions: { flexDirection: "row", gap: 8 },
+    headerActions: { flexDirection: "row", gap: themeui.spacing.xs },
 
     toggleButton: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 999,
-        backgroundColor: "#22c55e",
+        gap: themeui.spacing.xs,
+        paddingHorizontal: themeui.spacing.sm - 2,
+        paddingVertical: themeui.spacing.xs,
+        borderRadius: themeui.radius.pill,
+        backgroundColor: themeui.colors.success,
     },
-    toggleButtonText: { color: "#022c22", fontSize: 12, fontWeight: "700" },
+    toggleButtonText: { color: "#022c22", fontSize: themeui.fontSize.xs, fontWeight: "700" },
 
     editButton: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 999,
+        gap: themeui.spacing.xs,
+        paddingHorizontal: themeui.spacing.sm - 2,
+        paddingVertical: themeui.spacing.xs,
+        borderRadius: themeui.radius.pill,
         backgroundColor: "#1d4ed8",
     },
-    editButtonText: { color: "#f1f5f9", fontSize: 12, fontWeight: "700" },
+    editButtonText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.xs, fontWeight: "700" },
 
     /* STUDENT HEADER CARD */
-    studentRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+    studentRow: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.md },
     avatar: {
         width: 58,
         height: 58,
-        borderRadius: 29,
-        backgroundColor: "#60a5fa",
+        borderRadius: themeui.radius.pill,
+        backgroundColor: themeui.colors.primary,
         alignItems: "center",
         justifyContent: "center",
     },
-    avatarText: { color: "#0f172a", fontSize: 23, fontWeight: "800" },
-    studentName: { color: "#f1f5f9", fontSize: 19, fontWeight: "700" },
+    avatarText: { color: themeui.colors.surface, fontSize: 23, fontWeight: "800" },
+    studentName: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.lg + 3, fontWeight: "700" },
 
     statusBadge: {
-        marginTop: 6,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 999,
+        marginTop: themeui.spacing.xs,
+        paddingHorizontal: themeui.spacing.sm - 4,
+        paddingVertical: themeui.spacing.xs - 2,
+        borderRadius: themeui.radius.pill,
         alignSelf: "flex-start",
     },
-    statusActive: { backgroundColor: "rgba(34,197,94,0.15)" },
-    statusPassive: { backgroundColor: "rgba(248,113,113,0.15)" },
-    statusActiveText: { color: "#4ade80", fontSize: 11, fontWeight: "700" },
-    statusPassiveText: { color: "#fca5a5", fontSize: 11, fontWeight: "700" },
+    statusActive: { backgroundColor: themeui.colors.successSoft },
+    statusPassive: { backgroundColor: themeui.colors.dangerSoft },
+    statusActiveText: { color: themeui.colors.success, fontSize: themeui.fontSize.xs, fontWeight: "700" },
+    statusPassiveText: { color: themeui.colors.danger, fontSize: themeui.fontSize.xs, fontWeight: "700" },
 
-    metaLine: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-    metaText: { color: "#94a3b8", fontSize: 12 },
+    metaLine: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.xs, marginTop: themeui.spacing.xs },
+    metaText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm },
 
     /* CARDS */
     card: {
-        marginHorizontal: 16,
-        marginTop: 12,
-        backgroundColor: "#0f172a",
-        borderRadius: 18,
+        marginHorizontal: themeui.spacing.md,
+        marginTop: themeui.spacing.sm,
+        backgroundColor: themeui.colors.surface,
+        borderRadius: themeui.radius.lg,
         borderWidth: 1,
-        borderColor: "#1e293b",
-        padding: 16,
+        borderColor: themeui.colors.border,
+        padding: themeui.spacing.md,
+        ...themeui.shadow.soft,
     },
     cardTitle: {
-        color: "#f1f5f9",
-        fontSize: 15,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.lg - 1,
         fontWeight: "700",
-        marginBottom: 10,
+        marginBottom: themeui.spacing.sm - 4,
     },
-    subTitle: { color: "#f1f5f9", fontSize: 13, fontWeight: "700" },
-    mutedText: { color: "#94a3b8", fontSize: 13, marginTop: 8 },
+    subTitle: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md, fontWeight: "700" },
+    mutedText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.md, marginTop: themeui.spacing.xs },
 
     /* INFO ROW */
     infoRow: {
         flexDirection: "row",
         justifyContent: "space-between",
-        paddingVertical: 10,
+        paddingVertical: themeui.spacing.sm - 2,
         borderBottomWidth: 1,
-        borderBottomColor: "#1e293b",
+        borderBottomColor: themeui.colors.border,
     },
-    infoLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-    infoLabel: { color: "#94a3b8", fontSize: 12 },
-    infoValue: { color: "#f1f5f9", fontSize: 13, maxWidth: "55%", textAlign: "right" },
+    infoLabelRow: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.xs },
+    infoLabel: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm },
+    infoValue: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md - 1, maxWidth: "55%", textAlign: "right" },
 
     /* QA */
     qaItem: {
-        paddingVertical: 10,
+        paddingVertical: themeui.spacing.sm - 2,
         borderBottomWidth: 1,
-        borderBottomColor: "#1e293b",
+        borderBottomColor: themeui.colors.border,
     },
-    qaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-    qaQuestion: { color: "#f1f5f9", fontSize: 13, fontWeight: "600", flex: 1, lineHeight: 18 },
+    qaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: themeui.spacing.md - 4 },
+    qaQuestion: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md - 1, fontWeight: "600", flex: 1, lineHeight: 18 },
 
     badge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 999,
+        paddingHorizontal: themeui.spacing.sm - 2,
+        paddingVertical: themeui.spacing.xs - 2,
+        borderRadius: themeui.radius.pill,
         borderWidth: 1,
         alignSelf: "flex-start",
     },
-    badgeYes: { backgroundColor: "rgba(34,197,94,0.15)", borderColor: "rgba(34,197,94,0.35)" },
-    badgeNo: { backgroundColor: "rgba(248,113,113,0.15)", borderColor: "rgba(248,113,113,0.35)" },
+    badgeYes: { backgroundColor: themeui.colors.successSoft, borderColor: "rgba(34,197,94,0.35)" },
+    badgeNo: { backgroundColor: themeui.colors.dangerSoft, borderColor: "rgba(248,113,113,0.35)" },
     badgeNA: { backgroundColor: "rgba(148,163,184,0.12)", borderColor: "rgba(148,163,184,0.25)" },
-    badgeText: { fontSize: 11, fontWeight: "800" },
-    badgeTextYes: { color: "#4ade80" },
-    badgeTextNo: { color: "#fca5a5" },
-    badgeTextNA: { color: "#94a3b8" },
+    badgeText: { fontSize: themeui.fontSize.xs, fontWeight: "800" },
+    badgeTextYes: { color: themeui.colors.success },
+    badgeTextNo: { color: themeui.colors.danger },
+    badgeTextNA: { color: themeui.colors.text.secondary },
 
     noteBox: {
-        marginTop: 10,
-        padding: 12,
-        borderRadius: 14,
+        marginTop: themeui.spacing.sm,
+        padding: themeui.spacing.sm,
+        borderRadius: themeui.radius.md,
         borderWidth: 1,
-        borderColor: "#1e293b",
-        backgroundColor: "#0b1220",
+        borderColor: themeui.colors.border,
+        backgroundColor: themeui.colors.surfaceSoft,
     },
-    miniLabel: { color: "#94a3b8", fontSize: 11, marginBottom: 4 },
-    noteText: { color: "#f1f5f9", fontSize: 12, lineHeight: 17 },
+    miniLabel: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.xs, marginBottom: 4 },
+    noteText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm, lineHeight: 17 },
 
-    chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+    chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: themeui.spacing.xs + 2, marginTop: themeui.spacing.sm - 2 },
     chip: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 999,
+        paddingHorizontal: themeui.spacing.sm - 2,
+        paddingVertical: themeui.spacing.xs,
+        borderRadius: themeui.radius.pill,
         borderWidth: 1,
-        borderColor: "#1e293b",
+        borderColor: themeui.colors.border,
         backgroundColor: "rgba(96,165,250,0.12)",
     },
-    chipText: { color: "#bfdbfe", fontSize: 11, fontWeight: "600" },
+    chipText: { color: "#bfdbfe", fontSize: themeui.fontSize.xs, fontWeight: "600" },
 
     /* RECORDS */
     recordsTitle: {
-        marginHorizontal: 16,
-        marginTop: 16,
-        marginBottom: 8,
-        color: "#60a5fa",
-        fontSize: 16,
+        marginHorizontal: themeui.spacing.md,
+        marginTop: themeui.spacing.md,
+        marginBottom: themeui.spacing.xs + 2,
+        color: themeui.colors.primary,
+        fontSize: themeui.fontSize.lg,
         fontWeight: "700",
     },
     recordCard: {
-        marginHorizontal: 16,
-        marginBottom: 10,
-        backgroundColor: "#0f172a",
-        borderRadius: 14,
+        marginHorizontal: themeui.spacing.md,
+        marginBottom: themeui.spacing.sm - 2,
+        backgroundColor: themeui.colors.surface,
+        borderRadius: themeui.radius.md,
         borderWidth: 1,
-        borderColor: "#1e293b",
-        paddingVertical: 12,
-        paddingHorizontal: 12,
+        borderColor: themeui.colors.border,
+        paddingVertical: themeui.spacing.sm,
+        paddingHorizontal: themeui.spacing.sm,
         flexDirection: "row",
         justifyContent: "space-between",
-        gap: 10,
+        gap: themeui.spacing.sm - 2,
     },
-    recordDate: { color: "#f1f5f9", fontSize: 13, fontWeight: "600" },
-    recordNote: { color: "#94a3b8", fontSize: 12, marginTop: 2 },
-    emptyText: { color: "#94a3b8", fontSize: 13 },
+    recordDate: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md - 1, fontWeight: "600" },
+    recordNote: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm, marginTop: 2 },
+    emptyText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.md - 1 },
 });
