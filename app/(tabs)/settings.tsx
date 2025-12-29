@@ -126,8 +126,8 @@ export default function SettingsScreen() {
             <Switch
               value={darkMode}
               onValueChange={setDarkMode}
-              trackColor={{ false: "#1e293b", true: "#1d4ed8" }}
-              thumbColor={darkMode ? "#02268a" : "#e5e7eb"}
+              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
+              thumbColor={darkMode ? "#e5e7eb" : "#e5e7eb"}
             />
           }
         />
@@ -156,8 +156,8 @@ export default function SettingsScreen() {
             <Switch
               value={pushEnabled}
               onValueChange={setPushEnabled}
-              trackColor={{ false: "#1e293b", true: "#1d4ed8" }}
-              thumbColor={pushEnabled ? "#02268a" : "#e5e7eb"}
+              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
+              thumbColor={pushEnabled ? "#e5e7eb" : "#e5e7eb"}
             />
           }
         />
@@ -169,8 +169,8 @@ export default function SettingsScreen() {
             <Switch
               value={emailEnabled}
               onValueChange={setEmailEnabled}
-              trackColor={{ false: "#1e293b", true: "#1d4ed8" }}
-              thumbColor={emailEnabled ? "#02268a" : "#e5e7eb"}
+              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
+              thumbColor={emailEnabled ? "#e5e7eb" : "#e5e7eb"}
             />
           }
         />
@@ -182,8 +182,8 @@ export default function SettingsScreen() {
             <Switch
               value={hapticEnabled}
               onValueChange={setHapticEnabled}
-              trackColor={{ false: "#1e293b", true: "#1d4ed8" }}
-              thumbColor={hapticEnabled ? "#02268a" : "#e5e7eb"}
+              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
+              thumbColor={hapticEnabled ? "#e5e7eb" : "#e5e7eb"}
             />
           }
           isLast={true}
@@ -230,8 +230,8 @@ export default function SettingsScreen() {
             <Switch
               value={saveLogin}
               onValueChange={setSaveLogin}
-              trackColor={{ false: "#1e293b", true: "#1d4ed8" }}
-              thumbColor={saveLogin ? "#02268a" : "#e5e7eb"}
+              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
+              thumbColor={saveLogin ? "#e5e7eb" : "#e5e7eb"}
             />
           }
         />
@@ -243,8 +243,8 @@ export default function SettingsScreen() {
             <Switch
               value={twoFactor}
               onValueChange={setTwoFactor}
-              trackColor={{ false: "#1e293b", true: "#1d4ed8" }}
-              thumbColor={twoFactor ? "#02268a" : "#e5e7eb"}
+              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
+              thumbColor={twoFactor ? "#e5e7eb" : "#e5e7eb"}
             />
           }
         />
@@ -276,18 +276,33 @@ export default function SettingsScreen() {
         <SettingRow
           label="Hesabı Sil"
           subtitle="Geri alınamaz işlem"
-          right={<Text style={[styles.badgeMuted, { color: "#f97316" }]}>Sil</Text>}
+          right={<Text style={[styles.badgeMuted, { color: themeui.colors.danger, }]}>Sil</Text>}
           isLast={true}
         />
       </View>
 
-      <View style={styles.card}>
-        <Section title="Uygulama Hakkında" icon={<Info size={18} color="#6b7280" />} />
+<Section
+  title="Uygulama Hakkında"
+  icon={<Info size={18} color={themeui.colors.text.secondary} />}
+/>
 
-        <SettingRow label="Sürüm" right={<Text style={styles.settingValueText}>v0.0.0</Text>} />
-        <SettingRow label="Lisans" right={<Text style={styles.settingValueText}>PT Lab</Text>} />
-        <SettingRow label="Gizlilik Politikası" right={<Text style={styles.badgeMuted}>Aç</Text>} isLast={true} />
-      </View>
+<View style={styles.card}>
+  <SettingRow
+    label="Sürüm"
+    right={<Text style={styles.settingValueText}>v0.0.0</Text>}
+  />
+
+  <SettingRow
+    label="Lisans"
+    right={<Text style={styles.settingValueText}>PT Lab</Text>}
+  />
+
+  <SettingRow
+    label="Gizlilik Politikası"
+    right={<Text style={styles.badgeMuted}>Aç</Text>}
+    isLast={true}
+  />
+</View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={() => { handleLogout(); }}>
         <LogOut size={18} color="#fca5a5" />

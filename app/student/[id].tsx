@@ -18,8 +18,7 @@ import {
     Eye,
     Mail,
     Phone,
-    Power,
-    User,
+    User
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -348,16 +347,23 @@ export default function StudentDetailScreen() {
                         </TouchableOpacity>
 
                         <View style={styles.headerActions}>
-                            <TouchableOpacity
-                                style={styles.toggleButton}
-                                onPress={toggleAktif}
-                                disabled={toggling}
-                            >
-                                <Power size={14} color="#022c22" />
-                                <Text style={styles.toggleButtonText}>
-                                    {student.aktif === "Aktif" ? "Pasif Yap" : "Aktif Yap"}
-                                </Text>
-                            </TouchableOpacity>
+<TouchableOpacity
+  style={[
+    styles.toggleButton,
+    student.aktif === "Aktif"
+      ? styles.toggleButtonPassive   
+      : styles.toggleButtonActive   
+  ]}
+  onPress={toggleAktif}
+  disabled={toggling}
+>
+  <Text style={[
+    styles.toggleButtonText,
+    { color: themeui.colors.text.primary }  
+  ]}>
+    {student.aktif === "Aktif" ? "Pasif Yap" : "Aktif Yap"}
+  </Text>
+</TouchableOpacity>
 
                             <TouchableOpacity style={styles.editButton} onPress={addRecord}>
                                 <Edit size={14} color="#f1f5f9" />
@@ -661,17 +667,31 @@ const styles = StyleSheet.create({
 
     headerActions: { flexDirection: "row", gap: themeui.spacing.xs },
 
-    toggleButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.sm - 2,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-        backgroundColor: themeui.colors.success,
-    },
-    toggleButtonText: { color: "#022c22", fontSize: themeui.fontSize.xs, fontWeight: "700" },
+toggleButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: themeui.spacing.xs,
+  paddingHorizontal: themeui.spacing.md,
+  paddingVertical: themeui.spacing.xs,
+  borderRadius: themeui.radius.pill,
+},
+toggleButtonActive: {
+  backgroundColor: themeui.colors.success,
+  borderColor: themeui.colors.success,
+  borderWidth: 1,
+  opacity: 0.9,
+},
+toggleButtonPassive: {
+  backgroundColor: themeui.colors.danger,
+  borderColor: themeui.colors.danger,
+  borderWidth: 1,
+    opacity: 0.9,
+},
 
+toggleButtonText: {
+  fontSize: themeui.fontSize.sm,
+  fontWeight: "600",
+},
     editButton: {
         flexDirection: "row",
         alignItems: "center",
@@ -679,7 +699,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: themeui.spacing.sm - 2,
         paddingVertical: themeui.spacing.xs,
         borderRadius: themeui.radius.pill,
-        backgroundColor: "#1d4ed8",
+        backgroundColor: themeui.colors.editButtonbackground,
+          opacity: 0.9,
     },
     editButtonText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.xs, fontWeight: "700" },
 

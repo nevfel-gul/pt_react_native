@@ -324,6 +324,10 @@ export default function NewRecordScreen() {
                                 <Switch
                                     value={formData.hasPain}
                                     onValueChange={(v) => handleChange("hasPain", v)}
+                                     trackColor={{
+      false: themeui.colors.surfaceSoft,   
+      true: themeui.colors.primary         
+    }}
                                 />
                             </View>
 
@@ -337,6 +341,10 @@ export default function NewRecordScreen() {
                                 <Switch
                                     value={formData.hadSurgery}
                                     onValueChange={(v) => handleChange("hadSurgery", v)}
+                                                                         trackColor={{
+      false: themeui.colors.surfaceSoft,   
+      true: themeui.colors.primary         
+    }}
                                 />
                             </View>
                         </View>
@@ -565,6 +573,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         gap: themeui.spacing.xs + 2,
+        opacity: 0.9,
     },
     saveButtonText: {
         color: themeui.colors.surface,

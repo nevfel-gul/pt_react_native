@@ -828,8 +828,9 @@ const styles = StyleSheet.create({
 
   logoText: {
     fontSize: themeui.fontSize.lg,
-    fontWeight: "700",
+    fontWeight: "800",
     color: themeui.colors.primary,
+    
   },
 
   notifText: {
