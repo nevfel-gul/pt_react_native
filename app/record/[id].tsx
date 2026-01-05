@@ -232,39 +232,72 @@ export default function RecordDetailScreen() {
                             <HandHeart size={18} color="#60a5fa" />
                             {"  "}Fiziksel Ölçümler (Tanita)
                         </Text>
+
                         <InfoRow label="Kilo" value={formatVal(record.weight, "kg")} />
+                        {/* Kilo için özel analiz yok, geçiyoruz */}
+
                         <InfoRow
                             label="Vücut Yağ Oranı"
                             value={formatVal(record.bodyFat, "%")}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.bodyFatStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Vücut Kitle İndeksi (BMI)"
                             value={formatVal(record.bodyMassIndex)}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.bmiStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Bazal Metabolizma"
                             value={formatVal(record.basalMetabolism, "kcal")}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.basalMetabolismStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Toplam Kas Kütlesi"
                             value={formatVal(record.totalMuscleMass, "kg")}
                         />
+                        {/* Toplam kas için ayrı analiz yok */}
+
                         <InfoRow
                             label="Yağsız Vücut Kütlesi"
                             value={formatVal(record.leanBodyMass, "kg")}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.leanBodyMassStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Vücut Su Oranı"
                             value={formatVal(record.bodyWaterMass, "%")}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.bodyWaterMassStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Metabolizma Yaşı"
                             value={record.metabolicAge?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.metabolicAgeStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Empedans"
                             value={record.impedance?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.impedanceStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Bel-Kalça Oranı (ham değerler)"
                             value={
@@ -273,7 +306,11 @@ export default function RecordDetailScreen() {
                                     : "-"
                             }
                         />
+                        <Text style={styles.analysisText}>
+                            Yorum: {record.analysis?.bellyHipRatioStatus || "-"}
+                        </Text>
                     </View>
+
 
                     {/* ÇEVRE ÖLÇÜMLERİ */}
                     <View style={styles.card}>
@@ -315,23 +352,45 @@ export default function RecordDetailScreen() {
                             <SquareActivity size={18} color="#60a5fa" />
                             {"  "}Aerobik Testler
                         </Text>
+
                         <InfoRow
                             label="Dinlenik Nabız"
                             value={record.dinlenikNabiz?.toString() ?? "-"}
                         />
+                        {/* Direkt veri, ekstra yorum yok */}
+
                         <InfoRow
                             label="Carvonen (Zone)"
                             value={record.carvonenMultiplier?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Hedef Nabız:{" "}
+                            {record.analysis?.carvonenTargetHR
+                                ? `${record.analysis.carvonenTargetHR} atım/dk`
+                                : "-"}
+                        </Text>
+
                         <InfoRow
                             label="YMCA 3dk Toparlanma Nabzı"
                             value={record.toparlanmaNabzi?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            YMCA Sonuç: {record.analysis?.ymcaStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Bruce Test Süresi (dk)"
                             value={record.testSuresi?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            VO₂max:{" "}
+                            {record.analysis?.bruceVO2Max
+                                ? `${record.analysis.bruceVO2Max} ml/kg/dk`
+                                : "-"}{" "}
+                            — {record.analysis?.vo2Status || "-"}
+                        </Text>
                     </View>
+
 
                     {/* HAREKET & POSTÜR */}
                     <View style={styles.card}>
@@ -473,6 +532,7 @@ export default function RecordDetailScreen() {
 
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Sit and Reach Testi</Text>
+
                         <InfoRow
                             label="Değer 1"
                             value={formatVal(record.sitandreach1)}
@@ -490,7 +550,22 @@ export default function RecordDetailScreen() {
                             value={record.sitandreachnotes || "-"}
                             multiline
                         />
+                        <Text
+                            style={[
+                                styles.analysisText,
+                                {
+                                    borderTopColor: "#0f172a", borderTopWidth: 1, paddingVertical: 6,
+                                }
+                            ]}
+                        >
+                            En İyi Değer:{" "}
+                            {record.analysis?.sitAndReachBest != null
+                                ? `${record.analysis.sitAndReachBest} cm`
+                                : "-"}
+                            {"  "} |  Durum: {record.analysis?.sitAndReachStatus || "-"}
+                        </Text>
                     </View>
+
 
                     {/* KUVVET TESTLERİ */}
                     <View style={styles.card}>
@@ -498,10 +573,15 @@ export default function RecordDetailScreen() {
                             <BicepsFlexed size={18} color="#60a5fa" />
                             {"  "}Kuvvet Testleri
                         </Text>
+
                         <InfoRow
                             label="Push up (1 dk)"
                             value={record.pushup?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Push up Skoru: {record.analysis?.pushupStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Push up diz üstü mü?"
                             value={
@@ -514,18 +594,31 @@ export default function RecordDetailScreen() {
                                             : "-"
                             }
                         />
+
                         <InfoRow
                             label="Wall Sit (sn)"
                             value={record.wallsit?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Wall Sit Skoru: {record.analysis?.wallSitStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Plank (sn)"
                             value={record.plank?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Plank Skoru: {record.analysis?.plankStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Mekik (1 dk)"
                             value={record.mekik?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Mekik Skoru: {record.analysis?.mekikStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="1RM Squat - Kilo"
                             value={record.rmsquatweight?.toString() ?? "-"}
@@ -534,12 +627,17 @@ export default function RecordDetailScreen() {
                             label="1RM Squat - Tekrar"
                             value={record.rmsquatrep?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            1RM Squat Skoru: {record.analysis?.rmSquatStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Kuvvet Notları"
                             value={record.kuvvetnotes || "-"}
                             multiline
                         />
                     </View>
+
                 </ScrollView>
             </View>
         </SafeAreaView>
@@ -709,8 +807,8 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         paddingVertical: 6,
-        borderBottomWidth: 1,
-        borderBottomColor: "#0f172a",
+        borderTopWidth: 1,
+        borderTopColor: "#0f172a",
     },
     infoLabelRow: {
         flexDirection: "row",
@@ -728,5 +826,12 @@ const styles = StyleSheet.create({
         maxWidth: "55%",
         textAlign: "right",
     },
+    analysisText: {
+        marginTop: 2,
+        marginBottom: 8,
+        fontSize: 12,
+        color: "#9ca3af",
+    },
+
 });
 

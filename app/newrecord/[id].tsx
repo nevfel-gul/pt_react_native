@@ -1,4 +1,5 @@
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
+import { ResizeMode, Video } from 'expo-av';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { addDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import {
@@ -19,7 +20,9 @@ import {
     ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
+    Modal,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -272,6 +275,458 @@ export default function NewRecordScreen() {
         fetchStudent();
     }, [id]);
 
+    // component üstüne bir yere ekle
+    const InfoNote = ({ children }: { children: React.ReactNode }) => (
+        <View style={{ marginTop: 4 }}>
+            <Text style={styles.infoNoteLabel}>İpucu:</Text>
+            <Text style={styles.infoNoteText}>{children}</Text>
+        </View>
+    );
+
+    const HintImageButton = ({
+        label,
+        videoSource,
+    }: {
+        label: string;
+        videoSource: any;
+    }) => {
+        const [visible, setVisible] = useState(false);
+
+        return (
+            <>
+                <TouchableOpacity
+                    style={styles.hintButton}
+                    onPress={() => setVisible(true)}
+                >
+                    <Text style={styles.hintButtonText}>{label}</Text>
+                </TouchableOpacity>
+
+                <Modal
+                    visible={visible}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setVisible(false)}
+                >
+                    <View style={styles.modalBackdrop}>
+                        <View style={styles.modalContent}>
+                            <Video
+                                source={videoSource}
+                                style={styles.hintVideo}
+                                resizeMode={ResizeMode.CONTAIN}
+                                isLooping
+                                shouldPlay={visible}
+                                isMuted
+                            />
+                            <Pressable
+                                style={styles.modalCloseButton}
+                                onPress={() => setVisible(false)}
+                            >
+                                <Text style={styles.modalCloseText}>Kapat</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </Modal>
+            </>
+        );
+    };
+
+
+
+    // Yaş hesaplama (doğum tarihinden, sadece yıl farkı)
+    const getAge = () => {
+        if (!student?.dateOfBirth) return 0;
+        const dob = new Date(student.dateOfBirth);
+        if (isNaN(dob.getTime())) return 0;
+        const now = new Date();
+        let a = now.getFullYear() - dob.getFullYear();
+        const m = now.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
+            a--;
+        }
+        return a;
+    };
+
+    // -----------------------------
+    // ANALİZ FONKSİYONLARI
+    // -----------------------------
+    const getBMIStatus = (bmi: number) => {
+        if (!bmi) return "";
+        if (bmi < 20) return "Zayıf";
+        if (bmi < 25) return "Sağlıklı";
+        if (bmi < 30) return "Hafif Şişman";
+        return "Şişman";
+    };
+
+    const getBasalMetabolismStatus = (bmr: number, gender?: string) => {
+        if (!bmr || !gender) return "";
+        if (gender === "Erkek") {
+            if (bmr < 1500) return "Düşük";
+            if (bmr < 1900) return "Normal";
+            return "Yüksek";
+        }
+        if (gender === "Kadın") {
+            if (bmr < 1200) return "Düşük";
+            if (bmr < 1600) return "Normal";
+            return "Yüksek";
+        }
+        return "";
+    };
+
+    const getBodyFatStatus = (bodyFat: number, age: number, gender?: string) => {
+        if (!bodyFat || !age || !gender) return "";
+        if (gender === "Erkek") {
+            if (age >= 20 && age <= 29) {
+                if (bodyFat < 11) return "Çok Düşük";
+                if (bodyFat < 14) return "Düşük";
+                if (bodyFat < 21) return "Orta";
+                if (bodyFat < 23) return "Yüksek";
+                return "Çok Yüksek";
+            }
+            if (age >= 30 && age <= 39) {
+                if (bodyFat < 12) return "Çok Düşük";
+                if (bodyFat < 15) return "Düşük";
+                if (bodyFat < 22) return "Orta";
+                if (bodyFat < 24) return "Yüksek";
+                return "Çok Yüksek";
+            }
+            if (age >= 40 && age <= 49) {
+                if (bodyFat < 14) return "Çok Düşük";
+                if (bodyFat < 17) return "Düşük";
+                if (bodyFat < 24) return "Orta";
+                if (bodyFat < 26) return "Yüksek";
+                return "Çok Yüksek";
+            }
+            if (age >= 50 && age <= 59) {
+                if (bodyFat < 15) return "Çok Düşük";
+                if (bodyFat < 18) return "Düşük";
+                if (bodyFat < 25) return "Orta";
+                if (bodyFat < 27) return "Yüksek";
+                return "Çok Yüksek";
+            }
+            if (age >= 60) {
+                if (bodyFat < 16) return "Çok Düşük";
+                if (bodyFat < 19) return "Düşük";
+                if (bodyFat < 26) return "Orta";
+                if (bodyFat < 28) return "Yüksek";
+                return "Çok Yüksek";
+            }
+        } else if (gender === "Kadın") {
+            if (age >= 20 && age <= 29) {
+                if (bodyFat < 16) return "Çok Düşük";
+                if (bodyFat < 20) return "Düşük";
+                if (bodyFat < 29) return "Orta";
+                if (bodyFat < 31) return "Yüksek";
+                return "Çok Yüksek";
+            }
+            if (age >= 30 && age <= 39) {
+                if (bodyFat < 17) return "Çok Düşük";
+                if (bodyFat < 21) return "Düşük";
+                if (bodyFat < 30) return "Orta";
+                if (bodyFat < 32) return "Yüksek";
+                return "Çok Yüksek";
+            }
+            if (age >= 40 && age <= 49) {
+                if (bodyFat < 18) return "Çok Düşük";
+                if (bodyFat < 22) return "Düşük";
+                if (bodyFat < 31) return "Orta";
+                if (bodyFat < 33) return "Yüksek";
+                return "Çok Yüksek";
+            }
+            if (age >= 50 && age <= 59) {
+                if (bodyFat < 19) return "Çok Düşük";
+                if (bodyFat < 23) return "Düşük";
+                if (bodyFat < 32) return "Orta";
+                if (bodyFat < 34) return "Yüksek";
+                return "Çok Yüksek";
+            }
+            if (age >= 60) {
+                if (bodyFat < 20) return "Çok Düşük";
+                if (bodyFat < 24) return "Düşük";
+                if (bodyFat < 33) return "Orta";
+                if (bodyFat < 35) return "Yüksek";
+                return "Çok Yüksek";
+            }
+        }
+        return "Geçersiz veri";
+    };
+
+    const getLeanBodyMassStatus = (leanBodyMass: number, weight: number, gender?: string) => {
+        if (!leanBodyMass || !weight || !gender) return "";
+        const bodyMassOran = (leanBodyMass / weight) * 100;
+
+        if (gender === "Erkek") {
+            if (bodyMassOran < 75) return "Düşük";
+            if (bodyMassOran < 90) return "Normal";
+            if (bodyMassOran < 100) return "Yüksek";
+        } else if (gender === "Kadın") {
+            if (bodyMassOran < 65) return "Düşük";
+            if (bodyMassOran < 80) return "Normal";
+            if (bodyMassOran < 100) return "Yüksek";
+        }
+        return "Geçersiz veri";
+    };
+
+    const getBodyWaterMassStatus = (bodyWaterMass: number, gender?: string) => {
+        if (!bodyWaterMass || !gender) return "";
+        if (gender === "Erkek") {
+            if (bodyWaterMass < 50) return "Düşük";
+            if (bodyWaterMass < 65) return "Normal";
+            return "Yüksek";
+        }
+        if (gender === "Kadın") {
+            if (bodyWaterMass < 45) return "Düşük";
+            if (bodyWaterMass < 60) return "Normal";
+            return "Yüksek";
+        }
+        return "Geçersiz veri";
+    };
+
+    const getMetabolicAgeStatus = (metabolicAge: number, age: number) => {
+        if (!metabolicAge || !age) return "";
+        if (metabolicAge < age) return "Metabolik yaş kronolojik yaştan genç";
+        if (metabolicAge === age) return "Metabolik yaş kronolojik yaşla uyumlu";
+        return "Metabolik yaş kronolojik yaştan büyük";
+    };
+
+    const getImpedanceStatus = (impedance: number, gender?: string) => {
+        if (!impedance || !gender) return "";
+        if (gender === "Erkek") {
+            if (impedance < 300) return "Düşük - Daha fazla sıvı/kas oranı";
+            if (impedance < 500) return "Normal";
+            return "Yüksek - Daha fazla yağ/düşük kas oranı";
+        }
+        if (gender === "Kadın") {
+            if (impedance < 450) return "Düşük - Daha fazla sıvı/kas oranı";
+            if (impedance < 600) return "Normal";
+            return "Yüksek - Daha fazla yağ/düşük kas oranı";
+        }
+        return "Geçersiz veri";
+    };
+
+    const getBellyHipRatio = (bel: number, kalca: number, gender?: string) => {
+        if (!bel || !kalca || !gender) return "";
+        const ratio = bel / kalca;
+        const r = ratio.toFixed(2);
+
+        if (gender === "Erkek") {
+            if (ratio < 0.85) return "Mükemmel";
+            if (ratio < 0.9) return "Düşük Risk " + r;
+            if (ratio < 0.95) return "Orta Risk " + r;
+            if (ratio <= 1.0) return "Yüksek Risk " + r;
+            return "Çok Yüksek Risk " + r;
+        }
+        if (gender === "Kadın") {
+            if (ratio < 0.75) return "Mükemmel";
+            if (ratio < 0.8) return "Düşük Risk " + r;
+            if (ratio < 0.85) return "Orta Risk " + r;
+            if (ratio <= 0.9) return "Yüksek Risk " + r;
+            return "Çok Yüksek Risk " + r;
+        }
+
+        return "Geçersiz veri";
+    };
+
+    const getCarvonenTargetHR = (restingHR: number, zone: number, age: number) => {
+        if (!restingHR || !zone || !age) return "";
+        const maxHR = 220 - age;
+        const reserve = maxHR - restingHR;
+        const target = restingHR + reserve * zone;
+        return target.toFixed(0);
+    };
+
+    const getYMCAResult = (pulse: number, age: number, gender?: string) => {
+        if (!pulse || !age || !gender) return "";
+        // Özet tablo – web projendeki mantığın kısaltılmış hali
+        if (gender === "Erkek") {
+            if (age <= 25) {
+                if (pulse <= 79) return "Mükemmel";
+                if (pulse <= 89) return "İyi";
+                if (pulse <= 100) return "Ortanın Üstü";
+                if (pulse <= 105) return "Orta";
+                if (pulse <= 112) return "Ortanın Altı";
+                if (pulse <= 120) return "Kötü";
+                return "Çok Kötü";
+            }
+        } else if (gender === "Kadın") {
+            if (age <= 25) {
+                if (pulse <= 81) return "Mükemmel";
+                if (pulse <= 93) return "İyi";
+                if (pulse <= 102) return "Ortanın Üstü";
+                if (pulse <= 110) return "Orta";
+                if (pulse <= 120) return "Ortanın Altı";
+                if (pulse <= 131) return "Kötü";
+                return "Çok Kötü";
+            }
+        }
+        return "Geçersiz veri";
+    };
+
+    const getBruceTestVO2 = (time: number, gender?: string) => {
+        if (!time || time < 0 || !gender) return "";
+        if (gender === "Erkek") {
+            const vo2 =
+                14.8 -
+                1.379 * time +
+                0.451 * time * time -
+                0.012 * time * time * time;
+            return vo2.toFixed(2);
+        }
+        if (gender === "Kadın") {
+            const vo2 = 4.38 * time - 3.9;
+            return vo2.toFixed(2);
+        }
+        return "";
+    };
+
+    const getVO2Status = (vo2: number, age: number, gender?: string) => {
+        if (!vo2 || !age || !gender) return "";
+        if (gender === "Erkek") {
+            if (age >= 20 && age <= 29) {
+                if (vo2 < 42) return "Zayıf";
+                if (vo2 < 45) return "Ortalama Altı";
+                if (vo2 < 51) return "Ortalama";
+                if (vo2 < 55) return "Ortalama Üstü";
+                return "Mükemmel";
+            }
+        } else if (gender === "Kadın") {
+            if (age >= 20 && age <= 29) {
+                if (vo2 < 35) return "Zayıf";
+                if (vo2 < 39) return "Ortalama Altı";
+                if (vo2 < 43) return "Ortalama";
+                if (vo2 < 49) return "Ortalama Üstü";
+                return "Mükemmel";
+            }
+        }
+        return "Geçersiz veri";
+    };
+
+    const getSitAndReachStatus = (value: number, gender?: string) => {
+        if (!gender) return "";
+        if (gender === "Erkek") {
+            if (value >= 27) return "Mükemmel";
+            if (value >= 17) return "İyi";
+            if (value >= 6) return "Ortanın Üstü";
+            if (value >= 0) return "Orta";
+            if (value >= -8) return "Ortanın Altı";
+            if (value >= -20) return "Kötü";
+            return "Çok Kötü";
+        }
+        if (gender === "Kadın") {
+            if (value >= 30) return "Mükemmel";
+            if (value >= 21) return "İyi";
+            if (value >= 11) return "Ortanın Üstü";
+            if (value >= 1) return "Orta";
+            if (value >= -7) return "Ortanın Altı";
+            if (value >= -15) return "Kötü";
+            return "Çok Kötü";
+        }
+        return "Geçersiz veri";
+    };
+
+    const getMaxOfThree = (a?: string, b?: string, c?: string) => {
+        const vals = [a, b, c]
+            .map((v) => (v === "" || v == null ? NaN : Number(v)))
+            .filter((v) => !isNaN(v));
+        if (!vals.length) return null;
+        return Math.max(...vals);
+    };
+
+    const getPushUpScore = (reps: number, age: number, gender?: string, isModified = false) => {
+        if (!reps || reps < 0 || !gender || !age) return "";
+
+        if (gender === "Erkek") {
+            if (!isModified) {
+                if (age >= 20 && age <= 29) {
+                    if (reps > 54) return "Mükemmel";
+                    if (reps >= 45) return "Ortalama Üstü";
+                    if (reps >= 35) return "Ortalama";
+                    if (reps >= 20) return "Ortalama Altı";
+                    return "Kötü";
+                }
+            }
+        }
+
+        if (gender === "Kadın") {
+            if (isModified) {
+                if (age >= 20 && age <= 29) {
+                    if (reps > 48) return "Mükemmel";
+                    if (reps >= 34) return "Ortalama Üstü";
+                    if (reps >= 17) return "Ortalama";
+                    if (reps >= 6) return "Ortalama Altı";
+                    return "Kötü";
+                }
+            }
+        }
+
+        return "Geçersiz veri";
+    };
+
+    const getWallSitScore = (seconds: number, gender?: string) => {
+        if (!seconds || seconds < 0 || !gender) return "";
+        const time = Number(seconds);
+        if (gender === "Erkek") {
+            if (time > 102) return "Mükemmel";
+            if (time >= 76) return "Ortalama Üstü";
+            if (time >= 58) return "Ortalama";
+            if (time >= 30) return "Ortalama Altı";
+            return "Zayıf";
+        }
+        if (gender === "Kadın") {
+            if (time > 60) return "Mükemmel";
+            if (time >= 46) return "Ortalama Üstü";
+            if (time >= 36) return "Ortalama";
+            if (time >= 20) return "Ortalama Altı";
+            return "Zayıf";
+        }
+        return "Geçersiz veri";
+    };
+
+    const getPlankScore = (seconds: number, gender?: string) => {
+        if (!seconds || seconds < 0 || !gender) return "";
+        const time = Number(seconds);
+        if (gender === "Erkek") {
+            if (time > 128) return "Mükemmel";
+            if (time >= 106) return "Ortalama Üstü";
+            if (time >= 77) return "Ortalama";
+            return "Ortalama Altı";
+        }
+        if (gender === "Kadın") {
+            if (time > 90) return "Mükemmel";
+            if (time >= 71) return "Ortalama Üstü";
+            if (time >= 41) return "Ortalama";
+            return "Ortalama Altı";
+        }
+        return "Geçersiz veri";
+    };
+
+    const getMekikScore = (seconds: number, gender?: string) => {
+        if (!seconds || seconds < 0 || !gender) return "";
+        const time = Number(seconds);
+        if (gender === "Erkek") {
+            if (time > 41) return "Mükemmel";
+            if (time >= 35) return "Ortalama Üstü";
+            if (time >= 29) return "Ortalama";
+            if (time >= 22) return "Ortalama Altı";
+            return "Zayıf";
+        }
+        if (gender === "Kadın") {
+            if (time > 25) return "Mükemmel";
+            if (time >= 21) return "Ortalama Üstü";
+            if (time >= 15) return "Ortalama";
+            if (time >= 9) return "Ortalama Altı";
+            return "Zayıf";
+        }
+        return "Geçersiz veri";
+    };
+
+    const getRmSquatScore = (weight: number, reps: number) => {
+        if (!weight || !reps) return "";
+        if (weight > 150) return "Mükemmel";
+        if (weight > 100) return "İyi";
+        if (weight > 60) return "Orta";
+        return "Geliştirilmeli";
+    };
+
     const handleSubmit = async () => {
         if (!id) {
             Alert.alert("Hata", "Öğrenci ID bulunamadı.");
@@ -281,13 +736,132 @@ export default function NewRecordScreen() {
         try {
             setSubmitting(true);
 
+            const age = getAge();
+            const gender = student?.gender;
+
+            const bmi = Number(formData.bodyMassIndex || 0);
+            const bmr = Number(formData.basalMetabolism || 0);
+            const bodyFat = Number(formData.bodyFat || 0);
+            const weight = Number(formData.weight || 0);
+            const leanBodyMass = Number(formData.leanBodyMass || 0);
+            const bodyWater = Number(formData.bodyWaterMass || 0);
+            const impedance = Number(formData.impedance || 0);
+            const metabolicAge = Number(formData.metabolicAge || 0);
+            const bel = Number(formData.bel || 0);
+            const kalca = Number(formData.kalca || 0);
+
+            const restHR = Number(
+                formData.dinlenikNabiz || formData.restingHeartRate || 0
+            );
+            const carvonenZone = Number(formData.carvonenMultiplier || 0);
+            const ymcaPulse = Number(formData.toparlanmaNabzi || 0);
+            const bruceTime = Number(formData.testSuresi || 0);
+
+            const sitBest = getMaxOfThree(
+                formData.sitandreach1,
+                formData.sitandreach2,
+                formData.sitandreach3
+            );
+
+            const pushupReps = Number(formData.pushup || 0);
+            const wallSitSec = Number(formData.wallsit || 0);
+            const plankSec = Number(formData.plank || 0);
+            const mekikSec = Number(formData.mekik || 0);
+            const rmSquatWeight = Number(formData.rmsquatweight || 0);
+            const rmSquatRep = Number(formData.rmsquatrep || 0);
+
+            const bruceVo2Str =
+                bruceTime && gender ? getBruceTestVO2(bruceTime, gender) : "";
+            const bruceVo2 = bruceVo2Str ? Number(bruceVo2Str) : 0;
+
+            const analysis = {
+                age,
+                bmi,
+                bmiStatus: bmi ? getBMIStatus(bmi) : "",
+                bodyFat,
+                bodyFatStatus: bodyFat
+                    ? getBodyFatStatus(bodyFat, age, gender)
+                    : "",
+                basalMetabolism: bmr,
+                basalMetabolismStatus: bmr
+                    ? getBasalMetabolismStatus(bmr, gender)
+                    : "",
+                leanBodyMass,
+                leanBodyMassStatus:
+                    leanBodyMass && weight
+                        ? getLeanBodyMassStatus(leanBodyMass, weight, gender)
+                        : "",
+                bodyWaterMass: bodyWater,
+                bodyWaterMassStatus: bodyWater
+                    ? getBodyWaterMassStatus(bodyWater, gender)
+                    : "",
+                impedance,
+                impedanceStatus: impedance
+                    ? getImpedanceStatus(impedance, gender)
+                    : "",
+                metabolicAge,
+                metabolicAgeStatus:
+                    metabolicAge && age
+                        ? getMetabolicAgeStatus(metabolicAge, age)
+                        : "",
+                bellyHipRatioStatus:
+                    bel && kalca && gender
+                        ? getBellyHipRatio(bel, kalca, gender)
+                        : "",
+
+                carvonenTargetHR:
+                    restHR && carvonenZone && age
+                        ? getCarvonenTargetHR(restHR, carvonenZone, age)
+                        : "",
+                ymcaStatus:
+                    ymcaPulse && age && gender
+                        ? getYMCAResult(ymcaPulse, age, gender)
+                        : "",
+
+                bruceVO2Max: bruceVo2Str,
+                vo2Status:
+                    bruceVo2 && age && gender
+                        ? getVO2Status(bruceVo2, age, gender)
+                        : "",
+
+                sitAndReachBest: sitBest,
+                sitAndReachStatus:
+                    sitBest !== null && sitBest !== undefined && gender
+                        ? getSitAndReachStatus(sitBest, gender)
+                        : "",
+
+                pushupStatus:
+                    pushupReps && age && gender
+                        ? getPushUpScore(
+                            pushupReps,
+                            age,
+                            gender,
+                            formData.modifiedpushup === "Evet"
+                        )
+                        : "",
+                wallSitStatus:
+                    wallSitSec && gender
+                        ? getWallSitScore(wallSitSec, gender)
+                        : "",
+                plankStatus:
+                    plankSec && gender ? getPlankScore(plankSec, gender) : "",
+                mekikStatus:
+                    mekikSec && gender ? getMekikScore(mekikSec, gender) : "",
+                rmSquatStatus:
+                    rmSquatWeight && rmSquatRep
+                        ? getRmSquatScore(rmSquatWeight, rmSquatRep)
+                        : "",
+            };
+
             await addDoc(recordsColRef(), {
                 studentId: id,
                 ...formData,
+                analysis,
                 createdAt: serverTimestamp(),
             });
 
             Alert.alert("Tamamdır", "Değerlendirme kaydedildi.");
+
             router.back();
         } catch (err) {
             console.error("Kayıt hata:", err);
@@ -457,14 +1031,78 @@ export default function NewRecordScreen() {
                                 <Text style={styles.cardTitle}>Fiziksel Ölçümler (Tanita)</Text>
                             </View>
                             {renderNumericInput("weight", "Kilo (kg)")}
+
                             {renderNumericInput("bodyMassIndex", "Vücut Kitle İndeksi (VKİ)")}
+                            <InfoNote>
+                                Bu değer doğrudan Tanita cihazında görünen BMI/VKİ değeridir.
+                                Manuel hesaplama yapmana gerek yok.
+                            </InfoNote>
+                            {formData.bodyMassIndex && (
+                                <Text style={styles.infoText}>
+                                    Durum:{" "}
+                                    {getBMIStatus(Number(formData.bodyMassIndex || 0))}
+                                </Text>
+                            )}
+
                             {renderNumericInput("basalMetabolism", "Bazal Metabolizma Hızı")}
+                            {formData.basalMetabolism && (
+                                <Text style={styles.infoText}>
+                                    Durum:{" "}
+                                    {getBasalMetabolismStatus(Number(formData.basalMetabolism || 0), student?.gender)}
+                                </Text>
+                            )}
+
                             {renderNumericInput("bodyFat", "Vücut Yağ Oranı (%)")}
+                            {formData.bodyFat && (
+                                <Text style={styles.infoText}>
+                                    Durum:{" "}
+                                    {getBodyFatStatus(
+                                        Number(formData.bodyFat || 0),
+                                        getAge(),
+                                        student?.gender
+                                    )}
+                                </Text>)}
+
                             {renderNumericInput("totalMuscleMass", "Toplam Kas Kütlesi (kg)")}
+
                             {renderNumericInput("leanBodyMass", "Yağsız Kütle (kg)")}
+                            {formData.leanBodyMass && (
+                                <Text style={styles.infoText}>
+                                    Durum:{" "}
+                                    {getLeanBodyMassStatus(
+                                        Number(formData.leanBodyMass || 0),
+                                        Number(formData.weight || 0),
+                                        student?.gender
+                                    )}
+                                </Text>)}
+
                             {renderNumericInput("bodyWaterMass", "Vücut Sıvı Oranı (%)")}
+                            {formData.bodyWaterMass && (
+                                <Text style={styles.infoText}>
+                                    Durum:{" "}
+                                    {getBodyWaterMassStatus(
+                                        Number(formData.bodyWaterMass || 0),
+                                        student?.gender
+                                    )}
+                                </Text>)}
+
                             {renderNumericInput("impedance", "Empedans (Ω - Ohm)")}
+                            {formData.impedance && (
+                                <Text style={styles.infoText}>
+                                    Durum:{" "}
+                                    {getImpedanceStatus(Number(formData.impedance || 0), student?.gender)}
+                                </Text>)}
+
                             {renderNumericInput("metabolicAge", "Metabolik Yaş")}
+                            {formData.metabolicAge && (
+                                <Text style={styles.infoText}>
+                                    Durum:{" "}
+                                    {getMetabolicAgeStatus(
+                                        Number(formData.metabolicAge || 0),
+                                        getAge()
+                                    )}
+                                </Text>
+                            )}
                         </View>
 
                         {/* ÇEVRE ÖLÇÜMLERİ */}
@@ -473,6 +1111,11 @@ export default function NewRecordScreen() {
                                 <Ruler size={18} color="#22c55e" />
                                 <Text style={styles.cardTitle}>Çevre Ölçümleri (Mezura)</Text>
                             </View>
+
+                            <HintImageButton
+                                label="Bel & kalça ölçüm görselini göster"
+                                videoSource={require("@/assets/videos/belOlcum.mp4")}
+                            />
                             {renderNumericInput("boyun", "Boyun")}
                             {renderNumericInput("omuz", "Omuz")}
                             {renderNumericInput("gogus", "Göğüs")}
@@ -480,6 +1123,16 @@ export default function NewRecordScreen() {
                             {renderNumericInput("solKol", "Sol Kol")}
                             {renderNumericInput("bel", "Bel")}
                             {renderNumericInput("kalca", "Kalça")}
+                            {formData.bel && formData.kalca && (
+                                <Text style={styles.infoText}>
+                                    Bel/Kalça:{" "}
+                                    {getBellyHipRatio(
+                                        Number(formData.bel || 0),
+                                        Number(formData.kalca || 0),
+                                        student?.gender
+                                    )}
+                                </Text>)}
+
                             {renderNumericInput("sagBacak", "Sağ Bacak")}
                             {renderNumericInput("solBacak", "Sol Bacak")}
                             {renderNumericInput("sagKalf", "Sağ Kalf")}
@@ -499,17 +1152,37 @@ export default function NewRecordScreen() {
                                     Aerobik Uygunluk / Hedef KAH
                                 </Text>
                             </View>
-
                             {renderNumericInput("dinlenikNabiz", "Dinlenik Nabız")}
+
                             {renderRadioRow(
                                 "carvonenMultiplier",
                                 "Carvonen Egzersiz Şiddeti (Zone)",
                                 ["0.55", "0.65", "0.75", "0.85", "0.95"]
                             )}
+                            {formData.carvonenMultiplier && (
+                                <Text style={styles.infoText}>
+                                    Hedef Nabız:{" "}
+                                    {getCarvonenTargetHR(
+                                        Number(formData.dinlenikNabiz || formData.restingHeartRate || 0),
+                                        Number(formData.carvonenMultiplier || 0),
+                                        getAge()
+                                    )}
+                                </Text>)}
+
                             {renderNumericInput(
                                 "toparlanmaNabzi",
                                 "YMCA 3 dk Basamak Testi – Toparlanma Nabzı"
                             )}
+                            {formData.toparlanmaNabzi && (
+                                <Text style={styles.infoText}>
+                                    YMCA Sonuç:{" "}
+                                    {getYMCAResult(
+                                        Number(formData.toparlanmaNabzi || 0),
+                                        getAge(),
+                                        student?.gender
+                                    )}
+                                </Text>)}
+
 
                             <View style={[styles.field, { marginTop: 16 }]}>
                                 <Text style={styles.label}>Bruce Testi – Süre (dk)</Text>
@@ -525,6 +1198,23 @@ export default function NewRecordScreen() {
                                     Bruce testi protokolü: Koşu bandında her 3 dakikada bir hız ve
                                     eğim artar, dayanabildiği son süre kaydedilir.
                                 </Text>
+                                {formData.testSuresi && (
+                                    <Text style={styles.infoText}>
+                                        VO₂max:{" "}
+                                        {getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender)}{" "}
+                                        ml/kg/dk —{" "}
+                                        {getVO2Status(
+                                            Number(
+                                                getBruceTestVO2(
+                                                    Number(formData.testSuresi || 0),
+                                                    student?.gender
+                                                ) || 0
+                                            ),
+                                            getAge(),
+                                            student?.gender
+                                        )}
+                                    </Text>)}
+
                             </View>
                         </View>
                     </>
@@ -630,9 +1320,45 @@ export default function NewRecordScreen() {
                                 <Text style={styles.cardTitle}>Sit and Reach Testi</Text>
                             </View>
 
-                            {renderNumericInput("sitandreach1", "Değer 1")}
-                            {renderNumericInput("sitandreach2", "Değer 2")}
-                            {renderNumericInput("sitandreach3", "Değer 3")}
+                            <Text style={styles.helpText}>
+                                Üç deneme yap, en iyi değeri kullanıyoruz. Ölçümleri cm cinsinden gir.
+                            </Text>
+
+                            {renderNumericInput("sitandreach1", "1. Ölçüm (cm)")}
+                            {renderNumericInput("sitandreach2", "2. Ölçüm (cm)")}
+                            {renderNumericInput("sitandreach3", "3. Ölçüm (cm)")}
+                            {formData.sitandreach1 && formData.sitandreach2 && formData.sitandreach3 && (
+                                <Text style={styles.infoText}>
+                                    En İyi Değer:{" "}
+                                    {getMaxOfThree(
+                                        formData.sitandreach1,
+                                        formData.sitandreach2,
+                                        formData.sitandreach3
+                                    )}{" "}
+                                    | Durum:{" "}
+                                    {getMaxOfThree(
+                                        formData.sitandreach1,
+                                        formData.sitandreach2,
+                                        formData.sitandreach3
+                                    ) !== null &&
+                                        getMaxOfThree(
+                                            formData.sitandreach1,
+                                            formData.sitandreach2,
+                                            formData.sitandreach3
+                                        ) !== undefined &&
+                                        student?.gender
+                                        ? getSitAndReachStatus(
+                                            Number(
+                                                getMaxOfThree(
+                                                    formData.sitandreach1,
+                                                    formData.sitandreach2,
+                                                    formData.sitandreach3
+                                                ) || 0
+                                            ),
+                                            student.gender
+                                        )
+                                        : ""}
+                                </Text>)}
                             {renderTextArea(
                                 "sitandreachnotes",
                                 "Hangi bölgelerde gerginlik hissedildi?",
@@ -651,23 +1377,55 @@ export default function NewRecordScreen() {
                                 <Text style={styles.cardTitle}>Kuvvet Testleri</Text>
                             </View>
 
-                            {renderNumericInput(
-                                "pushup",
-                                "1 dk'da yapılan push up sayısı"
-                            )}
+                            {renderNumericInput("pushup", "1 dk'da yapılan push up sayısı")}
                             {renderRadioRow(
                                 "modifiedpushup",
                                 "Push up dizlerin üstünde mi?",
                                 ["Evet", "Hayır"]
                             )}
+                            {formData.pushup && (
+                                <Text style={styles.infoText}>
+                                    Push Up Skoru:{" "}
+                                    {getPushUpScore(
+                                        Number(formData.pushup || 0),
+                                        getAge(),
+                                        student?.gender,
+                                        formData.modifiedpushup === "Evet"
+                                    )}
+                                </Text>)}
 
                             {renderNumericInput("wallsit", "Wall Sit – Maks Saniye")}
+                            {formData.wallsit && (
+                                <Text style={styles.infoText}>
+                                    Wall Sit Skoru:{" "}
+                                    {getWallSitScore(Number(formData.wallsit || 0), student?.gender)}
+                                </Text>)}
+
                             {renderNumericInput("plank", "Plank – Maks Saniye")}
+                            {formData.plank && (
+                                <Text style={styles.infoText}>
+                                    Plank Skoru:{" "}
+                                    {getPlankScore(Number(formData.plank || 0), student?.gender)}
+                                </Text>)}
+
                             {renderNumericInput("mekik", "1 dk Mekik – Maks Tekrar")}
+                            {formData.mekik && (
+                                <Text style={styles.infoText}>
+                                    Mekik Skoru:{" "}
+                                    {getMekikScore(Number(formData.mekik || 0), student?.gender)}
+                                </Text>)}
 
                             {renderNumericInput("rmsquatweight", "1 RM Squat – Kilo (5 ve katları)")}
                             {renderNumericInput("rmsquatrep", "1 RM Squat – Tekrar (2–10)")}
-
+                            {formData.rmsquatweight && formData.rmsquatrep && (
+                                <Text style={styles.infoText}>
+                                    1RM Squat Skoru:{" "}
+                                    {getRmSquatScore(
+                                        Number(formData.rmsquatweight || 0),
+                                        Number(formData.rmsquatrep || 0)
+                                    )}
+                                </Text>
+                            )}
                             {renderTextArea("kuvvetnotes", "Kuvvet Notları")}
                         </View>
                     </>
@@ -1068,4 +1826,74 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: "600",
     },
+    infoText: {
+        marginTop: 4,
+        fontSize: 12,
+        color: "#9ca3af",
+    },
+    infoLine: {
+        flexDirection: "row",
+        alignItems: "center",
+        textAlign: "center",
+        columnGap: 6,
+        justifyContent: "flex-start",
+    },
+    infoNoteLabel: {
+        fontSize: 11,
+        color: "#38bdf8",
+        marginBottom: 2,
+    },
+    infoNoteText: {
+        fontSize: 11,
+        color: "#9ca3af",
+    },
+    hintButton: {
+        alignSelf: "flex-start",
+        marginTop: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: "#1e293b",
+        backgroundColor: "#020617",
+    },
+    hintButtonText: {
+        fontSize: 11,
+        color: "#e5e7eb",
+    },
+
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.7)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    modalContent: {
+        width: "88%",
+        maxHeight: "80%",
+        backgroundColor: "#020617",
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: "#1e293b",
+        padding: 16,
+        alignItems: "center",
+    },
+    hintVideo: {
+        width: "100%",
+        height: 260,
+        marginBottom: 12,
+    },
+    modalCloseButton: {
+        marginTop: 4,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 999,
+        backgroundColor: "#38bdf8",
+    },
+    modalCloseText: {
+        color: "#0f172a",
+        fontSize: 13,
+        fontWeight: "600",
+    },
+
 });
