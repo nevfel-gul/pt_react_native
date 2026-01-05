@@ -26,6 +26,7 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
@@ -110,6 +111,8 @@ type FormData = {
     lowBackRound: boolean;
     armsFallForward: boolean;
     overheadsquatnotes: string;
+    hasPain: boolean;
+    hadSurgery: boolean;
 
     // Sit and Reach
     sitandreach1: string;
@@ -211,6 +214,8 @@ export default function NewRecordScreen() {
         lowBackRound: false,
         armsFallForward: false,
         overheadsquatnotes: "",
+        hasPain: false,
+        hadSurgery: false,
 
         sitandreach1: "",
         sitandreach2: "",
@@ -225,6 +230,8 @@ export default function NewRecordScreen() {
         rmsquatweight: "",
         rmsquatrep: "",
         kuvvetnotes: "",
+
+
 
         assessmentDate: new Date().toISOString().split("T")[0],
     });
@@ -1310,10 +1317,10 @@ export default function NewRecordScreen() {
                                 <Switch
                                     value={formData.hasPain}
                                     onValueChange={(v) => handleChange("hasPain", v)}
-                                     trackColor={{
-      false: themeui.colors.surfaceSoft,   
-      true: themeui.colors.primary         
-    }}
+                                    trackColor={{
+                                        false: themeui.colors.surfaceSoft,
+                                        true: themeui.colors.primary
+                                    }}
                                 />
                             </View>
 
@@ -1327,10 +1334,10 @@ export default function NewRecordScreen() {
                                 <Switch
                                     value={formData.hadSurgery}
                                     onValueChange={(v) => handleChange("hadSurgery", v)}
-                                                                         trackColor={{
-      false: themeui.colors.surfaceSoft,   
-      true: themeui.colors.primary         
-    }}
+                                    trackColor={{
+                                        false: themeui.colors.surfaceSoft,
+                                        true: themeui.colors.primary
+                                    }}
                                 />
                             </View>
                         </View>
@@ -1666,10 +1673,6 @@ const styles = StyleSheet.create({
     metaText: {
         color: themeui.colors.text.secondary,
         fontSize: themeui.fontSize.sm,
-    },
-    dateText: {
-        color: "#94a3b8",
-        fontSize: 12,
     },
 
     /* FORM CARD */
