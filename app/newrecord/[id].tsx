@@ -1,4 +1,5 @@
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
+import { ResizeMode, Video } from 'expo-av';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { addDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import {
@@ -19,7 +20,9 @@ import {
     ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
+    Modal,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -271,6 +274,63 @@ export default function NewRecordScreen() {
 
         fetchStudent();
     }, [id]);
+
+    // component üstüne bir yere ekle
+    const InfoNote = ({ children }: { children: React.ReactNode }) => (
+        <View style={{ marginTop: 4 }}>
+            <Text style={styles.infoNoteLabel}>İpucu:</Text>
+            <Text style={styles.infoNoteText}>{children}</Text>
+        </View>
+    );
+
+    const HintImageButton = ({
+        label,
+        videoSource,
+    }: {
+        label: string;
+        videoSource: any;
+    }) => {
+        const [visible, setVisible] = useState(false);
+
+        return (
+            <>
+                <TouchableOpacity
+                    style={styles.hintButton}
+                    onPress={() => setVisible(true)}
+                >
+                    <Text style={styles.hintButtonText}>{label}</Text>
+                </TouchableOpacity>
+
+                <Modal
+                    visible={visible}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setVisible(false)}
+                >
+                    <View style={styles.modalBackdrop}>
+                        <View style={styles.modalContent}>
+                            <Video
+                                source={videoSource}
+                                style={styles.hintVideo}
+                                resizeMode={ResizeMode.CONTAIN}
+                                isLooping
+                                shouldPlay={visible}
+                                isMuted
+                            />
+                            <Pressable
+                                style={styles.modalCloseButton}
+                                onPress={() => setVisible(false)}
+                            >
+                                <Text style={styles.modalCloseText}>Kapat</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </Modal>
+            </>
+        );
+    };
+
+
 
     // Yaş hesaplama (doğum tarihinden, sadece yıl farkı)
     const getAge = () => {
@@ -973,6 +1033,10 @@ export default function NewRecordScreen() {
                             {renderNumericInput("weight", "Kilo (kg)")}
 
                             {renderNumericInput("bodyMassIndex", "Vücut Kitle İndeksi (VKİ)")}
+                            <InfoNote>
+                                Bu değer doğrudan Tanita cihazında görünen BMI/VKİ değeridir.
+                                Manuel hesaplama yapmana gerek yok.
+                            </InfoNote>
                             {formData.bodyMassIndex && (
                                 <Text style={styles.infoText}>
                                     Durum:{" "}
@@ -1047,6 +1111,11 @@ export default function NewRecordScreen() {
                                 <Ruler size={18} color="#22c55e" />
                                 <Text style={styles.cardTitle}>Çevre Ölçümleri (Mezura)</Text>
                             </View>
+
+                            <HintImageButton
+                                label="Bel & kalça ölçüm görselini göster"
+                                videoSource={require("@/assets/videos/belOlcum.mp4")}
+                            />
                             {renderNumericInput("boyun", "Boyun")}
                             {renderNumericInput("omuz", "Omuz")}
                             {renderNumericInput("gogus", "Göğüs")}
@@ -1769,4 +1838,62 @@ const styles = StyleSheet.create({
         columnGap: 6,
         justifyContent: "flex-start",
     },
+    infoNoteLabel: {
+        fontSize: 11,
+        color: "#38bdf8",
+        marginBottom: 2,
+    },
+    infoNoteText: {
+        fontSize: 11,
+        color: "#9ca3af",
+    },
+    hintButton: {
+        alignSelf: "flex-start",
+        marginTop: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: "#1e293b",
+        backgroundColor: "#020617",
+    },
+    hintButtonText: {
+        fontSize: 11,
+        color: "#e5e7eb",
+    },
+
+    modalBackdrop: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.7)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    modalContent: {
+        width: "88%",
+        maxHeight: "80%",
+        backgroundColor: "#020617",
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: "#1e293b",
+        padding: 16,
+        alignItems: "center",
+    },
+    hintVideo: {
+        width: "100%",
+        height: 260,
+        marginBottom: 12,
+    },
+    modalCloseButton: {
+        marginTop: 4,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 999,
+        backgroundColor: "#38bdf8",
+    },
+    modalCloseText: {
+        color: "#0f172a",
+        fontSize: 13,
+        fontWeight: "600",
+    },
+
 });
