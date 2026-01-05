@@ -1,13 +1,16 @@
+import { themeui } from "@/constants/themeui";
 import { studentsColRef } from "@/services/firestorePaths";
 import { useRouter } from "expo-router";
 import { onSnapshot, orderBy, query } from "firebase/firestore";
 import {
+  ArrowLeft,
   Bell,
   Calendar,
   Eye,
   Phone,
   Plus,
   Search,
+  Sparkles,
   Users,
   XIcon,
 } from "lucide-react-native";
@@ -35,9 +38,9 @@ type Student = {
 
 export default function KayitlarScreen() {
   const [searchTerm, setSearchTerm] = useState("");
-  const searchWidth = useRef(new Animated.Value(0)).current;
   const [searchActive, setSearchActive] = useState(false);
   const safeSearch = searchTerm ?? "";
+  const searchAnim = useRef(new Animated.Value(0)).current;
 
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,28 +49,37 @@ export default function KayitlarScreen() {
   const activeCount = students.filter((s) => s.aktif === "Aktif").length;
   const passiveCount = students.filter((s) => s.aktif === "Pasif").length;
   const [notifOpen, setNotifOpen] = useState(false);
-
-  const router = useRouter();
+  const overlayOpacity = searchAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.55],
+  });
 
   const openAnimatedSearch = () => {
     setSearchActive(true);
-    Animated.timing(searchWidth, {
-      toValue: 200,
-      duration: 220,
+    Animated.timing(searchAnim, {
+      toValue: 1,
+      duration: 300,
       useNativeDriver: false,
     }).start();
   };
 
   const closeAnimatedSearch = () => {
-    Animated.timing(searchWidth, {
-      toValue: 40,
-      duration: 220,
+    Animated.timing(searchAnim, {
+      toValue: 0,
+      duration: 300,
       useNativeDriver: false,
     }).start(() => {
       setSearchActive(false);
       setSearchTerm("");
     });
   };
+  const router = useRouter();
+
+  // Logo ve diğer iconlar için opacity animasyonu
+  const iconsOpacity = searchAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
+  });
 
   const filteredStudents = useMemo(() => {
     return students.filter((student) => {
@@ -140,242 +152,313 @@ export default function KayitlarScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* TÜM EKRANI KAPLAYAN OVERLAY - Search açıkken her yere tıklayınca kapansın */}
+      {searchActive && (
+        <TouchableWithoutFeedback onPress={closeAnimatedSearch}>
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "black",
+              opacity: overlayOpacity,
+              zIndex: 998,
+            }}
+          />
+        </TouchableWithoutFeedback>
+      )}
+
       <View style={styles.container}>
         <View style={styles.headerWrapper}>
   <View style={styles.headerTopRow}>
-
-    {/* LEFT : LOGO */}
-    <View style={styles.leftHeaderArea}>
+    {/* LEFT : LOGO - Animasyonlu opacity */}
+    <Animated.View
+      style={[styles.leftHeaderArea, { opacity: iconsOpacity }]}
+      pointerEvents={searchActive ? "none" : "auto"}
+    >
       <Text style={styles.logoText}>ATHLETRACK</Text>
-    </View>
+    </Animated.View>
 
     <View style={styles.rightHeaderArea}>
-      {/* NOTIFICATION */}
-      <TouchableOpacity
-        onPress={() => setNotifOpen(!notifOpen)}
-        style={styles.titleIconWrapper}
-      >
-        <Bell size={22} color="#f1f5f9" />
-      </TouchableOpacity>
+      {/* NOTIFICATION - Animasyonlu opacity */}
+      <Animated.View style={{ opacity: iconsOpacity }}>
+        <TouchableOpacity
+          onPress={() => setNotifOpen(!notifOpen)}
+          style={styles.titleIconWrapper}
+          disabled={searchActive}
+        >
+          <Bell size={22} color="#f1f5f9" />
+        </TouchableOpacity>
+      </Animated.View>
 
-      {/* SEARCH */}
+      {/* SEARCH - Sadece ikonu burada */}
       {!searchActive && (
         <TouchableOpacity
           onPress={openAnimatedSearch}
           style={{
             backgroundColor: "#1e293b",
             height: 40,
-            paddingHorizontal: 10,
+            width: 40,
             alignItems: "center",
             borderRadius: 99,
             justifyContent: "center",
+            marginLeft: 6,
           }}
         >
           <Search size={22} color="#f1f5f9" />
         </TouchableOpacity>
       )}
 
-      {searchActive && (
-        <Animated.View
-          style={{
-            width: searchWidth,
-            height: 40,
-            backgroundColor: "#1e293b",
-            borderRadius: 99,
-            paddingHorizontal: 10,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
+      {/* PROFILE - Animasyonlu opacity */}
+      <Animated.View style={{ opacity: iconsOpacity }}>
+        <TouchableOpacity
+          style={styles.titleIconWrapper}
+          activeOpacity={0.7}
+          onPress={() => router.push("/profile")}
+          disabled={searchActive}
         >
-          <TextInput
-            placeholder="Ara..."
-            placeholderTextColor="#94a3b8"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            style={{
-              color: "#f1f5f9",
-              flex: 1,
-            }}
-            autoFocus
-          />
-
-          <TouchableOpacity onPress={closeAnimatedSearch}>
-            <XIcon size={18} color="#f1f5f9" />
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-
-      {/* PROFILE */}
-      <TouchableOpacity
-        style={styles.titleIconWrapper}
-        activeOpacity={0.7}
-        onPress={() => router.push("/profile")}
-      >
-        <Users size={24} color="#60a5fa" />
-      </TouchableOpacity>
+          <Users size={24} color="#60a5fa" />
+        </TouchableOpacity>
+      </Animated.View>
     </View>
-          </View>
-        </View>
+
+    {/* SEARCH BAR - headerTopRow'un içinde ama dışarıda (absolute) */}
+    {searchActive && (
+  <Animated.View
+    style={{
+      position: "absolute",
+      left: 10,
+      right: 10,
+      top: 0,
+      height: 48,
+      backgroundColor: "#1e293b",
+      borderRadius: 99,
+      paddingHorizontal: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: "#475569",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+      zIndex: 999,
+      opacity: searchAnim,
+    }}
+  >
+    {/* Geri Butonu */}
+    <TouchableOpacity
+      onPress={closeAnimatedSearch}
+      style={{ marginRight: 8 }}
+    >
+      <ArrowLeft size={20} color="#f1f5f9" />
+    </TouchableOpacity>
+
+    {/* TextInput */}
+    <TextInput
+      placeholder="Öğrenci ara..."
+      placeholderTextColor="#94a3b8"
+      value={searchTerm}
+      onChangeText={setSearchTerm}
+      autoFocus
+      style={{
+        flex: 1,
+        color: "#f1f5f9",
+        fontSize: 15,
+        fontWeight: "500",
+      }}
+    />
+
+    {/* AI Butonu - SAĞ TARAF */}
+    <TouchableOpacity
+      onPress={() => {
+        // not: AI fonks buraa eklencek
+        console.log("AI butonu tıklandı");
+      }}
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 99,
+        backgroundColor: "#7c3aed", 
+        alignItems: "center",
+        justifyContent: "center",
+        marginLeft: 8,
+      }}
+    >
+      <Sparkles size={18} color="#fff" />
+    </TouchableOpacity>
+
+    {/* Temizle butonu - Sağda AI butonundan önce */}
+    {searchTerm.length > 0 && (
+      <TouchableOpacity
+        onPress={() => setSearchTerm("")}
+        style={{ marginLeft: 8 }}
+      >
+        <XIcon size={18} color="#94a3b8" />
+      </TouchableOpacity>
+    )}
+  </Animated.View>
+)}
+  </View>
+</View>
 
         {/* LİSTE */}
-        <TouchableWithoutFeedback onPress={closeAnimatedSearch}>
-          <View style={styles.listWrapper}>
-            {/* FİLTRELER */}
-            <View style={styles.filterBoxRow}>
-              <TouchableOpacity
-                onPress={() => setFilterDurum("")}
+        <View style={styles.listWrapper}>
+          {/* FİLTRELER */}
+          <View style={styles.filterBoxRow}>
+            <TouchableOpacity
+              onPress={() => setFilterDurum("")}
+              style={[
+                styles.filterBox,
+                {
+                  backgroundColor: "#0f172a",
+                },
+                filterDurum === "" && styles.filterBoxActiveALL,
+              ]}
+            >
+              <Text
                 style={[
-                  styles.filterBox,
-                  {
-                    backgroundColor: "#0f172a",
-                  },
-                  filterDurum === "" && styles.filterBoxActiveALL,
+                  styles.filterBoxNumber,
+                  filterDurum === "" && styles.filterBoxNumberActive,
                 ]}
               >
-                
-                <Text
-                  style={[
-                    styles.filterBoxNumber,
-                    filterDurum === "" && styles.filterBoxNumberActive,
-                  ]}
-                >
-                  {totalCount}
-                </Text>
-                <Text
-                  style={[
-                    styles.filterBoxText,
-                    filterDurum === "" && styles.filterBoxTextActive,
-                  ]}
-                >
-                  Tümü
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setFilterDurum("Aktif")}
+                {totalCount}
+              </Text>
+              <Text
                 style={[
-                  styles.filterBox,
-                  {
-                    backgroundColor: "#3a8b55",
-                  },
-                  filterDurum === "Aktif" && styles.filterBoxActiveA,
+                  styles.filterBoxText,
+                  filterDurum === "" && styles.filterBoxTextActive,
                 ]}
               >
-
-                <Text
-                  style={[
-                    styles.filterBoxNumber,
-                    filterDurum === "Aktif" && styles.filterBoxNumberActive,
-                  ]}
-                >
-                  {activeCount}
-                </Text>
-                <Text
-                  style={[
-                    styles.filterBoxText,
-                    filterDurum === "Aktif" && styles.filterBoxTextActive,
-                  ]}
-                >
-                  Aktif
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setFilterDurum("Pasif")}
+                Tümü
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setFilterDurum("Aktif")}
+              style={[
+                styles.filterBox,
+                {
+                  backgroundColor: "#3a8b55",
+                },
+                filterDurum === "Aktif" && styles.filterBoxActiveA,
+              ]}
+            >
+              <Text
                 style={[
-                  styles.filterBox,
-                  {
-                    backgroundColor: "#993131",
-                  },
-                  filterDurum === "Pasif" && styles.filterBoxActiveP,
+                  styles.filterBoxNumber,
+                  filterDurum === "Aktif" && styles.filterBoxNumberActive,
                 ]}
               >
+                {activeCount}
+              </Text>
+              <Text
+                style={[
+                  styles.filterBoxText,
+                  filterDurum === "Aktif" && styles.filterBoxTextActive,
+                ]}
+              >
+                Aktif
+              </Text>
+            </TouchableOpacity>
 
-                <Text
-                  style={[
-                    styles.filterBoxNumber,
-                    filterDurum === "Pasif" && styles.filterBoxNumberActive,
-                  ]}
-                >
-                  {passiveCount}
-                </Text>
-                <Text
-                  style={[
-                    styles.filterBoxText,
-                    filterDurum === "Pasif" && styles.filterBoxTextActive,
-                  ]}
-                >
-                  Pasif
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* LİSTE */}
-            {filteredStudents.length > 0 ? (
-              <FlatList
-                data={filteredStudents}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.card}
-                    onPress={() => handleViewDetails(item.id)}
-                  >
-                    <View style={styles.cardLeft}>
-                      <Text style={styles.cardName}>{item.name}</Text>
-
-                      <View style={styles.cardRow}>
-                        <Phone size={16} color="#9ca3af" />
-                        <Text style={styles.cardRowText}>{item.number}</Text>
-                      </View>
-
-                      <View style={styles.cardRow}>
-                        <Calendar size={16} color="#9ca3af" />
-                        <Text style={styles.cardRowText}>
-                          {new Date(item.assessmentDate).toLocaleDateString(
-                            "tr-TR"
-                          )}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardRight}>
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          item.aktif === "Aktif"
-                            ? styles.statusBadgeActive
-                            : styles.statusBadgeInactive,
-                        ]}
-                      >
-                        <Text
-                          style={
-                            item.aktif === "Aktif"
-                              ? styles.statusTextActive
-                              : styles.statusTextInactive
-                          }
-                        >
-                          {item.aktif}
-                        </Text>
-                      </View>
-
-                      <View style={styles.detailPill}>
-                        <Eye size={16} color="#e5e7eb" />
-                        <Text style={styles.detailPillText}>Detay</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              />
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>Sonuç yok</Text>
-                <Text style={styles.emptySubtitle}>
-                  Arama kriterlerine uygun öğrenci bulunamadı.
-                </Text>
-              </View>
-            )}
+            <TouchableOpacity
+              onPress={() => setFilterDurum("Pasif")}
+              style={[
+                styles.filterBox,
+                {
+                  backgroundColor: "#993131",
+                },
+                filterDurum === "Pasif" && styles.filterBoxActiveP,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterBoxNumber,
+                  filterDurum === "Pasif" && styles.filterBoxNumberActive,
+                ]}
+              >
+                {passiveCount}
+              </Text>
+              <Text
+                style={[
+                  styles.filterBoxText,
+                  filterDurum === "Pasif" && styles.filterBoxTextActive,
+                ]}
+              >
+                Pasif
+              </Text>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
+
+          {/* LİSTE */}
+          {filteredStudents.length > 0 ? (
+            <FlatList
+              data={filteredStudents}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.card}
+                  onPress={() => handleViewDetails(item.id)}
+                >
+                  <View style={styles.cardLeft}>
+                    <Text style={styles.cardName}>{item.name}</Text>
+
+                    <View style={styles.cardRow}>
+                      <Phone size={16} color="#9ca3af" />
+                      <Text style={styles.cardRowText}>{item.number}</Text>
+                    </View>
+
+                    <View style={styles.cardRow}>
+                      <Calendar size={16} color="#9ca3af" />
+                      <Text style={styles.cardRowText}>
+                        {new Date(item.assessmentDate).toLocaleDateString(
+                          "tr-TR"
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.cardRight}>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        item.aktif === "Aktif"
+                          ? styles.statusBadgeActive
+                          : styles.statusBadgeInactive,
+                      ]}
+                    >
+                      <Text
+                        style={
+                          item.aktif === "Aktif"
+                            ? styles.statusTextActive
+                            : styles.statusTextInactive
+                        }
+                      >
+                        {item.aktif}
+                      </Text>
+                    </View>
+
+                    <View style={styles.detailPill}>
+                      <Eye size={16} color="#e5e7eb" />
+                      <Text style={styles.detailPillText}>Detay</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>Sonuç yok</Text>
+              <Text style={styles.emptySubtitle}>
+                Arama kriterlerine uygun öğrenci bulunamadı.
+              </Text>
+            </View>
+          )}
+        </View>
 
         <TouchableOpacity style={styles.fab} onPress={handleAddStudent}>
           <Plus size={24} color="#0f172a" />
@@ -384,51 +467,55 @@ export default function KayitlarScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
   },
   container: {
     flex: 1,
     backgroundColor: "#0A0F1A",
   },
+
   headerWrapper: {
-    paddingHorizontal: 20,
-    paddingTop: 8, // daha sıkı
-    paddingBottom: 10,
-    backgroundColor: "#020617",
+    paddingHorizontal: themeui.spacing.lg,
+    paddingTop: themeui.spacing.xs + 2,
+    paddingBottom: themeui.spacing.sm,
+    backgroundColor: themeui.colors.background,
   },
 
   headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: themeui.spacing.md,
   },
+
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
   },
+
   titleIconWrapper: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "#0b1120",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.surfaceSoft,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 10,
+    marginRight: themeui.spacing.sm,
     borderWidth: 1,
-    borderColor: "#1e293b",
+    borderColor: themeui.colors.border,
   },
+
   title: {
-    fontSize: 20,
+    fontSize: themeui.fontSize.title,
     fontWeight: "700",
-    color: "#e5e7eb",
+    color: themeui.colors.text.primary,
   },
+
   subtitle: {
-    fontSize: 13,
-    color: "#9ca3af",
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.secondary,
     marginTop: 2,
   },
 
@@ -439,178 +526,192 @@ const styles = StyleSheet.create({
     marginTop: -9,
     zIndex: 1,
   },
+
   searchInput: {
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
     borderWidth: 1,
-    borderColor: "#1f2937",
-    borderRadius: 999,
-    paddingVertical: 10,
+    borderColor: themeui.colors.border,
+    borderRadius: themeui.radius.pill,
+    paddingVertical: themeui.spacing.sm - 2,
     paddingHorizontal: 40,
-    fontSize: 14,
-    color: "#e5e7eb",
+    fontSize: themeui.fontSize.md,
+    color: themeui.colors.text.primary,
   },
+
   filterRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: themeui.spacing.xs,
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: themeui.spacing.sm,
   },
+
   filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: themeui.spacing.md - 4,
+    paddingVertical: themeui.spacing.xs,
+    borderRadius: themeui.radius.pill,
     borderWidth: 1,
-    borderColor: "#1f2937",
-    backgroundColor: "#020617",
+    borderColor: themeui.colors.border,
+    backgroundColor: themeui.colors.background,
   },
   filterChipActive: {
-    backgroundColor: "#1d4ed8",
-    borderColor: "#1d4ed8",
+    backgroundColor: themeui.colors.primary,
+    borderColor: themeui.colors.primary,
   },
+
   filterChipText: {
-    fontSize: 12,
-    color: "#9ca3af",
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.secondary,
   },
   filterChipTextActive: {
-    color: "#f9fafb",
+    color: themeui.colors.text.primary,
     fontWeight: "600",
   },
+
   statsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: themeui.spacing.sm,
     marginTop: 4,
   },
+
   statCard: {
     flex: 1,
-    backgroundColor: "#020617",
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    backgroundColor: themeui.colors.background,
+    borderRadius: themeui.radius.lg,
+    paddingVertical: themeui.spacing.sm,
+    paddingHorizontal: themeui.spacing.sm,
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: themeui.colors.border,
   },
+
   statValue: {
-    fontSize: 20,
+    fontSize: themeui.fontSize.xl,
     fontWeight: "700",
+    color: themeui.colors.text.primary,
   },
+
   statLabel: {
-    fontSize: 11,
-    color: "#9ca3af",
+    fontSize: themeui.fontSize.xs,
+    color: themeui.colors.text.muted,
     marginTop: 2,
   },
+
   listWrapper: {
     flex: 1,
-    backgroundColor: "#020617",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 8,
+    backgroundColor: themeui.colors.background,
+    borderTopLeftRadius: themeui.radius.xl,
+    borderTopRightRadius: themeui.radius.xl,
+    paddingTop: themeui.spacing.xs,
   },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 80,
-    paddingTop: 12,
 
+  listContent: {
+    paddingHorizontal: themeui.spacing.md,
+    paddingBottom: 80,
+    paddingTop: themeui.spacing.sm,
   },
+
   card: {
-    backgroundColor: "#0f172a", // premium surface
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    backgroundColor: themeui.colors.surface,
+    borderRadius: themeui.radius.lg,
+    paddingVertical: themeui.spacing.sm + 2,
+    paddingHorizontal: themeui.spacing.md,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
-    marginBottom: 16, // daha fazla spacing
+    marginBottom: themeui.spacing.lg - 4,
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    gap: themeui.spacing.sm,
+    ...themeui.shadow.soft,
   },
 
-  cardLeft: {
-    flex: 1,
-  },
+  cardLeft: { flex: 1 },
+
   cardName: {
-    fontSize: 16,
+    fontSize: themeui.fontSize.lg,
     fontWeight: "600",
-    color: "#f9fafb",
-    marginBottom: 6,
+    color: themeui.colors.text.primary,
+    marginBottom: themeui.spacing.xs,
   },
+
   cardRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: themeui.spacing.xs,
     marginBottom: 3,
   },
+
   cardRowText: {
-    fontSize: 14,
-    color: "#cbd5e1",
+    fontSize: themeui.fontSize.md,
+    color: themeui.colors.text.secondary,
   },
 
   cardRight: {
     alignItems: "flex-end",
     justifyContent: "space-between",
   },
+
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
+    paddingHorizontal: themeui.spacing.sm - 4,
+    paddingVertical: themeui.spacing.xs - 2,
+    borderRadius: themeui.radius.pill,
   },
-  statusBadgeActive: {
-    backgroundColor: "rgba(34,197,94,0.18)",
-  },
-  statusBadgeInactive: {
-    backgroundColor: "rgba(248,113,113,0.18)",
-  },
+  statusBadgeActive: { backgroundColor: themeui.colors.successSoft },
+  statusBadgeInactive: { backgroundColor: themeui.colors.dangerSoft },
+
   statusTextActive: {
-    fontSize: 11,
+    fontSize: themeui.fontSize.xs,
     fontWeight: "600",
-    color: "#22C55E",
+    color: themeui.colors.success,
   },
   statusTextInactive: {
-    fontSize: 11,
+    fontSize: themeui.fontSize.xs,
     fontWeight: "600",
-    color: "#EF4444",
+    color: themeui.colors.danger,
   },
+
   detailPill: {
-    marginTop: 10,
+    marginTop: themeui.spacing.sm,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#020617",
+    gap: themeui.spacing.xs,
+    paddingHorizontal: themeui.spacing.sm,
+    paddingVertical: themeui.spacing.xs,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.background,
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: themeui.colors.border,
   },
   detailPillText: {
-    fontSize: 12,
-    color: "#e5e7eb",
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.primary,
     fontWeight: "500",
   },
+
   emptyState: {
     alignItems: "center",
     marginTop: 40,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: themeui.fontSize.lg,
     fontWeight: "600",
-    color: "#e5e7eb",
+    color: themeui.colors.text.primary,
     marginBottom: 4,
   },
   emptySubtitle: {
-    fontSize: 13,
-    color: "#9ca3af",
+    fontSize: themeui.fontSize.md - 1,
+    color: themeui.colors.text.secondary,
     textAlign: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: themeui.spacing.lg,
   },
+
   fab: {
     position: "absolute",
     right: 20,
     bottom: 20,
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: "#38bdf8",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.accent,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -619,38 +720,40 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 6,
   },
+
   searchPanel: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#0f172a",
+    backgroundColor: themeui.colors.surface,
     paddingTop: 60,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: themeui.spacing.md,
+    paddingBottom: themeui.spacing.lg - 4,
     zIndex: 999,
     borderBottomWidth: 1,
-    borderBottomColor: "#1e293b",
+    borderBottomColor: themeui.colors.border,
   },
 
   searchHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: themeui.spacing.md,
   },
+
   filterBoxRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    marginBottom: 14,
-    marginTop: 6,
+    paddingHorizontal: themeui.spacing.md,
+    marginBottom: themeui.spacing.md - 2,
+    marginTop: themeui.spacing.xs,
   },
 
   filterBox: {
     flex: 1,
     marginHorizontal: 4,
     height: 92,
-    borderRadius: 16,
+    borderRadius: themeui.radius.lg,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -660,37 +763,32 @@ const styles = StyleSheet.create({
 
   filterBoxActiveALL: {
     shadowColor: "#3B82F6",
-    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 16,
-    zIndex: -5,
     elevation: 10,
   },
+
   filterBoxActiveA: {
     shadowColor: "#82cd00",
-    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 16,
-    zIndex: -5,
     elevation: 10,
   },
-    filterBoxActiveP: {
+
+  filterBoxActiveP: {
     shadowColor: "#cd6118ff",
-    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 16,
-    zIndex: -5,
     elevation: 10,
   },
 
   filterBoxText: {
-    fontSize: 13,
+    fontSize: themeui.fontSize.sm,
     fontWeight: "600",
     color: "#EDEDED",
   },
-
   filterBoxTextActive: {
-    fontSize: 16,
+    fontSize: themeui.fontSize.lg - 2,
     fontWeight: "700",
     color: "#EDEDED",
   },
@@ -706,14 +804,15 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginBottom: 4,
   },
+
   notifPanel: {
     position: "absolute",
     top: 70,
     right: 20,
     backgroundColor: "rgba(30,30,30,0.95)",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: themeui.radius.lg,
+    paddingHorizontal: themeui.spacing.sm,
+    paddingVertical: themeui.spacing.xs,
     width: 200,
     shadowColor: "#000",
     shadowOpacity: 0.3,
@@ -724,30 +823,33 @@ const styles = StyleSheet.create({
   },
 
   notifItem: {
-    paddingVertical: 10,
+    paddingVertical: themeui.spacing.sm - 2,
   },
-logoText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#60a5fa",
+
+  logoText: {
+    fontSize: themeui.fontSize.lg,
+    fontWeight: "800",
+    color: themeui.colors.primary,
+    
   },
+
   notifText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: themeui.fontSize.lg - 2,
     fontWeight: "500",
   },
+
   leftHeaderArea: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: themeui.spacing.md - 4,
   },
-
   rightHeaderArea: {
-    width: 50,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
+    gap: themeui.spacing.xs,
+    flex: 1,
   },
-  
 });

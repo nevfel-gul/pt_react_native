@@ -1,3 +1,4 @@
+import { themeui } from "@/constants/themeui";
 import { useRouter } from "expo-router";
 import {
   Check,
@@ -86,135 +87,135 @@ export default function PremiumScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: themeui.colors.background,
   },
 
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingHorizontal: themeui.spacing.md,
+    paddingTop: themeui.spacing.sm + 4,
+    paddingBottom: themeui.spacing.sm - 4,
   },
   backButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: themeui.spacing.xs,
   },
   backText: {
-    color: "#f1f5f9",
-    fontSize: 13,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.sm,
   },
 
   hero: {
     alignItems: "center",
-    marginTop: 20,
-    marginBottom: 20,
-    paddingHorizontal: 20,
+    marginTop: themeui.spacing.lg,
+    marginBottom: themeui.spacing.lg,
+    paddingHorizontal: themeui.spacing.lg,
   },
   crownWrapper: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(250,204,21,0.15)",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.goldSoft,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    marginBottom: themeui.spacing.sm,
   },
   heroTitle: {
-    color: "#f1f5f9",
-    fontSize: 22,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.xl + 2,
     fontWeight: "800",
   },
   heroSubtitle: {
-    color: "#94a3b8",
-    fontSize: 13,
+    color: themeui.colors.text.secondary,
+    fontSize: themeui.fontSize.md - 1,
     textAlign: "center",
-    marginTop: 6,
+    marginTop: themeui.spacing.xs,
   },
 
   planCard: {
-    marginHorizontal: 16,
-    backgroundColor: "#0f172a",
-    borderRadius: 20,
+    marginHorizontal: themeui.spacing.md,
+    backgroundColor: themeui.colors.surface,
+    borderRadius: themeui.radius.xl,
     borderWidth: 1,
     borderColor: "rgba(167,139,250,0.5)",
-    padding: 20,
+    padding: themeui.spacing.lg,
+    ...themeui.shadow.soft,
   },
   planHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
+    gap: themeui.spacing.xs + 2,
+    marginBottom: themeui.spacing.sm,
   },
   planTitle: {
-    color: "#e9d5ff",
-    fontSize: 16,
+    color: "#e9d5ff", // özel premium text rengi - sabit bırakıyoruz
+    fontSize: themeui.fontSize.lg,
     fontWeight: "700",
   },
 
   priceRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    marginBottom: 16,
+    marginBottom: themeui.spacing.lg - 4,
   },
   price: {
-    color: "#f1f5f9",
+    color: themeui.colors.text.primary,
     fontSize: 32,
     fontWeight: "800",
   },
   period: {
-    color: "#94a3b8",
-    fontSize: 14,
+    color: themeui.colors.text.secondary,
+    fontSize: themeui.fontSize.md,
     marginBottom: 4,
-    marginLeft: 4,
+    marginLeft: themeui.spacing.xs - 2,
   },
 
   featureList: {
-    gap: 10,
+    gap: themeui.spacing.sm,
   },
   featureRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: themeui.spacing.sm,
   },
   checkWrapper: {
     width: 22,
     height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(34,197,94,0.15)",
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.successSoft,
     alignItems: "center",
     justifyContent: "center",
   },
   featureText: {
-    color: "#e5e7eb",
-    fontSize: 13,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.md - 1,
   },
 
   buyButton: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: "#7c3aed",
+    marginHorizontal: themeui.spacing.md,
+    marginTop: themeui.spacing.lg,
+    paddingVertical: themeui.spacing.md - 2,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.premium,
     alignItems: "center",
   },
   buyButtonText: {
-    color: "#f1f5f9",
-    fontSize: 15,
+    color: themeui.colors.text.primary,
+    fontSize: themeui.fontSize.lg - 1,
     fontWeight: "800",
   },
 
   footerNote: {
-    color: "#64748b",
-    fontSize: 11,
+    color: themeui.colors.text.muted,
+    fontSize: themeui.fontSize.xs,
     textAlign: "center",
-    marginTop: 12,
+    marginTop: themeui.spacing.sm,
   },
 });
