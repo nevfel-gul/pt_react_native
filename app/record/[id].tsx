@@ -11,7 +11,7 @@ import {
     Phone,
     SquareActivity,
     User,
-    VenusAndMars,
+    VenusAndMars
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -24,9 +24,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { db } from "@/services/firebase";
-import { studentDocRef } from "@/services/firestorePaths";
-import { doc, getDoc } from "firebase/firestore";
+import { recordDocRef, studentDocRef } from "@/services/firestorePaths";
+import { getDoc } from "firebase/firestore";
 
 type Student = {
     id: string;
@@ -42,7 +41,7 @@ type Student = {
 type RecordType = {
     id: string;
     studentId: string;
-    [key: string]: any; // geri kalan her şey dummy alanlar
+    [key: string]: any;
 };
 
 export default function RecordDetailScreen() {
@@ -62,8 +61,8 @@ export default function RecordDetailScreen() {
                 setLoading(true);
                 setError(null);
 
-                // 1) kayıt dokümanı
-                const recRef = doc(db, "records", id as string);
+                // 🔹 Kayıt: /users/{uid}/records/{id}
+                const recRef = recordDocRef(id as string);
                 const recSnap = await getDoc(recRef);
 
                 if (!recSnap.exists()) {
@@ -80,7 +79,7 @@ export default function RecordDetailScreen() {
                 };
                 setRecord(r);
 
-                // 2) öğrenci dokümanı
+                // 🔹 Öğrenci: /users/{uid}/students/{studentId}
                 if (recData.studentId) {
                     const stuRef = studentDocRef(recData.studentId);
                     const stuSnap = await getDoc(stuRef);
@@ -233,39 +232,72 @@ export default function RecordDetailScreen() {
                             <HandHeart size={18} color="#60a5fa" />
                             {"  "}Fiziksel Ölçümler (Tanita)
                         </Text>
+
                         <InfoRow label="Kilo" value={formatVal(record.weight, "kg")} />
+                        {/* Kilo için özel analiz yok, geçiyoruz */}
+
                         <InfoRow
                             label="Vücut Yağ Oranı"
                             value={formatVal(record.bodyFat, "%")}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.bodyFatStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Vücut Kitle İndeksi (BMI)"
                             value={formatVal(record.bodyMassIndex)}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.bmiStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Bazal Metabolizma"
                             value={formatVal(record.basalMetabolism, "kcal")}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.basalMetabolismStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Toplam Kas Kütlesi"
                             value={formatVal(record.totalMuscleMass, "kg")}
                         />
+                        {/* Toplam kas için ayrı analiz yok */}
+
                         <InfoRow
                             label="Yağsız Vücut Kütlesi"
                             value={formatVal(record.leanBodyMass, "kg")}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.leanBodyMassStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Vücut Su Oranı"
-                            value={formatVal(record.bodyWaterMass, "kg")}
+                            value={formatVal(record.bodyWaterMass, "%")}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.bodyWaterMassStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Metabolizma Yaşı"
                             value={record.metabolicAge?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.metabolicAgeStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Empedans"
                             value={record.impedance?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Durum: {record.analysis?.impedanceStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Bel-Kalça Oranı (ham değerler)"
                             value={
@@ -274,14 +306,19 @@ export default function RecordDetailScreen() {
                                     : "-"
                             }
                         />
+                        <Text style={styles.analysisText}>
+                            Yorum: {record.analysis?.bellyHipRatioStatus || "-"}
+                        </Text>
                     </View>
+
 
                     {/* ÇEVRE ÖLÇÜMLERİ */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Çevre Ölçümleri</Text>
                         <InfoRow label="Boyun" value={formatVal(record.boyun, "cm")} />
                         <InfoRow label="Omuz" value={formatVal(record.omuz, "cm")} />
-                        <InfoRow label="Göğüs" value={formatVal(record.göğüs, "cm")} />
+                        {/* NewRecordScreen'deki alan adı "gogus" */}
+                        <InfoRow label="Göğüs" value={formatVal(record.gogus, "cm")} />
                         <InfoRow label="Sağ Kol" value={formatVal(record.sagKol, "cm")} />
                         <InfoRow label="Sol Kol" value={formatVal(record.solKol, "cm")} />
                         <InfoRow label="Bel" value={formatVal(record.bel, "cm")} />
@@ -309,79 +346,279 @@ export default function RecordDetailScreen() {
                         />
                     </View>
 
-                    {/* AEROBİK TESTLER (DUMMY) */}
+                    {/* AEROBİK TESTLER */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>
                             <SquareActivity size={18} color="#60a5fa" />
-                            {"  "}Aerobik Testler (dummy)
+                            {"  "}Aerobik Testler
                         </Text>
+
                         <InfoRow
                             label="Dinlenik Nabız"
                             value={record.dinlenikNabiz?.toString() ?? "-"}
                         />
+                        {/* Direkt veri, ekstra yorum yok */}
+
                         <InfoRow
-                            label="Toparlanma Nabzı"
+                            label="Carvonen (Zone)"
+                            value={record.carvonenMultiplier?.toString() ?? "-"}
+                        />
+                        <Text style={styles.analysisText}>
+                            Hedef Nabız:{" "}
+                            {record.analysis?.carvonenTargetHR
+                                ? `${record.analysis.carvonenTargetHR} atım/dk`
+                                : "-"}
+                        </Text>
+
+                        <InfoRow
+                            label="YMCA 3dk Toparlanma Nabzı"
                             value={record.toparlanmaNabzi?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            YMCA Sonuç: {record.analysis?.ymcaStatus || "-"}
+                        </Text>
+
                         <InfoRow
-                            label="Bruce Test Süresi"
+                            label="Bruce Test Süresi (dk)"
                             value={record.testSuresi?.toString() ?? "-"}
                         />
-                        {/* İleride: Carvonen, YMCA, VO2 vs buralara gelir */}
+                        <Text style={styles.analysisText}>
+                            VO₂max:{" "}
+                            {record.analysis?.bruceVO2Max
+                                ? `${record.analysis.bruceVO2Max} ml/kg/dk`
+                                : "-"}{" "}
+                            — {record.analysis?.vo2Status || "-"}
+                        </Text>
                     </View>
 
-                    {/* HAREKET & POSTÜR (DUMMY) */}
+
+                    {/* HAREKET & POSTÜR */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>
                             <PersonStanding size={18} color="#60a5fa" />
-                            {"  "}Hareket & Postür (dummy)
+                            {"  "}Hareket & Postür
                         </Text>
                         <InfoRow
                             label="Ayak / Ayak Bileği (Önden)"
                             value={record.ayakveayakbilegionden || "-"}
+                            multiline
                         />
                         <InfoRow
                             label="Ayak / Ayak Bileği (Yandan)"
                             value={record.ayakveayakbilegiyandan || "-"}
+                            multiline
                         />
                         <InfoRow
                             label="Ayak / Ayak Bileği (Arkadan)"
                             value={record.ayakveayakbilegiarkadan || "-"}
+                            multiline
                         />
-                        {/* Diğer diz, LPH, omuz vb. alanları da aynı mantıkla eklersin */}
+
                         <InfoRow
-                            label="Notlar (Overhead Squat)"
+                            label="Diz (Önden)"
+                            value={record.dizonden || "-"}
+                            multiline
+                        />
+                        <InfoRow
+                            label="Diz (Yandan)"
+                            value={record.dizyandan || "-"}
+                            multiline
+                        />
+                        <InfoRow
+                            label="Diz (Arkadan)"
+                            value={record.dizarkadan || "-"}
+                            multiline
+                        />
+
+                        <InfoRow
+                            label="LPHK (Önden)"
+                            value={record.lphkonden || "-"}
+                            multiline
+                        />
+                        <InfoRow
+                            label="LPHK (Yandan)"
+                            value={record.lphkyandan || "-"}
+                            multiline
+                        />
+                        <InfoRow
+                            label="LPHK (Arkadan)"
+                            value={record.lphkarkadan || "-"}
+                            multiline
+                        />
+
+                        <InfoRow
+                            label="Omuzlar (Önden)"
+                            value={record.omuzlaronden || "-"}
+                            multiline
+                        />
+                        <InfoRow
+                            label="Omuzlar (Yandan)"
+                            value={record.omuzlaryandan || "-"}
+                            multiline
+                        />
+                        <InfoRow
+                            label="Omuzlar (Arkadan)"
+                            value={record.omuzlararkadan || "-"}
+                            multiline
+                        />
+
+                        <InfoRow
+                            label="Baş & Boyun (Önden)"
+                            value={record.basboyunonden || "-"}
+                            multiline
+                        />
+                        <InfoRow
+                            label="Baş & Boyun (Yandan)"
+                            value={record.basboyunyandan || "-"}
+                            multiline
+                        />
+                        <InfoRow
+                            label="Baş & Boyun (Arkadan)"
+                            value={record.basboyunarkadan || "-"}
+                            multiline
+                        />
+
+                        <InfoRow
+                            label="Pronation Distortion Syndrome"
+                            value={record.pronation || "-"}
+                        />
+                        <InfoRow
+                            label="Lower Crossed Syndrome"
+                            value={record.lower || "-"}
+                        />
+                        <InfoRow
+                            label="Upper Crossed Syndrome"
+                            value={record.upper || "-"}
+                        />
+                    </View>
+
+                    {/* OVERHEAD SQUAT + SIT & REACH */}
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Overhead Squat Testi</Text>
+                        <InfoRow
+                            label="Foot Turns Out"
+                            value={boolBadge(record.footTurnsOut)}
+                        />
+                        <InfoRow
+                            label="Knee Moves Inward"
+                            value={boolBadge(record.kneeMovesInward)}
+                        />
+                        <InfoRow
+                            label="Knee Moves Outward"
+                            value={boolBadge(record.kneeMovesOutward)}
+                        />
+                        <InfoRow
+                            label="Excessive Forward Lean"
+                            value={boolBadge(record.excessiveForwardLean)}
+                        />
+                        <InfoRow
+                            label="Low Back Arches"
+                            value={boolBadge(record.lowBackArches)}
+                        />
+                        <InfoRow
+                            label="Low Back Round"
+                            value={boolBadge(record.lowBackRound)}
+                        />
+                        <InfoRow
+                            label="Arms Fall Forward"
+                            value={boolBadge(record.armsFallForward)}
+                        />
+                        <InfoRow
+                            label="Notlar"
                             value={record.overheadsquatnotes || "-"}
                             multiline
                         />
                     </View>
 
-                    {/* KUVVET TESTLERİ (DUMMY) */}
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Sit and Reach Testi</Text>
+
+                        <InfoRow
+                            label="Değer 1"
+                            value={formatVal(record.sitandreach1)}
+                        />
+                        <InfoRow
+                            label="Değer 2"
+                            value={formatVal(record.sitandreach2)}
+                        />
+                        <InfoRow
+                            label="Değer 3"
+                            value={formatVal(record.sitandreach3)}
+                        />
+                        <InfoRow
+                            label="Hissedilen Gerginlik"
+                            value={record.sitandreachnotes || "-"}
+                            multiline
+                        />
+                        <Text
+                            style={[
+                                styles.analysisText,
+                                {
+                                    borderTopColor: "#0f172a", borderTopWidth: 1, paddingVertical: 6,
+                                }
+                            ]}
+                        >
+                            En İyi Değer:{" "}
+                            {record.analysis?.sitAndReachBest != null
+                                ? `${record.analysis.sitAndReachBest} cm`
+                                : "-"}
+                            {"  "} |  Durum: {record.analysis?.sitAndReachStatus || "-"}
+                        </Text>
+                    </View>
+
+
+                    {/* KUVVET TESTLERİ */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>
                             <BicepsFlexed size={18} color="#60a5fa" />
-                            {"  "}Kuvvet Testleri (dummy)
+                            {"  "}Kuvvet Testleri
                         </Text>
+
                         <InfoRow
                             label="Push up (1 dk)"
                             value={record.pushup?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Push up Skoru: {record.analysis?.pushupStatus || "-"}
+                        </Text>
+
                         <InfoRow
-                            label="Diz Üstü mü?"
-                            value={record.modifiedpushup ? "Evet" : "Hayır"}
+                            label="Push up diz üstü mü?"
+                            value={
+                                typeof record.modifiedpushup === "string"
+                                    ? record.modifiedpushup
+                                    : record.modifiedpushup === true
+                                        ? "Evet"
+                                        : record.modifiedpushup === false
+                                            ? "Hayır"
+                                            : "-"
+                            }
                         />
+
                         <InfoRow
                             label="Wall Sit (sn)"
                             value={record.wallsit?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Wall Sit Skoru: {record.analysis?.wallSitStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Plank (sn)"
                             value={record.plank?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Plank Skoru: {record.analysis?.plankStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Mekik (1 dk)"
                             value={record.mekik?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            Mekik Skoru: {record.analysis?.mekikStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="1RM Squat - Kilo"
                             value={record.rmsquatweight?.toString() ?? "-"}
@@ -390,12 +627,17 @@ export default function RecordDetailScreen() {
                             label="1RM Squat - Tekrar"
                             value={record.rmsquatrep?.toString() ?? "-"}
                         />
+                        <Text style={styles.analysisText}>
+                            1RM Squat Skoru: {record.analysis?.rmSquatStatus || "-"}
+                        </Text>
+
                         <InfoRow
                             label="Kuvvet Notları"
                             value={record.kuvvetnotes || "-"}
                             multiline
                         />
                     </View>
+
                 </ScrollView>
             </View>
         </SafeAreaView>
@@ -438,6 +680,13 @@ function formatVal(v: any, unit?: string) {
     if (unit) return `${v} ${unit}`;
     return String(v);
 }
+
+function boolBadge(v: any): string {
+    if (v === true) return "Evet";
+    if (v === false) return "Hayır";
+    return "-";
+}
+
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
@@ -583,4 +832,12 @@ const styles = StyleSheet.create({
         maxWidth: "55%",
         textAlign: "right",
     },
+    analysisText: {
+        marginTop: 2,
+        marginBottom: 8,
+        fontSize: 12,
+        color: "#9ca3af",
+    },
+
 });
+
