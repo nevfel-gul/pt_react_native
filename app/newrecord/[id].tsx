@@ -1,3 +1,5 @@
+import { themeui } from "@/constants/themeui";
+import { auth } from "@/services/firebase";
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { ResizeMode, Video } from 'expo-av';
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -25,6 +27,7 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
@@ -109,6 +112,8 @@ type FormData = {
     lowBackRound: boolean;
     armsFallForward: boolean;
     overheadsquatnotes: string;
+    hasPain: boolean;
+    hadSurgery: boolean;
 
     // Sit and Reach
     sitandreach1: string;
@@ -210,6 +215,8 @@ export default function NewRecordScreen() {
         lowBackRound: false,
         armsFallForward: false,
         overheadsquatnotes: "",
+        hasPain: false,
+        hadSurgery: false,
 
         sitandreach1: "",
         sitandreach2: "",
@@ -224,6 +231,8 @@ export default function NewRecordScreen() {
         rmsquatweight: "",
         rmsquatrep: "",
         kuvvetnotes: "",
+
+
 
         assessmentDate: new Date().toISOString().split("T")[0],
     });
@@ -249,7 +258,7 @@ export default function NewRecordScreen() {
         const fetchStudent = async () => {
             if (!id) return;
             try {
-                const ref = studentDocRef(id);
+                const ref = studentDocRef(auth.currentUser?.uid!, id);
                 const snap = await getDoc(ref);
                 if (snap.exists()) {
                     const data = snap.data() as any;
@@ -853,7 +862,7 @@ export default function NewRecordScreen() {
                         : "",
             };
 
-            await addDoc(recordsColRef(), {
+            await addDoc(recordsColRef(auth.currentUser?.uid!), {
                 studentId: id,
                 ...formData,
                 analysis,
@@ -1299,19 +1308,39 @@ export default function NewRecordScreen() {
                                 <Text style={styles.cardTitle}>Overhead Squat Testi</Text>
                             </View>
 
-                            <Text style={styles.label}>Yapılan Hatalar</Text>
-                            {renderCheckboxRow("footTurnsOut", "Foot Turns Out")}
-                            {renderCheckboxRow("kneeMovesInward", "Knee Moves Inward")}
-                            {renderCheckboxRow("kneeMovesOutward", "Knee Moves Outward")}
-                            {renderCheckboxRow(
-                                "excessiveForwardLean",
-                                "Excessive Forward Lean"
-                            )}
-                            {renderCheckboxRow("lowBackArches", "Low Back Arches")}
-                            {renderCheckboxRow("lowBackRound", "Low Back Round")}
-                            {renderCheckboxRow("armsFallForward", "Arms Fall Forward")}
+                            <View style={styles.switchRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.label}>Ağrı var mı?</Text>
+                                    <Text style={styles.helpText}>
+                                        Bel, diz, omuz gibi bölgelerde düzenli ağrı?
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={formData.hasPain}
+                                    onValueChange={(v) => handleChange("hasPain", v)}
+                                    trackColor={{
+                                        false: themeui.colors.surfaceSoft,
+                                        true: themeui.colors.primary
+                                    }}
+                                />
+                            </View>
 
-                            {renderTextArea("overheadsquatnotes", "Notlar", "...")}
+                            <View style={styles.switchRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.label}>Ameliyat geçmişi?</Text>
+                                    <Text style={styles.helpText}>
+                                        Son yıllarda ortopedik veya başka bir ameliyat.
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={formData.hadSurgery}
+                                    onValueChange={(v) => handleChange("hadSurgery", v)}
+                                    trackColor={{
+                                        false: themeui.colors.surfaceSoft,
+                                        true: themeui.colors.primary
+                                    }}
+                                />
+                            </View>
                         </View>
 
                         <View style={styles.card}>
@@ -1547,175 +1576,185 @@ export default function NewRecordScreen() {
 }
 
 /* ------------------- STYLES ------------------- */
-
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: "#020617",
+        backgroundColor: themeui.colors.background,
     },
     container: {
         flex: 1,
-        backgroundColor: "#020617",
+        backgroundColor: themeui.colors.background,
     },
     center: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        padding: 20,
+        padding: themeui.spacing.lg,
     },
     loadingText: {
-        color: "#94a3b8",
-        marginTop: 10,
+        color: themeui.colors.text.secondary,
+        marginTop: themeui.spacing.xs + 4,
     },
     errorText: {
-        color: "#f87171",
-        marginBottom: 10,
+        color: themeui.colors.danger,
+        marginBottom: themeui.spacing.xs + 4,
     },
 
     header: {
-        paddingHorizontal: 16,
-        paddingTop: 14,
-        paddingBottom: 6,
+        paddingHorizontal: themeui.spacing.md,
+        paddingTop: themeui.spacing.sm + 4,
+        paddingBottom: themeui.spacing.xs,
     },
     headerTopRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 14,
+        marginBottom: themeui.spacing.md - 2,
     },
     backButton: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 999,
-        backgroundColor: "#0f172a",
+        gap: themeui.spacing.xs,
+        paddingHorizontal: themeui.spacing.sm,
+        paddingVertical: themeui.spacing.xs,
+        borderRadius: themeui.radius.pill,
+        backgroundColor: themeui.colors.surface,
         borderWidth: 1,
-        borderColor: "#1e293b",
+        borderColor: themeui.colors.border,
     },
     backButtonText: {
-        color: "#f1f5f9",
-        fontSize: 13,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.sm,
+    },
+    dateRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: themeui.spacing.xs,
+    },
+    dateText: {
+        color: themeui.colors.text.secondary,
+        fontSize: themeui.fontSize.xs,
     },
 
     studentRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 14,
-        marginTop: 6,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        gap: themeui.spacing.md,
+        marginTop: themeui.spacing.xs,
     },
     avatar: {
         width: 52,
         height: 52,
-        borderRadius: 26,
-        backgroundColor: "#60a5fa",
+        borderRadius: themeui.radius.pill,
+        backgroundColor: themeui.colors.primary,
         justifyContent: "center",
         alignItems: "center",
     },
     avatarText: {
-        color: "#0f172a",
+        color: themeui.colors.surface,
         fontSize: 20,
         fontWeight: "700",
     },
     studentName: {
-        color: "#f1f5f9",
-        fontSize: 18,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.lg + 2,
         fontWeight: "700",
     },
     studentMetaRow: {
         flexDirection: "row",
         flexWrap: "wrap",
-        gap: 10,
-        marginTop: 4,
+        gap: themeui.spacing.sm,
+        marginTop: themeui.spacing.xs,
     },
     metaItem: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 4,
+        gap: themeui.spacing.xs - 2,
     },
     metaText: {
-        color: "#94a3b8",
-        fontSize: 12,
-    },
-    dateText: {
-        color: "#94a3b8",
-        fontSize: 12,
+        color: themeui.colors.text.secondary,
+        fontSize: themeui.fontSize.sm,
     },
 
-    formWrapper: {
-        flex: 1,
-    },
+    /* FORM CARD */
+    formWrapper: { flex: 1 },
 
     card: {
-        marginHorizontal: 16,
-        marginBottom: 12,
-        backgroundColor: "#0f172a",
-        borderRadius: 18,
+        marginHorizontal: themeui.spacing.md,
+        marginBottom: themeui.spacing.sm,
+        backgroundColor: themeui.colors.surface,
+        borderRadius: themeui.radius.lg,
         borderWidth: 1,
-        borderColor: "#1e293b",
-        padding: 16,
+        borderColor: themeui.colors.border,
+        padding: themeui.spacing.md,
+        ...themeui.shadow.soft,
     },
     cardTitleRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 8,
-        marginBottom: 12,
+        gap: themeui.spacing.xs + 2,
+        marginBottom: themeui.spacing.md - 4,
     },
     cardTitle: {
-        color: "#f1f5f9",
-        fontSize: 15,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.lg - 1,
         fontWeight: "600",
     },
 
-    field: {
-        marginTop: 10,
-    },
+    /* INPUTS */
+    field: { marginTop: themeui.spacing.sm - 2 },
     label: {
-        color: "#f1f5f9",
-        fontSize: 12,
-        marginBottom: 5,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.sm,
+        marginBottom: themeui.spacing.xs,
     },
     input: {
         borderWidth: 1,
-        borderColor: "#1e293b",
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 13,
-        backgroundColor: "#020617",
-        color: "#f1f5f9",
+        borderColor: themeui.colors.border,
+        borderRadius: themeui.radius.md,
+        paddingHorizontal: themeui.spacing.sm,
+        paddingVertical: themeui.spacing.xs + 4,
+        fontSize: themeui.fontSize.md - 1,
+        backgroundColor: themeui.colors.surface,
+        color: themeui.colors.text.primary,
     },
     inputMultiline: {
         minHeight: 80,
         textAlignVertical: "top",
     },
     helpText: {
-        color: "#64748b",
-        fontSize: 11,
-        marginTop: 4,
+        color: themeui.colors.text.muted,
+        fontSize: themeui.fontSize.xs,
+        marginTop: themeui.spacing.xs - 2,
+    },
+
+    /* SWITCH ROW */
+    switchRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginTop: themeui.spacing.sm,
+        paddingVertical: themeui.spacing.xs - 2,
     },
 
     submitWrapper: {
-        paddingHorizontal: 18,
-        paddingVertical: 12,
-        backgroundColor: "#020617",
+        paddingHorizontal: themeui.spacing.md + 2,
+        paddingVertical: themeui.spacing.sm,
+        backgroundColor: themeui.colors.background,
     },
     saveButton: {
-        backgroundColor: "#38bdf8",
-        borderRadius: 999,
-        paddingVertical: 14,
+        backgroundColor: themeui.colors.accent,
+        borderRadius: themeui.radius.pill,
+        paddingVertical: themeui.spacing.md - 2,
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        gap: 8,
-        flex: 1,
+        gap: themeui.spacing.xs + 2,
+        opacity: 0.9,
     },
     saveButtonText: {
-        color: "#0f172a",
-        fontSize: 14,
+        color: themeui.colors.surface,
+        fontSize: themeui.fontSize.md,
         fontWeight: "700",
     },
 

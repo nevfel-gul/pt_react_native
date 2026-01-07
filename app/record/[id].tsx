@@ -1,5 +1,5 @@
 // app/record/[id].tsx
-
+import { themeui } from "@/constants/themeui";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     ArrowLeft,
@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { auth } from "@/services/firebase";
 import { recordDocRef, studentDocRef } from "@/services/firestorePaths";
 import { getDoc } from "firebase/firestore";
 
@@ -62,7 +63,7 @@ export default function RecordDetailScreen() {
                 setError(null);
 
                 // 🔹 Kayıt: /users/{uid}/records/{id}
-                const recRef = recordDocRef(id as string);
+                const recRef = recordDocRef(auth.currentUser?.uid!, id as string);
                 const recSnap = await getDoc(recRef);
 
                 if (!recSnap.exists()) {
@@ -81,7 +82,7 @@ export default function RecordDetailScreen() {
 
                 // 🔹 Öğrenci: /users/{uid}/students/{studentId}
                 if (recData.studentId) {
-                    const stuRef = studentDocRef(recData.studentId);
+                    const stuRef = studentDocRef(auth.currentUser?.uid!, recData.studentId);
                     const stuSnap = await getDoc(stuRef);
                     if (stuSnap.exists()) {
                         const s = stuSnap.data() as any;
@@ -204,6 +205,7 @@ export default function RecordDetailScreen() {
                             icon={<Mail size={16} color="#9ca3af" />}
                             label="Email"
                             value={student?.email || "-"}
+                            firstLine={true}
                         />
                         <InfoRow
                             icon={<Phone size={16} color="#9ca3af" />}
@@ -233,7 +235,7 @@ export default function RecordDetailScreen() {
                             {"  "}Fiziksel Ölçümler (Tanita)
                         </Text>
 
-                        <InfoRow label="Kilo" value={formatVal(record.weight, "kg")} />
+                        <InfoRow label="Kilo" value={formatVal(record.weight, "kg")} firstLine={true} />
                         {/* Kilo için özel analiz yok, geçiyoruz */}
 
                         <InfoRow
@@ -315,7 +317,7 @@ export default function RecordDetailScreen() {
                     {/* ÇEVRE ÖLÇÜMLERİ */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Çevre Ölçümleri</Text>
-                        <InfoRow label="Boyun" value={formatVal(record.boyun, "cm")} />
+                        <InfoRow label="Boyun" value={formatVal(record.boyun, "cm")} firstLine={true} />
                         <InfoRow label="Omuz" value={formatVal(record.omuz, "cm")} />
                         {/* NewRecordScreen'deki alan adı "gogus" */}
                         <InfoRow label="Göğüs" value={formatVal(record.gogus, "cm")} />
@@ -356,6 +358,7 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             label="Dinlenik Nabız"
                             value={record.dinlenikNabiz?.toString() ?? "-"}
+                            firstLine={true}
                         />
                         {/* Direkt veri, ekstra yorum yok */}
 
@@ -402,6 +405,7 @@ export default function RecordDetailScreen() {
                             label="Ayak / Ayak Bileği (Önden)"
                             value={record.ayakveayakbilegionden || "-"}
                             multiline
+                            firstLine={true}
                         />
                         <InfoRow
                             label="Ayak / Ayak Bileği (Yandan)"
@@ -498,6 +502,7 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             label="Foot Turns Out"
                             value={boolBadge(record.footTurnsOut)}
+                            firstLine={true}
                         />
                         <InfoRow
                             label="Knee Moves Inward"
@@ -536,6 +541,7 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             label="Değer 1"
                             value={formatVal(record.sitandreach1)}
+                            firstLine={true}
                         />
                         <InfoRow
                             label="Değer 2"
@@ -577,6 +583,7 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             label="Push up (1 dk)"
                             value={record.pushup?.toString() ?? "-"}
+                            firstLine={true}
                         />
                         <Text style={styles.analysisText}>
                             Push up Skoru: {record.analysis?.pushupStatus || "-"}
@@ -651,14 +658,16 @@ function InfoRow({
     label,
     value,
     multiline,
+    firstLine
 }: {
     icon?: React.ReactNode;
     label: string;
     value: string;
     multiline?: boolean;
+    firstLine?: boolean;
 }) {
     return (
-        <View style={[styles.infoRow, multiline && { alignItems: "flex-start" }]}>
+        <View style={[firstLine ? styles.infoRowFirstLine : styles.infoRow, multiline && { alignItems: "flex-start" }]}>
             <View style={styles.infoLabelRow}>
                 {icon}
                 <Text style={styles.infoLabelText}>{label}</Text>
@@ -690,138 +699,150 @@ function boolBadge(v: any): string {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: "#020617",
+        backgroundColor: themeui.colors.background,
     },
     container: {
         flex: 1,
-        backgroundColor: "#020617",
+        backgroundColor: themeui.colors.background,
     },
     center: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#020617",
+        backgroundColor: themeui.colors.background,
     },
+
     loadingText: {
-        color: "#e5e7eb",
-        marginTop: 8,
+        color: themeui.colors.text.secondary,
+        marginTop: themeui.spacing.xs + 2,
     },
     errorText: {
-        color: "#fca5a5",
-        marginBottom: 12,
+        color: themeui.colors.danger,
+        marginBottom: themeui.spacing.sm,
     },
+
+    /* HEADER */
     header: {
-        paddingHorizontal: 16,
-        paddingTop: 14,
-        paddingBottom: 10,
+        paddingHorizontal: themeui.spacing.md,
+        paddingTop: themeui.spacing.sm + 4,
+        paddingBottom: themeui.spacing.xs + 4,
     },
     headerTopRow: {
         flexDirection: "row",
         justifyContent: "flex-start",
         alignItems: "center",
-        marginBottom: 12,
+        marginBottom: themeui.spacing.sm,
     },
+
     backButton: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 999,
-        backgroundColor: "#020617",
+        gap: themeui.spacing.xs,
+        paddingHorizontal: themeui.spacing.sm - 2,
+        paddingVertical: themeui.spacing.xs,
+        borderRadius: themeui.radius.pill,
+        backgroundColor: themeui.colors.background,
         borderWidth: 1,
-        borderColor: "#1f2937",
+        borderColor: themeui.colors.border,
     },
     backButtonText: {
-        color: "#e5e7eb",
-        fontSize: 13,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.sm,
     },
+
+    /* STUDENT */
     studentRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
-        marginTop: 4,
+        gap: themeui.spacing.sm + 2,
+        marginTop: themeui.spacing.xs,
     },
     avatar: {
         width: 60,
         height: 60,
-        borderRadius: 30,
-        backgroundColor: "#1d4ed8",
+        borderRadius: themeui.radius.pill,
+        backgroundColor: themeui.colors.primary,
         alignItems: "center",
         justifyContent: "center",
     },
     avatarText: {
-        color: "#f9fafb",
+        color: themeui.colors.text.primary,
         fontSize: 24,
         fontWeight: "700",
     },
     studentName: {
-        color: "#f9fafb",
-        fontSize: 20,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.title,
         fontWeight: "700",
     },
     studentMeta: {
-        color: "#9ca3af",
+        color: themeui.colors.text.muted,
         marginTop: 2,
     },
-    statusRow: {
-        marginTop: 4,
-    },
+
+    statusRow: { marginTop: themeui.spacing.xs },
     statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 999,
+        paddingHorizontal: themeui.spacing.sm - 4,
+        paddingVertical: themeui.spacing.xs - 2,
+        borderRadius: themeui.radius.pill,
     },
-    statusBadgeActive: {
-        backgroundColor: "rgba(22,163,74,0.15)",
-    },
-    statusBadgeInactive: {
-        backgroundColor: "rgba(248,113,113,0.15)",
-    },
+    statusBadgeActive: { backgroundColor: themeui.colors.successSoft },
+    statusBadgeInactive: { backgroundColor: themeui.colors.dangerSoft },
+
     statusTextActive: {
-        color: "#4ade80",
-        fontSize: 11,
+        color: themeui.colors.success,
+        fontSize: themeui.fontSize.xs,
         fontWeight: "600",
     },
     statusTextInactive: {
-        color: "#fca5a5",
-        fontSize: 11,
+        color: themeui.colors.danger,
+        fontSize: themeui.fontSize.xs,
         fontWeight: "600",
     },
+
+    /* CARD */
     card: {
-        marginHorizontal: 16,
-        marginBottom: 10,
-        backgroundColor: "#020617",
-        borderRadius: 18,
+        marginHorizontal: themeui.spacing.md,
+        marginBottom: themeui.spacing.sm,
+        backgroundColor: themeui.colors.surface,
+        borderRadius: themeui.radius.lg,
         borderWidth: 1,
-        borderColor: "#1f2937",
-        padding: 14,
+        borderColor: themeui.colors.border,
+        padding: themeui.spacing.md - 2,
+        ...themeui.shadow.soft,
     },
     cardTitle: {
-        color: "#e5e7eb",
-        fontSize: 15,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.lg - 1,
         fontWeight: "600",
-        marginBottom: 8,
+        marginBottom: themeui.spacing.xs,
     },
+
     infoRow: {
         flexDirection: "row",
         justifyContent: "space-between",
-        paddingVertical: 6,
+        paddingVertical: themeui.spacing.xs,
         borderTopWidth: 1,
-        borderTopColor: "#0f172a",
+        borderTopColor: themeui.colors.surfaceSoft,
     },
+    infoRowFirstLine: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        paddingVertical: themeui.spacing.xs,
+    },
+
     infoLabelRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
+        gap: themeui.spacing.xs,
     },
     infoLabelText: {
-        color: "#9ca3af",
-        fontSize: 12,
+        color: themeui.colors.text.muted,
+        fontSize: themeui.fontSize.sm,
     },
     infoValueText: {
-        color: "#e5e7eb",
-        fontSize: 13,
+        color: themeui.colors.text.primary,
+        fontSize: themeui.fontSize.md - 1,
         fontWeight: "500",
         maxWidth: "55%",
         textAlign: "right",
