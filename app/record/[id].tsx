@@ -205,6 +205,7 @@ export default function RecordDetailScreen() {
                             icon={<Mail size={16} color="#9ca3af" />}
                             label="Email"
                             value={student?.email || "-"}
+                            firstLine={true}
                         />
                         <InfoRow
                             icon={<Phone size={16} color="#9ca3af" />}
@@ -234,7 +235,7 @@ export default function RecordDetailScreen() {
                             {"  "}Fiziksel Ölçümler (Tanita)
                         </Text>
 
-                        <InfoRow label="Kilo" value={formatVal(record.weight, "kg")} />
+                        <InfoRow label="Kilo" value={formatVal(record.weight, "kg")} firstLine={true} />
                         {/* Kilo için özel analiz yok, geçiyoruz */}
 
                         <InfoRow
@@ -316,7 +317,7 @@ export default function RecordDetailScreen() {
                     {/* ÇEVRE ÖLÇÜMLERİ */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Çevre Ölçümleri</Text>
-                        <InfoRow label="Boyun" value={formatVal(record.boyun, "cm")} />
+                        <InfoRow label="Boyun" value={formatVal(record.boyun, "cm")} firstLine={true} />
                         <InfoRow label="Omuz" value={formatVal(record.omuz, "cm")} />
                         {/* NewRecordScreen'deki alan adı "gogus" */}
                         <InfoRow label="Göğüs" value={formatVal(record.gogus, "cm")} />
@@ -357,6 +358,7 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             label="Dinlenik Nabız"
                             value={record.dinlenikNabiz?.toString() ?? "-"}
+                            firstLine={true}
                         />
                         {/* Direkt veri, ekstra yorum yok */}
 
@@ -403,6 +405,7 @@ export default function RecordDetailScreen() {
                             label="Ayak / Ayak Bileği (Önden)"
                             value={record.ayakveayakbilegionden || "-"}
                             multiline
+                            firstLine={true}
                         />
                         <InfoRow
                             label="Ayak / Ayak Bileği (Yandan)"
@@ -499,6 +502,7 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             label="Foot Turns Out"
                             value={boolBadge(record.footTurnsOut)}
+                            firstLine={true}
                         />
                         <InfoRow
                             label="Knee Moves Inward"
@@ -537,6 +541,7 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             label="Değer 1"
                             value={formatVal(record.sitandreach1)}
+                            firstLine={true}
                         />
                         <InfoRow
                             label="Değer 2"
@@ -578,6 +583,7 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             label="Push up (1 dk)"
                             value={record.pushup?.toString() ?? "-"}
+                            firstLine={true}
                         />
                         <Text style={styles.analysisText}>
                             Push up Skoru: {record.analysis?.pushupStatus || "-"}
@@ -652,14 +658,16 @@ function InfoRow({
     label,
     value,
     multiline,
+    firstLine
 }: {
     icon?: React.ReactNode;
     label: string;
     value: string;
     multiline?: boolean;
+    firstLine?: boolean;
 }) {
     return (
-        <View style={[styles.infoRow, multiline && { alignItems: "flex-start" }]}>
+        <View style={[firstLine ? styles.infoRowFirstLine : styles.infoRow, multiline && { alignItems: "flex-start" }]}>
             <View style={styles.infoLabelRow}>
                 {icon}
                 <Text style={styles.infoLabelText}>{label}</Text>
@@ -814,9 +822,15 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         paddingVertical: themeui.spacing.xs,
-        borderBottomWidth: 1,
-        borderBottomColor: themeui.colors.surfaceSoft,
+        borderTopWidth: 1,
+        borderTopColor: themeui.colors.surfaceSoft,
     },
+    infoRowFirstLine: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        paddingVertical: themeui.spacing.xs,
+    },
+
     infoLabelRow: {
         flexDirection: "row",
         alignItems: "center",
