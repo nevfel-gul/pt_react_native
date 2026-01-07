@@ -7,9 +7,30 @@ import { Tabs } from "expo-router";
 import React from "react";
 import { View } from "react-native";
 
+import { auth } from "@/services/firebase";
+import { useRouter } from "expo-router";
+import { onAuthStateChanged } from "firebase/auth";
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const hasPremium = false;
+
+  const router = useRouter();
+  const [authReady, setAuthReady] = React.useState(false);
+  const [isAuthed, setIsAuthed] = React.useState<boolean>(!!auth.currentUser);
+
+  React.useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setIsAuthed(!!u);
+      setAuthReady(true);
+      if (!u) router.replace("/login");
+    });
+    return unsub;
+  }, [router]);
+
+  if (!authReady) return null;
+  if (!isAuthed) return null;
+  const premiumHref = hasPremium ? undefined : "/premium";
 
   return (
     <Tabs
@@ -110,17 +131,14 @@ export default function TabLayout() {
           ),
         }}
       />
-<Tabs.Screen
-  name="premium"
-  options={{
-    title: "Premium Al",
-    tabBarIcon: ({ focused }) => (
-      <AnimatedStar focused={focused} />
-    ),
-    href: hasPremium ? null : "/premium",
-  }}
-/>
-
+      <Tabs.Screen
+        name="premium"
+        options={{
+          title: "Premium Al",
+          tabBarIcon: ({ focused }) => <AnimatedStar focused={focused} />,
+          href: premiumHref,
+        }}
+      />
     </Tabs>
   );
 }

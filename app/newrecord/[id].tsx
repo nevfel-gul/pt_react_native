@@ -1,4 +1,5 @@
 import { themeui } from "@/constants/themeui";
+import { auth } from "@/services/firebase";
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { ResizeMode, Video } from 'expo-av';
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -257,7 +258,7 @@ export default function NewRecordScreen() {
         const fetchStudent = async () => {
             if (!id) return;
             try {
-                const ref = studentDocRef(id);
+                const ref = studentDocRef(auth.currentUser?.uid!, id);
                 const snap = await getDoc(ref);
                 if (snap.exists()) {
                     const data = snap.data() as any;
@@ -861,7 +862,7 @@ export default function NewRecordScreen() {
                         : "",
             };
 
-            await addDoc(recordsColRef(), {
+            await addDoc(recordsColRef(auth.currentUser?.uid!), {
                 studentId: id,
                 ...formData,
                 analysis,

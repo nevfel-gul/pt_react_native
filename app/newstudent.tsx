@@ -208,8 +208,7 @@ const YeniOgrenciScreen = () => {
 
         try {
             setSaving(true);
-
-            await addDoc(studentsColRef(), {
+            await addDoc(studentsColRef(auth.currentUser?.uid!), {
                 ...form,
                 ownerUid: auth.currentUser?.uid,   // opsiyonel ama iyi
                 createdAt: serverTimestamp(),

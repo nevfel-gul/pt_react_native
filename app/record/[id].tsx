@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { auth } from "@/services/firebase";
 import { recordDocRef, studentDocRef } from "@/services/firestorePaths";
 import { getDoc } from "firebase/firestore";
 
@@ -62,7 +63,7 @@ export default function RecordDetailScreen() {
                 setError(null);
 
                 // 🔹 Kayıt: /users/{uid}/records/{id}
-                const recRef = recordDocRef(id as string);
+                const recRef = recordDocRef(auth.currentUser?.uid!, id as string);
                 const recSnap = await getDoc(recRef);
 
                 if (!recSnap.exists()) {
@@ -81,7 +82,7 @@ export default function RecordDetailScreen() {
 
                 // 🔹 Öğrenci: /users/{uid}/students/{studentId}
                 if (recData.studentId) {
-                    const stuRef = studentDocRef(recData.studentId);
+                    const stuRef = studentDocRef(auth.currentUser?.uid!, recData.studentId);
                     const stuSnap = await getDoc(stuRef);
                     if (stuSnap.exists()) {
                         const s = stuSnap.data() as any;

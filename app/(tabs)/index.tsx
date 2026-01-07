@@ -1,4 +1,5 @@
 import { themeui } from "@/constants/themeui";
+import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
 import { useRouter } from "expo-router";
 import { onSnapshot, orderBy, query } from "firebase/firestore";
@@ -94,7 +95,7 @@ export default function KayitlarScreen() {
   }, [students, safeSearch, filterDurum]);
 
   useEffect(() => {
-    const q = query(studentsColRef(), orderBy("createdAt", "desc"));
+    const q = query(studentsColRef(auth.currentUser?.uid!), orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
       q,
@@ -172,138 +173,138 @@ export default function KayitlarScreen() {
 
       <View style={styles.container}>
         <View style={styles.headerWrapper}>
-  <View style={styles.headerTopRow}>
-    {/* LEFT : LOGO - Animasyonlu opacity */}
-    <Animated.View
-      style={[styles.leftHeaderArea, { opacity: iconsOpacity }]}
-      pointerEvents={searchActive ? "none" : "auto"}
-    >
-      <Text style={styles.logoText}>ATHLETRACK</Text>
-    </Animated.View>
+          <View style={styles.headerTopRow}>
+            {/* LEFT : LOGO - Animasyonlu opacity */}
+            <Animated.View
+              style={[styles.leftHeaderArea, { opacity: iconsOpacity }]}
+              pointerEvents={searchActive ? "none" : "auto"}
+            >
+              <Text style={styles.logoText}>ATHLETRACK</Text>
+            </Animated.View>
 
-    <View style={styles.rightHeaderArea}>
-      {/* NOTIFICATION - Animasyonlu opacity */}
-      <Animated.View style={{ opacity: iconsOpacity }}>
-        <TouchableOpacity
-          onPress={() => setNotifOpen(!notifOpen)}
-          style={styles.titleIconWrapper}
-          disabled={searchActive}
-        >
-          <Bell size={22} color="#f1f5f9" />
-        </TouchableOpacity>
-      </Animated.View>
+            <View style={styles.rightHeaderArea}>
+              {/* NOTIFICATION - Animasyonlu opacity */}
+              <Animated.View style={{ opacity: iconsOpacity }}>
+                <TouchableOpacity
+                  onPress={() => setNotifOpen(!notifOpen)}
+                  style={styles.titleIconWrapper}
+                  disabled={searchActive}
+                >
+                  <Bell size={22} color="#f1f5f9" />
+                </TouchableOpacity>
+              </Animated.View>
 
-      {/* SEARCH - Sadece ikonu burada */}
-      {!searchActive && (
-        <TouchableOpacity
-          onPress={openAnimatedSearch}
-          style={{
-            backgroundColor: "#1e293b",
-            height: 40,
-            width: 40,
-            alignItems: "center",
-            borderRadius: 99,
-            justifyContent: "center",
-            marginLeft: 6,
-          }}
-        >
-          <Search size={22} color="#f1f5f9" />
-        </TouchableOpacity>
-      )}
+              {/* SEARCH - Sadece ikonu burada */}
+              {!searchActive && (
+                <TouchableOpacity
+                  onPress={openAnimatedSearch}
+                  style={{
+                    backgroundColor: "#1e293b",
+                    height: 40,
+                    width: 40,
+                    alignItems: "center",
+                    borderRadius: 99,
+                    justifyContent: "center",
+                    marginLeft: 6,
+                  }}
+                >
+                  <Search size={22} color="#f1f5f9" />
+                </TouchableOpacity>
+              )}
 
-      {/* PROFILE - Animasyonlu opacity */}
-      <Animated.View style={{ opacity: iconsOpacity }}>
-        <TouchableOpacity
-          style={styles.titleIconWrapper}
-          activeOpacity={0.7}
-          onPress={() => router.push("/profile")}
-          disabled={searchActive}
-        >
-          <Users size={24} color="#60a5fa" />
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
+              {/* PROFILE - Animasyonlu opacity */}
+              <Animated.View style={{ opacity: iconsOpacity }}>
+                <TouchableOpacity
+                  style={styles.titleIconWrapper}
+                  activeOpacity={0.7}
+                  onPress={() => router.push("/profile")}
+                  disabled={searchActive}
+                >
+                  <Users size={24} color="#60a5fa" />
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
 
-    {/* SEARCH BAR - headerTopRow'un içinde ama dışarıda (absolute) */}
-    {searchActive && (
-  <Animated.View
-    style={{
-      position: "absolute",
-      left: 10,
-      right: 10,
-      top: 0,
-      height: 48,
-      backgroundColor: "#1e293b",
-      borderRadius: 99,
-      paddingHorizontal: 12,
-      flexDirection: "row",
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: "#475569",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
-      zIndex: 999,
-      opacity: searchAnim,
-    }}
-  >
-    {/* Geri Butonu */}
-    <TouchableOpacity
-      onPress={closeAnimatedSearch}
-      style={{ marginRight: 8 }}
-    >
-      <ArrowLeft size={20} color="#f1f5f9" />
-    </TouchableOpacity>
+            {/* SEARCH BAR - headerTopRow'un içinde ama dışarıda (absolute) */}
+            {searchActive && (
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  left: 10,
+                  right: 10,
+                  top: 0,
+                  height: 48,
+                  backgroundColor: "#1e293b",
+                  borderRadius: 99,
+                  paddingHorizontal: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: "#475569",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                  zIndex: 999,
+                  opacity: searchAnim,
+                }}
+              >
+                {/* Geri Butonu */}
+                <TouchableOpacity
+                  onPress={closeAnimatedSearch}
+                  style={{ marginRight: 8 }}
+                >
+                  <ArrowLeft size={20} color="#f1f5f9" />
+                </TouchableOpacity>
 
-    {/* TextInput */}
-    <TextInput
-      placeholder="Öğrenci ara..."
-      placeholderTextColor="#94a3b8"
-      value={searchTerm}
-      onChangeText={setSearchTerm}
-      autoFocus
-      style={{
-        flex: 1,
-        color: "#f1f5f9",
-        fontSize: 15,
-        fontWeight: "500",
-      }}
-    />
+                {/* TextInput */}
+                <TextInput
+                  placeholder="Öğrenci ara..."
+                  placeholderTextColor="#94a3b8"
+                  value={searchTerm}
+                  onChangeText={setSearchTerm}
+                  autoFocus
+                  style={{
+                    flex: 1,
+                    color: "#f1f5f9",
+                    fontSize: 15,
+                    fontWeight: "500",
+                  }}
+                />
 
-    {/* AI Butonu - SAĞ TARAF */}
-    <TouchableOpacity
-      onPress={() => {
-        // not: AI fonks buraa eklencek
-        console.log("AI butonu tıklandı");
-      }}
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 99,
-        backgroundColor: "#7c3aed", 
-        alignItems: "center",
-        justifyContent: "center",
-        marginLeft: 8,
-      }}
-    >
-      <Sparkles size={18} color="#fff" />
-    </TouchableOpacity>
+                {/* AI Butonu - SAĞ TARAF */}
+                <TouchableOpacity
+                  onPress={() => {
+                    // not: AI fonks buraa eklencek
+                    console.log("AI butonu tıklandı");
+                  }}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 99,
+                    backgroundColor: "#7c3aed",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginLeft: 8,
+                  }}
+                >
+                  <Sparkles size={18} color="#fff" />
+                </TouchableOpacity>
 
-    {/* Temizle butonu - Sağda AI butonundan önce */}
-    {searchTerm.length > 0 && (
-      <TouchableOpacity
-        onPress={() => setSearchTerm("")}
-        style={{ marginLeft: 8 }}
-      >
-        <XIcon size={18} color="#94a3b8" />
-      </TouchableOpacity>
-    )}
-  </Animated.View>
-)}
-  </View>
-</View>
+                {/* Temizle butonu - Sağda AI butonundan önce */}
+                {searchTerm.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setSearchTerm("")}
+                    style={{ marginLeft: 8 }}
+                  >
+                    <XIcon size={18} color="#94a3b8" />
+                  </TouchableOpacity>
+                )}
+              </Animated.View>
+            )}
+          </View>
+        </View>
 
         {/* LİSTE */}
         <View style={styles.listWrapper}>
@@ -830,7 +831,7 @@ const styles = StyleSheet.create({
     fontSize: themeui.fontSize.lg,
     fontWeight: "800",
     color: themeui.colors.primary,
-    
+
   },
 
   notifText: {

@@ -1,6 +1,7 @@
 // app/student/[id].tsx
 
 import { themeui } from "@/constants/themeui";
+import { auth } from "@/services/firebase";
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -227,7 +228,7 @@ export default function StudentDetailScreen() {
 
         const load = async () => {
             try {
-                const ref = studentDocRef(id);
+                const ref = studentDocRef(auth.currentUser?.uid!, id);
                 const snap = await getDoc(ref);
 
                 if (!snap.exists()) {
@@ -257,8 +258,7 @@ export default function StudentDetailScreen() {
     // LOAD RECORDS
     useEffect(() => {
         if (!id) return;
-
-        const qy = query(recordsColRef(), where("studentId", "==", id), orderBy("createdAt", "desc"));
+        const qy = query(recordsColRef(auth.currentUser?.uid!), where("studentId", "==", id), orderBy("createdAt", "desc"));
 
 
         const unsub = onSnapshot(
@@ -289,7 +289,7 @@ export default function StudentDetailScreen() {
         try {
             setToggling(true);
             const newStatus = student.aktif === "Aktif" ? "Pasif" : "Aktif";
-            await updateDoc(studentDocRef(student.id), { aktif: newStatus });
+            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), { aktif: newStatus });
             setStudent({ ...student, aktif: newStatus });
         } catch (err) {
             console.error(err);
@@ -347,23 +347,23 @@ export default function StudentDetailScreen() {
                         </TouchableOpacity>
 
                         <View style={styles.headerActions}>
-<TouchableOpacity
-  style={[
-    styles.toggleButton,
-    student.aktif === "Aktif"
-      ? styles.toggleButtonPassive   
-      : styles.toggleButtonActive   
-  ]}
-  onPress={toggleAktif}
-  disabled={toggling}
->
-  <Text style={[
-    styles.toggleButtonText,
-    { color: themeui.colors.text.primary }  
-  ]}>
-    {student.aktif === "Aktif" ? "Pasif Yap" : "Aktif Yap"}
-  </Text>
-</TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.toggleButton,
+                                    student.aktif === "Aktif"
+                                        ? styles.toggleButtonPassive
+                                        : styles.toggleButtonActive
+                                ]}
+                                onPress={toggleAktif}
+                                disabled={toggling}
+                            >
+                                <Text style={[
+                                    styles.toggleButtonText,
+                                    { color: themeui.colors.text.primary }
+                                ]}>
+                                    {student.aktif === "Aktif" ? "Pasif Yap" : "Aktif Yap"}
+                                </Text>
+                            </TouchableOpacity>
 
                             <TouchableOpacity style={styles.editButton} onPress={addRecord}>
                                 <Edit size={14} color="#f1f5f9" />
@@ -667,31 +667,31 @@ const styles = StyleSheet.create({
 
     headerActions: { flexDirection: "row", gap: themeui.spacing.xs },
 
-toggleButton: {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: themeui.spacing.xs,
-  paddingHorizontal: themeui.spacing.md,
-  paddingVertical: themeui.spacing.xs,
-  borderRadius: themeui.radius.pill,
-},
-toggleButtonActive: {
-  backgroundColor: themeui.colors.success,
-  borderColor: themeui.colors.success,
-  borderWidth: 1,
-  opacity: 0.9,
-},
-toggleButtonPassive: {
-  backgroundColor: themeui.colors.danger,
-  borderColor: themeui.colors.danger,
-  borderWidth: 1,
-    opacity: 0.9,
-},
+    toggleButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: themeui.spacing.xs,
+        paddingHorizontal: themeui.spacing.md,
+        paddingVertical: themeui.spacing.xs,
+        borderRadius: themeui.radius.pill,
+    },
+    toggleButtonActive: {
+        backgroundColor: themeui.colors.success,
+        borderColor: themeui.colors.success,
+        borderWidth: 1,
+        opacity: 0.9,
+    },
+    toggleButtonPassive: {
+        backgroundColor: themeui.colors.danger,
+        borderColor: themeui.colors.danger,
+        borderWidth: 1,
+        opacity: 0.9,
+    },
 
-toggleButtonText: {
-  fontSize: themeui.fontSize.sm,
-  fontWeight: "600",
-},
+    toggleButtonText: {
+        fontSize: themeui.fontSize.sm,
+        fontWeight: "600",
+    },
     editButton: {
         flexDirection: "row",
         alignItems: "center",
@@ -700,7 +700,7 @@ toggleButtonText: {
         paddingVertical: themeui.spacing.xs,
         borderRadius: themeui.radius.pill,
         backgroundColor: themeui.colors.editButtonbackground,
-          opacity: 0.9,
+        opacity: 0.9,
     },
     editButtonText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.xs, fontWeight: "700" },
 
