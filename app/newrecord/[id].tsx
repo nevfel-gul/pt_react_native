@@ -17,7 +17,7 @@ import {
     Phone,
     Ruler,
     SquareActivity,
-    User,
+    User
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -129,9 +129,15 @@ type FormData = {
     wallsit: string;
     plank: string;
     mekik: string;
-    rmsquatweight: string;
-    rmsquatrep: string;
     kuvvetnotes: string;
+
+    posturNotes: string;
+    ohsNotes: string;
+    ohsFeetTurnOut: string;
+    ohsKneesIn: string;
+    ohsForwardLean: string;
+    ohsLowBackArch: string;
+    ohsArmsFallForward: string;
 
     // Tarih
     assessmentDate: string;
@@ -231,11 +237,15 @@ export default function NewRecordScreen() {
         wallsit: "",
         plank: "",
         mekik: "",
-        rmsquatweight: "",
-        rmsquatrep: "",
         kuvvetnotes: "",
 
-
+        posturNotes: "",
+        ohsNotes: "",
+        ohsFeetTurnOut: "",
+        ohsKneesIn: "",
+        ohsForwardLean: "",
+        ohsLowBackArch: "",
+        ohsArmsFallForward: "",
 
         assessmentDate: new Date().toISOString().split("T")[0],
     });
@@ -295,6 +305,12 @@ export default function NewRecordScreen() {
                 <Text style={styles.infoNoteText}>{children}</Text>
             </View>
         )
+    );
+
+    const Strong = ({ children }: { children: React.ReactNode }) => (
+        <Text style={{ fontWeight: "700", color: "#e5e7eb" }}>
+            {children}
+        </Text>
     );
 
     const HintImageButton = ({
@@ -733,14 +749,6 @@ export default function NewRecordScreen() {
         return "Geçersiz veri";
     };
 
-    const getRmSquatScore = (weight: number, reps: number) => {
-        if (!weight || !reps) return "";
-        if (weight > 150) return "Mükemmel";
-        if (weight > 100) return "İyi";
-        if (weight > 60) return "Orta";
-        return "Geliştirilmeli";
-    };
-
     const handleSubmit = async () => {
         if (!id) {
             Alert.alert("Hata", "Öğrenci ID bulunamadı.");
@@ -781,8 +789,6 @@ export default function NewRecordScreen() {
             const wallSitSec = Number(formData.wallsit || 0);
             const plankSec = Number(formData.plank || 0);
             const mekikSec = Number(formData.mekik || 0);
-            const rmSquatWeight = Number(formData.rmsquatweight || 0);
-            const rmSquatRep = Number(formData.rmsquatrep || 0);
 
             const bruceVo2Str =
                 bruceTime && gender ? getBruceTestVO2(bruceTime, gender) : "";
@@ -861,10 +867,6 @@ export default function NewRecordScreen() {
                     plankSec && gender ? getPlankScore(plankSec, gender) : "",
                 mekikStatus:
                     mekikSec && gender ? getMekikScore(mekikSec, gender) : "",
-                rmSquatStatus:
-                    rmSquatWeight && rmSquatRep
-                        ? getRmSquatScore(rmSquatWeight, rmSquatRep)
-                        : "",
             };
 
             await addDoc(recordsColRef(auth.currentUser?.uid!), {
@@ -1217,6 +1219,16 @@ export default function NewRecordScreen() {
                                 YMCA 3 dk basamak testi sonrası ölçülen toparlanma nabzı, bireyin aerobik
                                 kapasitesi ve kalbin egzersiz sonrası normale dönme hızını değerlendirmek
                                 için kullanılır.
+                                {"\n"}
+                                <Strong>Basamak bir:</Strong> Kişinin 3 dakika boyunca dakikada 24 basamaklık tempoyla 30 cm bir basamağa çıkıp inmesini sağlayınız.
+                                {"\n"}
+                                <Strong>Basamak iki:</Strong> Egzersizin tamamlanmasından 5 saniye sonra kişinin nabzı dinginken 60 saniye boyunca sayılır ve bu toparlanma nabzı olarak kaydedilir.
+                                {"\n"}
+                                <Strong>Basamak üç:</Strong> toparlanma nabzı, su kategorilerden birine konur.
+                                {"\n"}
+                                <Strong>Basamak dört:</Strong> Uygun kategoriyi kullanarak uygun başlangıç programını tespit edin.
+                                {"\n"}
+                                <Strong>Basamak beş:</Strong> Max VO2 bulunur.
                             </InfoNote>
                             {renderNumericInput(
                                 "toparlanmaNabzi",
@@ -1244,11 +1256,62 @@ export default function NewRecordScreen() {
 
                             {/* Bruce testi */}
                             <View style={[styles.field, { marginTop: 16 }]}>
-                                <Text style={styles.label}>Bruce Testi – Süre (dk)</Text>
+                                <Text style={styles.label}>Bruce Testi - Süre (dk)</Text>
 
                                 <InfoNote>
                                     Bruce testi maksimal bir egzersiz testidir. Koşu bandında her 3 dakikada
                                     bir hız ve eğim artırılır. Bireyin dayanabildiği toplam süre kaydedilir.
+                                    {"\n"}
+                                    {"\n"}
+                                    <Strong>Ölçülen Özellik:</Strong> Aerobik dayanıklılık ve maksimal oksijen kapasitesi
+                                    {"\n"}
+                                    <Strong>Test Malzemeleri:</Strong> Koşu bandı, kronometre, polar saat ve bir yardımcı
+                                    {"\n"}
+                                    <Strong>Test Protokolü:</Strong>
+                                    Sporcu veya üye koşu bandında hafif tempo ile 5 - 10 dakika ısınır.
+                                    Asistan 2.74 km / saat hız ve % 10 eğim olacak şekilde koşu bandını kurar.
+                                    Asistanın komutu ile test ve süre başlatılır.
+                                    Asistan test protokolünde belirtilen sürelerde (her 3 dakikada bir) hız ve eğimi artırır.
+                                    Sporcu veya üyenin teste devam edemediği durumda süre durdurulur ve kaydedilir.
+                                    Test sonunda maksimal kalp atım hızı da kaydedilir.
+                                    {"\n"}
+                                    {"\n"}
+                                </InfoNote>
+                                {showTips && (
+                                    <View style={styles.table}>
+                                        {/* Header */}
+                                        <View style={[styles.tr, styles.thRow]}>
+                                            <Text style={[styles.th, { flex: 1.1 }]}>Aşama</Text>
+                                            <Text style={[styles.th, { flex: 1.2 }]}>Süre (dk)</Text>
+                                            <Text style={[styles.th, { flex: 1.6 }]}>Hız</Text>
+                                            <Text style={[styles.th, { flex: 1.2 }]}>Eğim</Text>
+                                        </View>
+
+                                        {/* Rows */}
+                                        {[
+                                            { stage: 1, min: 0, speed: "2.74", grade: "10%" },
+                                            { stage: 2, min: 3, speed: "4.02", grade: "12%" },
+                                            { stage: 3, min: 6, speed: "5.47", grade: "14%" },
+                                            { stage: 4, min: 9, speed: "6.76", grade: "16%" },
+                                            { stage: 5, min: 12, speed: "8.05", grade: "18%" },
+                                            { stage: 6, min: 15, speed: "8.85", grade: "20%" },
+                                            { stage: 7, min: 18, speed: "9.65", grade: "22%" },
+                                            { stage: 8, min: 21, speed: "10.46", grade: "24%" },
+                                            { stage: 9, min: 24, speed: "11.26", grade: "26%" },
+                                            { stage: 10, min: 27, speed: "12.07", grade: "28%" },
+                                        ].map((r) => (
+                                            <View key={r.stage} style={styles.tr}>
+                                                <Text style={[styles.td, { flex: 1.1 }]}>{r.stage}</Text>
+                                                <Text style={[styles.td, { flex: 1.2 }]}>{r.min}</Text>
+                                                <Text style={[styles.td, { flex: 1.6 }]}>{r.speed} km/sa</Text>
+                                                <Text style={[styles.td, { flex: 1.2 }]}>{r.grade}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                                <InfoNote>
+                                    Not: Koşu bandı “km/sa” ayarında olmalı; eğim % olarak girilir.
+                                    {"\n"}
                                 </InfoNote>
 
                                 <TextInput
@@ -1300,163 +1363,232 @@ export default function NewRecordScreen() {
                                 <Text style={styles.cardTitle}>Statik Postür Analizi</Text>
                             </View>
 
-                            {renderTextArea(
-                                "ayakveayakbilegionden",
-                                "Ayak & Ayak Bileği (Önden)"
-                            )}
-                            {renderTextArea(
-                                "ayakveayakbilegiyandan",
-                                "Ayak & Ayak Bileği (Yandan)"
-                            )}
-                            {renderTextArea(
-                                "ayakveayakbilegiarkadan",
-                                "Ayak & Ayak Bileği (Arkadan)"
-                            )}
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Amaç:</Strong> Postür analizi ile kişinin duruşu değerlendirilir; duruş bozuklukları,
+                                    kas dengesizlikleri ve postüral riskler tespit edilir.{"\n\n"}
+                                    <Strong>Uygulama:</Strong> Önden–yandan–arkadan gözlem yap. Baş-boyun, omuz kuşağı,
+                                    omurga, pelvis/kalça ve diz-ayak hizalanmasını not al.{"\n\n"}
+                                    <Strong>İpucu:</Strong> Değerlendirme sırasında mümkünse çıplak ayak ve nötr duruş (rahat,
+                                    doğal duruş) tercih et.
+                                </Text>
+                            </InfoNote>
 
+                            {/* Ayak & Ayak Bileği */}
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Ayak & Ayak Bileği:</Strong> Aşırı pronasyon/supinasyon, ayak kavsi çökmesi,
+                                    topuk valgus/varus ve ayak parmaklarının dışa/içe yönelimi gibi kompansasyonları takip et.
+                                </Text>
+                            </InfoNote>
+                            {renderTextArea("ayakveayakbilegionden", "Ayak & Ayak Bileği (Önden)")}
+                            {renderTextArea("ayakveayakbilegiyandan", "Ayak & Ayak Bileği (Yandan)")}
+                            {renderTextArea("ayakveayakbilegiarkadan", "Ayak & Ayak Bileği (Arkadan)")}
+
+                            {/* Diz */}
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Diz:</Strong> Dizlerin içe kaçması (valgus), dışa açılması (varus), patella hizası ve
+                                    diz-ayak bileği hattını kontrol et. Yandan bakışta dizin kilitlenmesi/hiperekstansiyon da not edilir.
+                                </Text>
+                            </InfoNote>
                             {renderTextArea("dizonden", "Diz (Önden)")}
                             {renderTextArea("dizyandan", "Diz (Yandan)")}
                             {renderTextArea("dizarkadan", "Diz (Arkadan)")}
 
-                            {renderTextArea(
-                                "lphkonden",
-                                "Lumbo-Pelvic-Hip Kompleksi (Önden)"
-                            )}
-                            {renderTextArea(
-                                "lphkyandan",
-                                "Lumbo-Pelvic-Hip Kompleksi (Yandan)"
-                            )}
-                            {renderTextArea(
-                                "lphkarkadan",
-                                "Lumbo-Pelvic-Hip Kompleksi (Arkadan)"
-                            )}
+                            {/* LPHK */}
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Lumbo-Pelvic-Hip Kompleksi (LPHK):</Strong> Pelvis tilt (anterior/posterior),
+                                    bel lordozu artışı/azalışı, kalça rotasyonları ve kalça düşmesi (Trendelenburg) gibi bulgulara bak.
+                                </Text>
+                            </InfoNote>
+                            {renderTextArea("lphkonden", "Lumbo-Pelvic-Hip Kompleksi (Önden)")}
+                            {renderTextArea("lphkyandan", "Lumbo-Pelvic-Hip Kompleksi (Yandan)")}
+                            {renderTextArea("lphkarkadan", "Lumbo-Pelvic-Hip Kompleksi (Arkadan)")}
 
+                            {/* Omuzlar */}
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Omuzlar:</Strong> Omuz elevasyonu/depresyonu, skapula kanatlanması, omuzların öne
+                                    düşmesi ve sağ-sol asimetriyi değerlendir. Boyun-omuz hattındaki gerginlik işaretlerini not al.
+                                </Text>
+                            </InfoNote>
                             {renderTextArea("omuzlaronden", "Omuzlar (Önden)")}
                             {renderTextArea("omuzlaryandan", "Omuzlar (Yandan)")}
                             {renderTextArea("omuzlararkadan", "Omuzlar (Arkadan)")}
 
-                            {renderTextArea(
-                                "basboyunonden",
-                                "Baş & Boyun Omurları (Önden)"
-                            )}
-                            {renderTextArea(
-                                "basboyunyandan",
-                                "Baş & Boyun Omurları (Yandan)"
-                            )}
-                            {renderTextArea(
-                                "basboyunarkadan",
-                                "Baş & Boyun Omurları (Arkadan)"
-                            )}
+                            {/* Baş & Boyun */}
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Baş & Boyun:</Strong> Başın öne taşınması (forward head), çene pozisyonu, servikal
+                                    lordoz artışı/azalışı ve sağ-sol baş eğimi (tilt) gibi sapmaları kontrol et.
+                                </Text>
+                            </InfoNote>
+                            {renderTextArea("basboyunonden", "Baş & Boyun Omurları (Önden)")}
+                            {renderTextArea("basboyunyandan", "Baş & Boyun Omurları (Yandan)")}
+                            {renderTextArea("basboyunarkadan", "Baş & Boyun Omurları (Arkadan)")}
 
-                            {renderRadioRow(
-                                "pronation",
-                                "Pronation Distortion Syndrome",
-                                ["Evet", "Hayır"]
-                            )}
-                            {renderRadioRow(
-                                "lower",
-                                "Lower Crossed Syndrome",
-                                ["Evet", "Hayır"]
-                            )}
-                            {renderRadioRow(
-                                "upper",
-                                "Upper Crossed Syndrome",
-                                ["Evet", "Hayır"]
-                            )}
+                            {/* Sendrom seçimleri */}
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Hızlı Tarama:</Strong> Aşağıdaki 3 başlık, gözlenen kompansasyon paternlerini hızlı
+                                    sınıflandırmak içindir. Emin değilsen “Hayır” seçebilir veya not alanına açıklama ekleyebilirsin.
+                                </Text>
+                            </InfoNote>
+
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Pronation Distortion Syndrome:</Strong> Ayak kavsi çökmesi, topuğun içe kaçması ve dizlerin içe yönelimi eşlik edebilir.
+                                </Text>
+                            </InfoNote>
+                            {renderRadioRow("pronation", "Pronation Distortion Syndrome", ["Evet", "Hayır"])}
+
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Lower Crossed Syndrome:</Strong> Pelvisin öne tilt’i, bel lordozu artışı ve kalça fleksörleri/ bel ekstansörlerinde gerginlik bulguları görülebilir.
+                                </Text>
+                            </InfoNote>
+                            {renderRadioRow("lower", "Lower Crossed Syndrome", ["Evet", "Hayır"])}
+
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Upper Crossed Syndrome:</Strong> Başın öne gelmesi, omuzların öne yuvarlanması ve üst trapez/ göğüs bölgesi gerginliği ile ilişkilidir.
+                                </Text>
+                            </InfoNote>
+                            {renderRadioRow("upper", "Upper Crossed Syndrome", ["Evet", "Hayır"])}
+
+                            {renderTextArea("posturNotes", "Genel Not / Gözlem", "")}
                         </View>
 
+                        {/* OVERHEAD SQUAT */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <HeartPulse size={18} color="#38bdf8" />
                                 <Text style={styles.cardTitle}>Overhead Squat Testi</Text>
                             </View>
 
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Amaç:</Strong> Squat sırasında ayak–diz–kalça–gövde–omuz hizalanmasını ve
+                                    kompansasyonları gözlemek.{"\n\n"}
+                                    <Strong>Uygulama:</Strong> Kollar yukarıda, ayaklar kalça genişliğinde. 5 tekrar uygulat;
+                                    önden ve yandan izle. Kompansasyonları aşağıya not et.
+                                </Text>
+                            </InfoNote>
+
+                            {/* Ağrı / ameliyat */}
                             <View style={styles.switchRow}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.label}>Ağrı var mı?</Text>
-                                    <Text style={styles.helpText}>
-                                        Bel, diz, omuz gibi bölgelerde düzenli ağrı?
-                                    </Text>
+                                    <Text style={styles.helpText}>Bel, diz, omuz gibi bölgelerde düzenli ağrı?</Text>
                                 </View>
                                 <Switch
                                     value={formData.hasPain}
                                     onValueChange={(v) => handleChange("hasPain", v)}
                                     trackColor={{
                                         false: themeui.colors.surfaceSoft,
-                                        true: themeui.colors.primary
+                                        true: themeui.colors.primary,
                                     }}
                                 />
                             </View>
 
+                            {formData.hasPain && (
+                                <InfoNote>
+                                    <Text>
+                                        <Strong>Dikkat:</Strong> Ağrı varsa test zorlanmadan yapılmalı; ağrı artarsa test sonlandırılır.
+                                        Klinik şüphede sağlık profesyoneline yönlendirme yapılır.
+                                    </Text>
+                                </InfoNote>
+                            )}
+
                             <View style={styles.switchRow}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.label}>Ameliyat geçmişi?</Text>
-                                    <Text style={styles.helpText}>
-                                        Son yıllarda ortopedik veya başka bir ameliyat.
-                                    </Text>
+                                    <Text style={styles.helpText}>Son yıllarda ortopedik veya başka bir ameliyat.</Text>
                                 </View>
                                 <Switch
                                     value={formData.hadSurgery}
                                     onValueChange={(v) => handleChange("hadSurgery", v)}
                                     trackColor={{
                                         false: themeui.colors.surfaceSoft,
-                                        true: themeui.colors.primary
+                                        true: themeui.colors.primary,
                                     }}
                                 />
                             </View>
+
+                            {formData.hadSurgery && (
+                                <InfoNote>
+                                    <Text>
+                                        <Strong>Not:</Strong> Ameliyat geçmişi olan bireylerde hareket açıklığı ve ağrı takibi kritik.
+                                        Test modifiye edilebilir veya skip edilebilir.
+                                    </Text>
+                                </InfoNote>
+                            )}
+
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Sık görülen kompansasyonlar:</Strong> Ayaklar dışa açılır, dizler içe kaçar, bel
+                                    aşırı kavislenir/yuvarlanır, gövde öne düşer, kollar öne düşer. Gözlediğini aşağıya yaz.
+                                </Text>
+                            </InfoNote>
+
+                            {renderTextArea("ohsNotes", "Overhead Squat Notları (Gözlemler)", "")}
+                            {renderRadioRow("ohsFeetTurnOut", "Ayaklar dışa döner mi?", ["Evet", "Hayır"])}
+                            {renderRadioRow("ohsKneesIn", "Dizler içe kaçar mı (valgus)?", ["Evet", "Hayır"])}
+                            {renderRadioRow("ohsForwardLean", "Gövde aşırı öne düşer mi?", ["Evet", "Hayır"])}
+                            {renderRadioRow("ohsLowBackArch", "Bel aşırı kavislenir mi?", ["Evet", "Hayır"])}
+                            {renderRadioRow("ohsArmsFallForward", "Kollar öne düşer mi?", ["Evet", "Hayır"])}
                         </View>
 
+                        {/* SIT AND REACH */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <HeartPulse size={18} color="#22c55e" />
                                 <Text style={styles.cardTitle}>Sit and Reach Testi</Text>
                             </View>
 
-                            <Text style={styles.helpText}>
-                                Üç deneme yap, en iyi değeri kullanıyoruz. Ölçümleri cm cinsinden gir.
-                            </Text>
+                            <InfoNote>
+                                <Text>
+                                    <Strong>Uygulama:</Strong> 3 deneme yapılır; en iyi değer alınır. Dizler bükülmeden, kontrollü
+                                    şekilde öne uzanılır. Ölçümleri <Strong>cm</Strong> cinsinden gir.
+                                </Text>
+                            </InfoNote>
 
                             {renderNumericInput("sitandreach1", "1. Ölçüm (cm)")}
                             {renderNumericInput("sitandreach2", "2. Ölçüm (cm)")}
                             {renderNumericInput("sitandreach3", "3. Ölçüm (cm)")}
+
+                            {formData.sitandreach1 && formData.sitandreach2 && formData.sitandreach3 && (
+                                <InfoNote>
+                                    <Text>
+                                        <Strong>Sonuç:</Strong> En iyi değeri baz alıyoruz. Değer yükseldikçe hamstring ve bel/kalça
+                                        çevresi esnekliği genelde daha iyidir.
+                                    </Text>
+                                </InfoNote>
+                            )}
+
                             {formData.sitandreach1 && formData.sitandreach2 && formData.sitandreach3 && (
                                 <Text style={styles.infoText}>
                                     En İyi Değer:{" "}
-                                    {getMaxOfThree(
-                                        formData.sitandreach1,
-                                        formData.sitandreach2,
-                                        formData.sitandreach3
-                                    )}{" "}
-                                    | Durum:{" "}
-                                    {getMaxOfThree(
-                                        formData.sitandreach1,
-                                        formData.sitandreach2,
-                                        formData.sitandreach3
-                                    ) !== null &&
-                                        getMaxOfThree(
-                                            formData.sitandreach1,
-                                            formData.sitandreach2,
-                                            formData.sitandreach3
-                                        ) !== undefined &&
+                                    {getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3)} | Durum:{" "}
+                                    {getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3) !== null &&
+                                        getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3) !== undefined &&
                                         student?.gender
                                         ? getSitAndReachStatus(
                                             Number(
-                                                getMaxOfThree(
-                                                    formData.sitandreach1,
-                                                    formData.sitandreach2,
-                                                    formData.sitandreach3
-                                                ) || 0
+                                                getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3) || 0
                                             ),
                                             student.gender
                                         )
                                         : ""}
-                                </Text>)}
-                            {renderTextArea(
-                                "sitandreachnotes",
-                                "Hangi bölgelerde gerginlik hissedildi?",
-                                ""
+                                </Text>
                             )}
+
+                            {renderTextArea("sitandreachnotes", "Hangi bölgelerde gerginlik hissedildi?", "")}
                         </View>
                     </>
+
                 );
             case 3:
                 return (
@@ -1505,18 +1637,6 @@ export default function NewRecordScreen() {
                                     Mekik Skoru:{" "}
                                     {getMekikScore(Number(formData.mekik || 0), student?.gender)}
                                 </Text>)}
-
-                            {renderNumericInput("rmsquatweight", "1 RM Squat – Kilo (5 ve katları)")}
-                            {renderNumericInput("rmsquatrep", "1 RM Squat – Tekrar (2–10)")}
-                            {formData.rmsquatweight && formData.rmsquatrep && (
-                                <Text style={styles.infoText}>
-                                    1RM Squat Skoru:{" "}
-                                    {getRmSquatScore(
-                                        Number(formData.rmsquatweight || 0),
-                                        Number(formData.rmsquatrep || 0)
-                                    )}
-                                </Text>
-                            )}
                             {renderTextArea("kuvvetnotes", "Kuvvet Notları")}
                         </View>
                     </>
@@ -1746,7 +1866,7 @@ const styles = StyleSheet.create({
         fontWeight: "700",
     },
     studentName: {
-        color: themeui.colors.text.primary,
+        color: themeui.colors.text.accent,
         fontSize: themeui.fontSize.lg + 2,
         fontWeight: "700",
     },
@@ -1786,8 +1906,8 @@ const styles = StyleSheet.create({
         marginBottom: themeui.spacing.md - 4,
     },
     cardTitle: {
-        color: themeui.colors.text.primary,
-        fontSize: themeui.fontSize.lg - 1,
+        color: themeui.colors.accent,
+        fontSize: themeui.fontSize.lg + 1,
         fontWeight: "600",
     },
 
@@ -1795,8 +1915,9 @@ const styles = StyleSheet.create({
     field: { marginTop: themeui.spacing.sm - 2 },
     label: {
         color: themeui.colors.text.primary,
-        fontSize: themeui.fontSize.sm,
+        fontSize: themeui.fontSize.lg,
         marginBottom: themeui.spacing.xs,
+        fontWeight: "800",
     },
     input: {
         borderWidth: 1,
@@ -1835,12 +1956,14 @@ const styles = StyleSheet.create({
     saveButton: {
         backgroundColor: themeui.colors.accent,
         borderRadius: themeui.radius.pill,
-        paddingVertical: themeui.spacing.md - 2,
+        paddingVertical: themeui.spacing.sm,
+        paddingHorizontal: themeui.spacing.md - 2,
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
         gap: themeui.spacing.xs + 2,
         opacity: 0.9,
+        marginLeft: "auto",
     },
     saveButtonText: {
         color: themeui.colors.surface,
@@ -1969,7 +2092,7 @@ const styles = StyleSheet.create({
     },
     infoNoteLabel: {
         fontSize: 11,
-        color: "#38bdf8",
+        color: themeui.colors.text.lightAccent,
         marginBottom: 2,
     },
     infoNoteText: {
@@ -2042,5 +2165,43 @@ const styles = StyleSheet.create({
     tipChipText: {
         fontSize: 12,
         fontWeight: "700",
+    },
+
+    noteFoot: {
+        color: "#94a3b8",
+        fontSize: 11,
+        marginTop: 10,
+        lineHeight: 15,
+    },
+
+    table: {
+        borderWidth: 1,
+        borderColor: "#1e293b",
+        borderRadius: 12,
+        overflow: "hidden",
+        backgroundColor: "rgba(2,6,23,0.35)",
+        marginBottom: 10,
+    },
+    tr: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        borderTopWidth: 1,
+        borderTopColor: "#0f172a",
+    },
+    thRow: {
+        backgroundColor: "rgba(15,23,42,0.65)",
+        borderTopWidth: 0,
+    },
+    th: {
+        color: "#cbd5e1",
+        fontSize: 12,
+        fontWeight: "800",
+    },
+    td: {
+        color: "#e2e8f0",
+        fontSize: 12,
+        fontWeight: "600",
     },
 });

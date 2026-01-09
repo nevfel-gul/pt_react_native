@@ -11,6 +11,8 @@ export const themeui = {
       primary: "#f1f5f9",
       secondary: "#94a3b8",
       muted: "#64748b",
+      accent: "#38bdf8",
+      lightAccent: "#79c6e7ff",
     },
     logoText: "hsla(198, 93%, 70%, 1.00)",
     primary: "#60a5fa",
