@@ -3,15 +3,15 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, Check, Edit3, User, X } from "lucide-react-native";
 import React from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-    findNodeHandle,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  findNodeHandle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -30,9 +30,9 @@ export default function ProfileScreen() {
   const scrollRef = React.useRef<ScrollView>(null);
 
   const [profile, setProfile] = React.useState<ProfileState>({
-    name: "Yağmur Öztürk",
+    name: "Yağmur Koca",
     username: "@pt.yagmur",
-    email: "yagmur.ozturk@example.com",
+    email: "yagmur.koca@example.com",
     phone: "+90 5xx xxx xx xx",
     bio: "",
     skills: "",
@@ -244,7 +244,7 @@ export default function ProfileScreen() {
                 subtitle="Uygulamada gözükecek adın"
                 fieldKey="name"
                 value={profile.name}
-                placeholder="Örn: Yağmur Öztürk"
+                placeholder="Örn: Yağmur Koca"
               />
               <SettingRow
                 label="Kullanıcı Adı"
