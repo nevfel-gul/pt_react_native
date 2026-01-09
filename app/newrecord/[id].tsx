@@ -138,7 +138,7 @@ type FormData = {
     ohsForwardLean: string;
     ohsLowBackArch: string;
     ohsArmsFallForward: string;
-
+    note: string;
     // Tarih
     assessmentDate: string;
 };
@@ -246,6 +246,7 @@ export default function NewRecordScreen() {
         ohsForwardLean: "",
         ohsLowBackArch: "",
         ohsArmsFallForward: "",
+        note: "",
 
         assessmentDate: new Date().toISOString().split("T")[0],
     });
@@ -1638,6 +1639,10 @@ export default function NewRecordScreen() {
                                     {getMekikScore(Number(formData.mekik || 0), student?.gender)}
                                 </Text>)}
                             {renderTextArea("kuvvetnotes", "Kuvvet Notları")}
+                            {renderTextArea("note", "Kayıt Notları")}
+                            <InfoNote>
+                                Öğrenci bilgi ekranında gösterilir.
+                            </InfoNote>
                         </View>
                     </>
                 );
