@@ -8,6 +8,8 @@ import {
     ArrowLeft,
     BicepsFlexed,
     Calendar,
+    Eye,
+    EyeOff,
     HandHeart,
     HeartPulse,
     Mail,
@@ -147,6 +149,7 @@ export default function NewRecordScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
 
     const [student, setStudent] = useState<Student | null>(null);
+    const [showTips, setShowTips] = useState(true);
     const [loadingStudent, setLoadingStudent] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [step, setStep] = useState(0);
@@ -286,10 +289,12 @@ export default function NewRecordScreen() {
 
     // component üstüne bir yere ekle
     const InfoNote = ({ children }: { children: React.ReactNode }) => (
-        <View style={{ marginTop: 4 }}>
-            <Text style={styles.infoNoteLabel}>İpucu:</Text>
-            <Text style={styles.infoNoteText}>{children}</Text>
-        </View>
+        showTips && (
+            <View style={{ marginTop: 4 }}>
+                <Text style={styles.infoNoteLabel}>İpucu:</Text>
+                <Text style={styles.infoNoteText}>{children}</Text>
+            </View>
+        )
     );
 
     const HintImageButton = ({
@@ -938,10 +943,17 @@ export default function NewRecordScreen() {
     const renderNumericInput = (
         field: keyof FormData,
         label: string,
-        placeholder?: string
+        placeholder?: string,
+        hint?: boolean
     ) => (
         <View style={styles.field}>
-            <Text style={styles.label}>{label}</Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4 }}>
+                <Text style={styles.label}>{label}</Text>
+                {(hint && showTips && <HintImageButton
+                    label="İpucu için tıklayın"
+                    videoSource={require("@/assets/videos/belOlcum.mp4")}
+                />)}
+            </View>
             <TextInput
                 placeholder={placeholder}
                 placeholderTextColor="#64748b"
@@ -1039,12 +1051,18 @@ export default function NewRecordScreen() {
                                 <HandHeart size={18} color="#38bdf8" />
                                 <Text style={styles.cardTitle}>Fiziksel Ölçümler (Tanita)</Text>
                             </View>
+                            <InfoNote>
+                                Bu bölümde yer alan tüm değerler Tanita vücut analiz cihazından alınan
+                                objektif ölçümlerdir. Ölçümün doğru olması için danışanın aç karnına,
+                                benzer saatlerde ve mümkünse aynı koşullarda ölçülmesi önerilir.
+                                Değerler zaman içindeki değişimle birlikte değerlendirilmelidir.
+                            </InfoNote>
                             {renderNumericInput("weight", "Kilo (kg)")}
 
                             {renderNumericInput("bodyMassIndex", "Vücut Kitle İndeksi (VKİ)")}
                             <InfoNote>
                                 Bu değer doğrudan Tanita cihazında görünen BMI/VKİ değeridir.
-                                Manuel hesaplama yapmana gerek yok.
+                                Manuel hesaplama yapmanıza gerek yoktur.
                             </InfoNote>
                             {formData.bodyMassIndex && (
                                 <Text style={styles.infoText}>
@@ -1120,18 +1138,13 @@ export default function NewRecordScreen() {
                                 <Ruler size={18} color="#22c55e" />
                                 <Text style={styles.cardTitle}>Çevre Ölçümleri (Mezura)</Text>
                             </View>
-
-                            <HintImageButton
-                                label="Bel & kalça ölçüm görselini göster"
-                                videoSource={require("@/assets/videos/belOlcum.mp4")}
-                            />
-                            {renderNumericInput("boyun", "Boyun")}
-                            {renderNumericInput("omuz", "Omuz")}
-                            {renderNumericInput("gogus", "Göğüs")}
-                            {renderNumericInput("sagKol", "Sağ Kol")}
-                            {renderNumericInput("solKol", "Sol Kol")}
-                            {renderNumericInput("bel", "Bel")}
-                            {renderNumericInput("kalca", "Kalça")}
+                            {renderNumericInput("boyun", "Boyun", "Boyun Çevresi", true)}
+                            {renderNumericInput("omuz", "Omuz", "Omuz Genişliği", true)}
+                            {renderNumericInput("gogus", "Göğüs", "Göğüs Çevresi", true)}
+                            {renderNumericInput("sagKol", "Sağ Kol", "Kol Çevresi", true)}
+                            {renderNumericInput("solKol", "Sol Kol", "Kol Çevresi", true)}
+                            {renderNumericInput("bel", "Bel", "Bel Çevresi", true)}
+                            {renderNumericInput("kalca", "Kalça", "Kalça Çevresi", true)}
                             {formData.bel && formData.kalca && (
                                 <Text style={styles.infoText}>
                                     Bel/Kalça:{" "}
@@ -1142,10 +1155,10 @@ export default function NewRecordScreen() {
                                     )}
                                 </Text>)}
 
-                            {renderNumericInput("sagBacak", "Sağ Bacak")}
-                            {renderNumericInput("solBacak", "Sol Bacak")}
-                            {renderNumericInput("sagKalf", "Sağ Kalf")}
-                            {renderNumericInput("solKalf", "Sol Kalf")}
+                            {renderNumericInput("sagBacak", "Sağ Bacak", "Bacak Çevresi", true)}
+                            {renderNumericInput("solBacak", "Sol Bacak", "Bacak Çevresi", true)}
+                            {renderNumericInput("sagKalf", "Sağ Kalf", "Kalf Çevresi", true)}
+                            {renderNumericInput("solKalf", "Sol Kalf", "Kalf Çevresi", true)}
                             {renderTextArea("mezuraNote", "Mezura Notu")}
                         </View>
                     </>
@@ -1157,44 +1170,87 @@ export default function NewRecordScreen() {
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <SquareActivity size={18} color="#f97316" />
-                                <Text style={styles.cardTitle}>
-                                    Aerobik Uygunluk / Hedef KAH
-                                </Text>
+                                <Text style={styles.cardTitle}>Aerobik Uygunluk / Hedef KAH</Text>
                             </View>
+
+                            {/* Dinlenik nabız */}
+                            <InfoNote>
+                                Dinlenik nabız sabah uyanır uyanmaz, yataktan kalkmadan ölçülmelidir.
+                                Düzenli egzersiz yapan bireylerde zamanla düşmesi beklenir ve
+                                kardiyovasküler uygunluğun önemli bir göstergesidir.
+                            </InfoNote>
                             {renderNumericInput("dinlenikNabiz", "Dinlenik Nabız")}
 
+                            {/* Carvonen zone */}
+                            <InfoNote>
+                                Carvonen yöntemi, dinlenik nabız ve yaşa göre hedef egzersiz nabzını
+                                hesaplamak için kullanılır. Seçilen zone, egzersizin şiddetini belirler
+                                (yağ yakımı, dayanıklılık, performans gibi).
+                            </InfoNote>
                             {renderRadioRow(
                                 "carvonenMultiplier",
                                 "Carvonen Egzersiz Şiddeti (Zone)",
                                 ["0.55", "0.65", "0.75", "0.85", "0.95"]
                             )}
-                            {formData.carvonenMultiplier && (
-                                <Text style={styles.infoText}>
-                                    Hedef Nabız:{" "}
-                                    {getCarvonenTargetHR(
-                                        Number(formData.dinlenikNabiz || formData.restingHeartRate || 0),
-                                        Number(formData.carvonenMultiplier || 0),
-                                        getAge()
-                                    )}
-                                </Text>)}
 
+                            {/* Hedef nabız sonucu */}
+                            {formData.carvonenMultiplier && (
+                                <>
+                                    <InfoNote>
+                                        Hesaplanan hedef nabız, egzersiz sırasında ulaşılması önerilen kalp atım
+                                        sayısını ifade eder. Egzersiz boyunca bu aralıkta kalmak, antrenmanın
+                                        amacına uygun ilerlemesini sağlar.
+                                    </InfoNote>
+                                    <Text style={styles.infoText}>
+                                        Hedef Nabız:{" "}
+                                        {getCarvonenTargetHR(
+                                            Number(formData.dinlenikNabiz || formData.restingHeartRate || 0),
+                                            Number(formData.carvonenMultiplier || 0),
+                                            getAge()
+                                        )}
+                                    </Text>
+                                </>
+                            )}
+
+                            {/* YMCA toparlanma nabzı */}
+                            <InfoNote>
+                                YMCA 3 dk basamak testi sonrası ölçülen toparlanma nabzı, bireyin aerobik
+                                kapasitesi ve kalbin egzersiz sonrası normale dönme hızını değerlendirmek
+                                için kullanılır.
+                            </InfoNote>
                             {renderNumericInput(
                                 "toparlanmaNabzi",
                                 "YMCA 3 dk Basamak Testi – Toparlanma Nabzı"
                             )}
+
+                            {/* YMCA sonucu */}
                             {formData.toparlanmaNabzi && (
-                                <Text style={styles.infoText}>
-                                    YMCA Sonuç:{" "}
-                                    {getYMCAResult(
-                                        Number(formData.toparlanmaNabzi || 0),
-                                        getAge(),
-                                        student?.gender
-                                    )}
-                                </Text>)}
+                                <>
+                                    <InfoNote>
+                                        YMCA testi sonucu, yaş ve cinsiyete göre aerobik uygunluk düzeyini
+                                        gösterir. Daha düşük toparlanma nabzı, daha iyi kardiyovasküler
+                                        kondisyonu ifade eder.
+                                    </InfoNote>
+                                    <Text style={styles.infoText}>
+                                        YMCA Sonuç:{" "}
+                                        {getYMCAResult(
+                                            Number(formData.toparlanmaNabzi || 0),
+                                            getAge(),
+                                            student?.gender
+                                        )}
+                                    </Text>
+                                </>
+                            )}
 
-
+                            {/* Bruce testi */}
                             <View style={[styles.field, { marginTop: 16 }]}>
                                 <Text style={styles.label}>Bruce Testi – Süre (dk)</Text>
+
+                                <InfoNote>
+                                    Bruce testi maksimal bir egzersiz testidir. Koşu bandında her 3 dakikada
+                                    bir hız ve eğim artırılır. Bireyin dayanabildiği toplam süre kaydedilir.
+                                </InfoNote>
+
                                 <TextInput
                                     placeholder="Test süresi (dk)"
                                     placeholderTextColor="#64748b"
@@ -1204,26 +1260,32 @@ export default function NewRecordScreen() {
                                     keyboardType="numeric"
                                 />
                                 <Text style={styles.helpText}>
-                                    Bruce testi protokolü: Koşu bandında her 3 dakikada bir hız ve
-                                    eğim artar, dayanabildiği son süre kaydedilir.
+                                    Bruce testi protokolü: Koşu bandında her 3 dakikada bir hız ve eğim artar,
+                                    dayanabildiği son süre kaydedilir.
                                 </Text>
                                 {formData.testSuresi && (
-                                    <Text style={styles.infoText}>
-                                        VO₂max:{" "}
-                                        {getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender)}{" "}
-                                        ml/kg/dk —{" "}
-                                        {getVO2Status(
-                                            Number(
-                                                getBruceTestVO2(
-                                                    Number(formData.testSuresi || 0),
-                                                    student?.gender
-                                                ) || 0
-                                            ),
-                                            getAge(),
-                                            student?.gender
-                                        )}
-                                    </Text>)}
+                                    <>
+                                        <InfoNote>
+                                            VO₂max, vücudun maksimal oksijen kullanma kapasitesini ifade eder ve
+                                            aerobik dayanıklılığın en önemli göstergelerinden biridir. Değer yaş
+                                            ve cinsiyete göre değerlendirilmelidir.
+                                        </InfoNote>
 
+                                        <Text style={styles.infoText}>
+                                            VO₂max:{" "}
+                                            {getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender)}{" "}
+                                            ml/kg/dk —{" "}
+                                            {getVO2Status(
+                                                Number(
+                                                    getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender) ||
+                                                    0
+                                                ),
+                                                getAge(),
+                                                student?.gender
+                                            )}
+                                        </Text>
+                                    </>
+                                )}
                             </View>
                         </View>
                     </>
@@ -1491,7 +1553,33 @@ export default function NewRecordScreen() {
                             </View>
 
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.studentName}>{student.name}</Text>
+                                {/* İsim + Tip Chip */}
+                                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                                    <Text style={styles.studentName}>{student.name}</Text>
+
+                                    <TouchableOpacity
+                                        onPress={() => setShowTips((s) => !s)}
+                                        activeOpacity={0.85}
+                                        style={[
+                                            styles.tipChip,
+                                            showTips ? styles.tipChipOn : styles.tipChipOff,
+                                        ]}
+                                    >
+                                        {showTips ? (
+                                            <Eye size={14} color="#38bdf8" />
+                                        ) : (
+                                            <EyeOff size={14} color="#94a3b8" />
+                                        )}
+                                        <Text
+                                            style={[
+                                                styles.tipChipText,
+                                                showTips ? { color: "#38bdf8" } : { color: "#94a3b8" },
+                                            ]}
+                                        >
+                                            İpuçları {showTips ? "Açık" : "Kapalı"}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
 
                                 <View style={styles.studentMetaRow}>
                                     {student.email && (
@@ -1640,7 +1728,9 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: themeui.spacing.md,
-        marginTop: themeui.spacing.xs,
+        marginTop: themeui.spacing.md,
+        marginBottom: themeui.spacing.md,
+        paddingLeft: themeui.spacing.xl
     },
     avatar: {
         width: 52,
@@ -1887,8 +1977,6 @@ const styles = StyleSheet.create({
         color: "#9ca3af",
     },
     hintButton: {
-        alignSelf: "flex-start",
-        marginTop: 6,
         paddingHorizontal: 10,
         paddingVertical: 6,
         borderRadius: 999,
@@ -1934,5 +2022,25 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: "600",
     },
-
+    tipChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 999,
+        borderWidth: 1,
+    },
+    tipChipOn: {
+        backgroundColor: "rgba(56,189,248,0.08)",
+        borderColor: "rgba(56,189,248,0.35)",
+    },
+    tipChipOff: {
+        backgroundColor: "rgba(148,163,184,0.06)",
+        borderColor: "rgba(148,163,184,0.18)",
+    },
+    tipChipText: {
+        fontSize: 12,
+        fontWeight: "700",
+    },
 });
