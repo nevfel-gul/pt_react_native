@@ -3,15 +3,15 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, Check, Edit3, User, X } from "lucide-react-native";
 import React from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-    findNodeHandle,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  findNodeHandle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -30,9 +30,9 @@ export default function ProfileScreen() {
   const scrollRef = React.useRef<ScrollView>(null);
 
   const [profile, setProfile] = React.useState<ProfileState>({
-    name: "Yağmur Öztürk",
+    name: "Yağmur Koca",
     username: "@pt.yagmur",
-    email: "yagmur.ozturk@example.com",
+    email: "yagmur.koca@example.com",
     phone: "+90 5xx xxx xx xx",
     bio: "",
     skills: "",
@@ -48,19 +48,6 @@ export default function ProfileScreen() {
   const startEdit = (key: keyof ProfileState) => {
     setEditKey(key);
     setTempValue(profile[key] ?? "");
-  };
-
-  const cancelEdit = () => {
-    setEditKey(null);
-    setTempValue("");
-    // klavyeyi kapatmak için blur yeterli; ama istersen aşağıya Keyboard.dismiss() ekleyebilirsin
-  };
-
-  const saveEdit = () => {
-    if (!editKey) return;
-    setProfile((p) => ({ ...p, [editKey]: tempValue }));
-    setEditKey(null);
-    setTempValue("");
   };
 
   // ✅ focus olunca input'u klavyenin üstüne al
@@ -103,76 +90,72 @@ export default function ProfileScreen() {
     placeholder?: string;
   }) => {
     const isEditing = editKey === fieldKey;
-    const inputRef = React.useRef<TextInput>(null);
+    const [localValue, setLocalValue] = React.useState(value);
+
+    React.useEffect(() => {
+      if (isEditing) setLocalValue(value);
+    }, [isEditing]);
 
     return (
       <View style={[styles.settingRow, isLast && styles.settingRowLast]}>
-        {/* SOL */}
         <View style={styles.leftCol}>
           <Text style={styles.settingLabel}>{label}</Text>
-          {subtitle ? <Text style={styles.settingSubtitle}>{subtitle}</Text> : null}
+          {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
         </View>
 
-        {/* SAĞ */}
-        {!isEditing ? (
-          <View style={styles.rightCol}>
-            <Text style={styles.settingValueText} numberOfLines={1}>
-              {value && value.trim().length > 0 ? value : "Düzenle"}
-            </Text>
+        <View style={styles.rightCol}>
+          {!isEditing ? (
+            <>
+              <Text style={styles.settingValueText} numberOfLines={1}>
+                {value || "Düzenle"}
+              </Text>
+              <TouchableOpacity onPress={() => startEdit(fieldKey)}>
+                <Edit3 size={16} color={themeui.colors.text.secondary} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.inlineEditor}>
+                <TextInput
+                  value={localValue}
+                  onChangeText={setLocalValue}
+                  placeholder={placeholder}
+                  placeholderTextColor={themeui.colors.text.muted}
+                  style={styles.inlineEditorInput}
+                  returnKeyType="done"
+                  blurOnSubmit
+                />
+              </View>
 
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.chev}
-              onPress={() => startEdit(fieldKey)}
-              hitSlop={10}
-            >
-              <Edit3 size={16} color={themeui.colors.text.secondary} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.rightCol}>
-            <View style={styles.inlineEditor}>
-              <TextInput
-                ref={inputRef}
-                value={tempValue}
-                onChangeText={setTempValue}
-                placeholder={placeholder ?? "Yeni değer"}
-                placeholderTextColor={themeui.colors.text.muted}
-                style={styles.inlineEditorInput}
-                multiline={false}
-                numberOfLines={1}
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={saveEdit}
-                blurOnSubmit
-                onFocus={() => {
-                  setTimeout(() => scrollToKeyboard(inputRef.current), 40);
+              <TouchableOpacity
+                onPress={() => {
+                  setEditKey(null);
                 }}
-              />
-            </View>
+                activeOpacity={0.75}
+                style={[styles.actionBtn, styles.actionBtnGhost]}
+                hitSlop={10}
+              >
+                <X size={16} color={themeui.colors.text.secondary} />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={cancelEdit}
-              activeOpacity={0.75}
-              style={[styles.actionBtn, styles.actionBtnGhost]}
-              hitSlop={10}
-            >
-              <X size={16} color={themeui.colors.text.secondary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={saveEdit}
-              activeOpacity={0.75}
-              style={[styles.actionBtn, styles.actionBtnPrimary]}
-              hitSlop={10}
-            >
-              <Check size={16} color={themeui.colors.surface} />
-            </TouchableOpacity>
-          </View>
-        )}
+              <TouchableOpacity
+                onPress={() => {
+                  setProfile((p) => ({ ...p, [fieldKey]: localValue }));
+                  setEditKey(null);
+                }}
+                activeOpacity={0.75}
+                style={[styles.actionBtn, styles.actionBtnPrimary]}
+                hitSlop={10}
+              >
+                <Check size={16} color={themeui.colors.surface} />
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
     );
   };
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -244,7 +227,7 @@ export default function ProfileScreen() {
                 subtitle="Uygulamada gözükecek adın"
                 fieldKey="name"
                 value={profile.name}
-                placeholder="Örn: Yağmur Öztürk"
+                placeholder="Örn: Yağmur Koca"
               />
               <SettingRow
                 label="Kullanıcı Adı"

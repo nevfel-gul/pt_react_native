@@ -32,7 +32,7 @@ export default function RootLayout() {
   // login sayfasına yönlendirme burada, render sırasında değil!
   useEffect(() => {
     if (!loading && !user) {
-      router.replace('/login');
+      router.replace('/landing');
     }
   }, [loading, user, router]);
 
@@ -56,6 +56,7 @@ export default function RootLayout() {
         <Stack.Screen name="newrecord/[id]" options={{ title: 'Yeni Kayıt', headerShown: false }} />
         <Stack.Screen name="record/[id]" options={{ title: 'Kayıt', headerShown: false }} />
         <Stack.Screen name="newstudent" options={{ title: 'Yeni Öğrenci', headerShown: false }} />
+        <Stack.Screen name="landing" options={{ title: 'Hoşgeldiniz', headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
