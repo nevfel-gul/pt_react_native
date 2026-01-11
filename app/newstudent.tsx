@@ -88,9 +88,21 @@ type FormState = {
     otherGoal: string;
 };
 
+type FormErrors = {
+    name?: string;
+    boy?: string;
+    number?: string;
+    email?: string;
+    dateOfBirth?: string;
+    gender?: string;
+};
+
+
+
 const YeniOgrenciScreen = () => {
     const router = useRouter();
     const today = new Date().toISOString().split("T")[0];
+    const [errors, setErrors] = useState<FormErrors>({});
 
     const trainingGoalOptions = useMemo(
         () => [
@@ -182,6 +194,60 @@ const YeniOgrenciScreen = () => {
         return () => unsubscribe();
     }, []);
 
+    const normalizeTRPhone = (input: string) => {
+        let p = (input || "").replace(/[^\d+]/g, "");
+
+        if (p.startsWith("+90")) p = "0" + p.slice(3);
+
+        if (p.startsWith("90") && p.length >= 12) p = "0" + p.slice(2);
+
+        return p;
+    };
+
+
+    const validateForm = () => {
+        const newErrors: FormErrors = {};
+
+        if (!form.name?.trim()) {
+            newErrors.name = "Ad soyad zorunludur";
+        }
+
+        if (!form.boy) {
+            newErrors.boy = "Boy girilmelidir";
+        } else if (isNaN(Number(form.boy)) || Number(form.boy) < 50) {
+            newErrors.boy = "Geçerli bir boy giriniz";
+        }
+
+        // TELEFON (opsiyonel)
+        const phone = normalizeTRPhone(form.number);
+
+        if (phone && !/^05\d{9}$/.test(phone)) {
+            newErrors.number = "Telefon 05xx xxx xx xx formatında olmalı";
+        }
+
+        // E-POSTA (opsiyonel)
+        const email = form.email?.trim();
+
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            newErrors.email = "Geçerli bir e-posta giriniz";
+        }
+
+
+
+        if (!form.dateOfBirth) {
+            newErrors.dateOfBirth = "Doğum tarihi zorunludur";
+        }
+
+        if (!form.gender) {
+            newErrors.gender = "Cinsiyet seçilmelidir";
+        }
+
+        setErrors(newErrors);
+
+        return Object.keys(newErrors).length === 0;
+    };
+
+
     const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }));
     };
@@ -197,12 +263,7 @@ const YeniOgrenciScreen = () => {
     };
 
     const handleSubmit = async () => {
-        if (!form.name.trim()) {
-            Alert.alert("Eksik Bilgi", "Lütfen öğrencinin adını gir.");
-            return;
-        }
-        if (!form.number.trim()) {
-            Alert.alert("Eksik Bilgi", "Lütfen telefon numarasını gir.");
+        if (!validateForm()) {
             return;
         }
 
@@ -277,6 +338,7 @@ const YeniOgrenciScreen = () => {
                                 placeholder="Ad Soyad"
                                 value={form.name}
                                 onChangeText={(t) => updateField("name", t)}
+                                error={errors.name}
                             />
 
                             <View style={styles.row}>
@@ -287,6 +349,7 @@ const YeniOgrenciScreen = () => {
                                         keyboardType="numeric"
                                         value={form.boy}
                                         onChangeText={(t) => updateField("boy", t)}
+                                        error={errors.boy}
                                     />
                                 </View>
 
@@ -296,7 +359,8 @@ const YeniOgrenciScreen = () => {
                                         placeholder="05xx xxx xx xx"
                                         keyboardType="phone-pad"
                                         value={form.number}
-                                        onChangeText={(t) => updateField("number", t)}
+                                        onChangeText={(t) => updateField("number", normalizeTRPhone(t))}
+                                        error={errors.number}
                                     />
                                 </View>
                             </View>
@@ -308,6 +372,7 @@ const YeniOgrenciScreen = () => {
                                 autoCapitalize="none"
                                 value={form.email}
                                 onChangeText={(t) => updateField("email", t)}
+                                error={errors.email}
                             />
 
                             <View style={styles.row}>
@@ -317,8 +382,10 @@ const YeniOgrenciScreen = () => {
                                         placeholder="YYYY-AA-GG"
                                         value={form.dateOfBirth}
                                         onChangeText={(t) => updateField("dateOfBirth", t)}
+                                        error={errors.dateOfBirth}
                                     />
                                 </View>
+
 
                                 <View style={styles.rowItem}>
                                     <Text style={styles.label}>Cinsiyet</Text>
@@ -327,6 +394,9 @@ const YeniOgrenciScreen = () => {
                                         <Chip label="Kadın" active={form.gender === "Kadın"} onPress={() => updateField("gender", "Kadın")} />
                                         <Chip label="Erkek" active={form.gender === "Erkek"} onPress={() => updateField("gender", "Erkek")} />
                                     </View>
+                                    {errors.gender && (
+                                        <Text style={styles.errorText}>{errors.gender}</Text>
+                                    )}
                                 </View>
                             </View>
 
@@ -621,6 +691,7 @@ function FormInput({
     onChangeText,
     keyboardType,
     autoCapitalize,
+    error,
 }: {
     label: string;
     value: string;
@@ -628,6 +699,7 @@ function FormInput({
     onChangeText: (t: string) => void;
     keyboardType?: any;
     autoCapitalize?: any;
+    error?: string;
 }) {
     return (
         <View style={{ marginBottom: 14 }}>
@@ -641,6 +713,9 @@ function FormInput({
                 autoCapitalize={autoCapitalize}
                 style={styles.input}
             />
+            {error && (
+                <Text style={styles.errorText}>{error}</Text>
+            )}
         </View>
     );
 }
@@ -832,6 +907,11 @@ const styles = StyleSheet.create({
         color: themeui.colors.surface,
         fontSize: themeui.fontSize.md,
         fontWeight: "700",
+    },
+    errorText: {
+        marginTop: 4,
+        fontSize: 12,
+        color: "#ef4444",
     },
 });
 
