@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { auth } from '@/services/firebase';
+import { initI18n } from "@/services/i18n";
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -17,7 +18,8 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // <-- burada true olmalı
+  const [loading, setLoading] = useState(true);
+  const [i18nReady, setI18nReady] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -36,6 +38,27 @@ export default function RootLayout() {
     }
   }, [loading, user, router]);
 
+
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        await initI18n();
+        if (mounted) setI18nReady(true);
+      } catch (e) {
+        console.log("i18n init error:", e);
+        if (mounted) setI18nReady(true); // app kitlenmesin diye
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+
   if (loading) {
     // Uygulama açılırken küçük bir loading ekranı
     return (
@@ -46,6 +69,7 @@ export default function RootLayout() {
     );
   }
 
+  if (!i18nReady) return null;
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack >

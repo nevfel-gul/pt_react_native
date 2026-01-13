@@ -1,6 +1,7 @@
 import { themeui } from "@/constants/themeui";
 import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
+import { setAppLanguage } from "@/services/i18n";
 import { useRouter } from "expo-router";
 import { onSnapshot, orderBy, query } from "firebase/firestore";
 import {
@@ -16,6 +17,7 @@ import {
   XIcon,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Animated,
   FlatList,
@@ -54,6 +56,9 @@ export default function KayitlarScreen() {
     inputRange: [0, 1],
     outputRange: [0, 0.55],
   });
+
+  const { t, i18n } = useTranslation();
+
 
   const openAnimatedSearch = () => {
     setSearchActive(true);
@@ -179,7 +184,7 @@ export default function KayitlarScreen() {
               style={[styles.leftHeaderArea, { opacity: iconsOpacity }]}
               pointerEvents={searchActive ? "none" : "auto"}
             >
-              <Text style={styles.logoText}>ATHLETRACK</Text>
+              <Text style={styles.logoText}>{t("athletrack")}</Text>
             </Animated.View>
 
             <View style={styles.rightHeaderArea}>
@@ -223,87 +228,105 @@ export default function KayitlarScreen() {
                   <Users size={24} color="#60a5fa" />
                 </TouchableOpacity>
               </Animated.View>
+
+              {/* SEARCH BAR - headerTopRow'un içinde ama dışarıda (absolute) */}
+              {searchActive && (
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    left: 10,
+                    right: 10,
+                    top: 0,
+                    height: 48,
+                    backgroundColor: "#1e293b",
+                    borderRadius: 99,
+                    paddingHorizontal: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "#475569",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 8,
+                    zIndex: 999,
+                    opacity: searchAnim,
+                  }}
+                >
+                  {/* Geri Butonu */}
+                  <TouchableOpacity
+                    onPress={closeAnimatedSearch}
+                    style={{ marginRight: 8 }}
+                  >
+                    <ArrowLeft size={20} color="#f1f5f9" />
+                  </TouchableOpacity>
+
+                  {/* TextInput */}
+                  <TextInput
+                    placeholder="Öğrenci ara..."
+                    placeholderTextColor="#94a3b8"
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                    autoFocus
+                    style={{
+                      flex: 1,
+                      color: "#f1f5f9",
+                      fontSize: 15,
+                      fontWeight: "500",
+                    }}
+                  />
+
+                  {/* AI Butonu - SAĞ TARAF */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      // not: AI fonks buraa eklencek
+                      console.log("AI butonu tıklandı");
+                    }}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 99,
+                      backgroundColor: "#7c3aed",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginLeft: 8,
+                    }}
+                  >
+                    <Sparkles size={18} color="#fff" />
+                  </TouchableOpacity>
+
+                  {/* Temizle butonu - Sağda AI butonundan önce */}
+                  {searchTerm.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setSearchTerm("")}
+                      style={{ marginLeft: 8 }}
+                    >
+                      <XIcon size={18} color="#94a3b8" />
+                    </TouchableOpacity>
+                  )}
+                </Animated.View>
+              )}
             </View>
 
-            {/* SEARCH BAR - headerTopRow'un içinde ama dışarıda (absolute) */}
-            {searchActive && (
-              <Animated.View
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  right: 10,
-                  top: 0,
-                  height: 48,
-                  backgroundColor: "#1e293b",
-                  borderRadius: 99,
-                  paddingHorizontal: 12,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: "#475569",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
-                  zIndex: 999,
-                  opacity: searchAnim,
-                }}
-              >
-                {/* Geri Butonu */}
-                <TouchableOpacity
-                  onPress={closeAnimatedSearch}
-                  style={{ marginRight: 8 }}
-                >
-                  <ArrowLeft size={20} color="#f1f5f9" />
-                </TouchableOpacity>
-
-                {/* TextInput */}
-                <TextInput
-                  placeholder="Öğrenci ara..."
-                  placeholderTextColor="#94a3b8"
-                  value={searchTerm}
-                  onChangeText={setSearchTerm}
-                  autoFocus
-                  style={{
-                    flex: 1,
-                    color: "#f1f5f9",
-                    fontSize: 15,
-                    fontWeight: "500",
-                  }}
-                />
-
-                {/* AI Butonu - SAĞ TARAF */}
-                <TouchableOpacity
-                  onPress={() => {
-                    // not: AI fonks buraa eklencek
-                    console.log("AI butonu tıklandı");
-                  }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 99,
-                    backgroundColor: "#7c3aed",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginLeft: 8,
-                  }}
-                >
-                  <Sparkles size={18} color="#fff" />
-                </TouchableOpacity>
-
-                {/* Temizle butonu - Sağda AI butonundan önce */}
-                {searchTerm.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => setSearchTerm("")}
-                    style={{ marginLeft: 8 }}
-                  >
-                    <XIcon size={18} color="#94a3b8" />
-                  </TouchableOpacity>
-                )}
-              </Animated.View>
-            )}
           </View>
+
+
+          <Text style={{ marginBottom: 12, color: "#f1f5f9" }}>Dil: {i18n.language}</Text>
+
+          <TouchableOpacity
+            onPress={() => setAppLanguage("tr")}
+            style={{ padding: 12, borderWidth: 1, borderRadius: 12, marginBottom: 8, backgroundColor: i18n.language === "tr" ? "#0064fb" : "#445269" }}
+          >
+            <Text>Türkçe</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setAppLanguage("en")}
+            style={{ padding: 12, borderWidth: 1, borderRadius: 12, backgroundColor: i18n.language === "en" ? "#0064fb" : "#445269" }}
+          >
+            <Text>English</Text>
+          </TouchableOpacity>
         </View>
 
         {/* LİSTE */}
