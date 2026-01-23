@@ -31,14 +31,11 @@ export default function RootLayout() {
     return () => unsubscribe();
   }, []);
 
-  // login sayfasına yönlendirme burada, render sırasında değil!
   useEffect(() => {
     if (!loading && !user) {
       router.replace('/landing');
     }
   }, [loading, user, router]);
-
-
 
   useEffect(() => {
     let mounted = true;
@@ -49,7 +46,7 @@ export default function RootLayout() {
         if (mounted) setI18nReady(true);
       } catch (e) {
         console.log("i18n init error:", e);
-        if (mounted) setI18nReady(true); // app kitlenmesin diye
+        if (mounted) setI18nReady(true);
       }
     })();
 
@@ -58,9 +55,7 @@ export default function RootLayout() {
     };
   }, []);
 
-
   if (loading) {
-    // Uygulama açılırken küçük bir loading ekranı
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#4f46e5" />
