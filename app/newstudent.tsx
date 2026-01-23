@@ -6,6 +6,7 @@ import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { addDoc, serverTimestamp } from "firebase/firestore";
 import { ArrowLeft, Calendar, Save, User as UserIcon } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
     Alert,
     KeyboardAvoidingView,
@@ -98,25 +99,24 @@ type FormErrors = {
     gender?: string;
 };
 
-
-
 const YeniOgrenciScreen = () => {
     const router = useRouter();
+    const { t } = useTranslation();
+
     const today = new Date().toISOString().split("T")[0];
     const [errors, setErrors] = useState<FormErrors>({});
 
     const trainingGoalOptions = useMemo(
         () => [
-            "Kilo vermek / Yağ yakmak",
-            "Kas yapmak / Sıkılaşmak",
-            "Formda kalmak / Sağlıklı olmak",
-            "Duruşumu düzeltmek / Esneklik kazanmak",
-            "Dayanıklılığımı artırmak",
-            "Bölgesel şekillenme (örnek: karın, kalça)",
+            t("newstudent.goal.option1"),
+            t("newstudent.goal.option2"),
+            t("newstudent.goal.option3"),
+            t("newstudent.goal.option4"),
+            t("newstudent.goal.option5"),
+            t("newstudent.goal.option6"),
         ],
-        []
+        [t]
     );
-
 
     const [user, setUser] = useState<FirebaseUser | null>(null);
     const [loading, setLoading] = useState(true); // <-- burada true olmalı
@@ -205,49 +205,45 @@ const YeniOgrenciScreen = () => {
         return p;
     };
 
-
     const validateForm = () => {
         const newErrors: FormErrors = {};
 
         if (!form.name?.trim()) {
-            newErrors.name = "Ad soyad zorunludur";
+            newErrors.name = t("newstudent.validation.name_required");
         }
 
         if (!form.boy) {
-            newErrors.boy = "Boy girilmelidir";
+            newErrors.boy = t("newstudent.validation.height_required");
         } else if (isNaN(Number(form.boy)) || Number(form.boy) < 50) {
-            newErrors.boy = "Geçerli bir boy giriniz";
+            newErrors.boy = t("newstudent.validation.height_invalid");
         }
 
         // TELEFON (opsiyonel)
         const phone = normalizeTRPhone(form.number);
 
         if (phone && !/^05\d{9}$/.test(phone)) {
-            newErrors.number = "Telefon 05xx xxx xx xx formatında olmalı";
+            newErrors.number = t("newstudent.validation.phone_invalid");
         }
 
         // E-POSTA (opsiyonel)
         const email = form.email?.trim();
 
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            newErrors.email = "Geçerli bir e-posta giriniz";
+            newErrors.email = t("newstudent.validation.email_invalid");
         }
 
-
-
         if (!form.dateOfBirth) {
-            newErrors.dateOfBirth = "Doğum tarihi zorunludur";
+            newErrors.dateOfBirth = t("newstudent.validation.birth_date_required");
         }
 
         if (!form.gender) {
-            newErrors.gender = "Cinsiyet seçilmelidir";
+            newErrors.gender = t("newstudent.validation.gender_required");
         }
 
         setErrors(newErrors);
 
         return Object.keys(newErrors).length === 0;
     };
-
 
     const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -272,16 +268,16 @@ const YeniOgrenciScreen = () => {
             setSaving(true);
             await addDoc(studentsColRef(auth.currentUser?.uid!), {
                 ...form,
-                ownerUid: auth.currentUser?.uid,   // opsiyonel ama iyi
+                ownerUid: auth.currentUser?.uid, // opsiyonel ama iyi
                 createdAt: serverTimestamp(),
             });
 
-            Alert.alert("Başarılı", "Öğrenci kaydedildi.", [
-                { text: "Tamam", onPress: () => router.replace("/(tabs)") },
+            Alert.alert(t("newstudent.alert.success.title"), t("newstudent.alert.success.message"), [
+                { text: t("newstudent.alert.success.ok"), onPress: () => router.replace("/(tabs)") },
             ]);
         } catch (error) {
             console.error(error);
-            Alert.alert("Hata", "Öğrenci kaydedilemedi.");
+            Alert.alert(t("newstudent.alert.error.title"), t("newstudent.alert.error.message"));
         } finally {
             setSaving(false);
         }
@@ -294,17 +290,13 @@ const YeniOgrenciScreen = () => {
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0} // header varsa 80-100 dene
             >
-
                 <View style={styles.container}>
                     {/* HEADER */}
                     <View style={styles.headerCard}>
                         <View style={styles.headerTopRow}>
-                            <TouchableOpacity
-                                style={styles.backButton}
-                                onPress={() => router.replace("/(tabs)")}
-                            >
+                            <TouchableOpacity style={styles.backButton} onPress={() => router.replace("/(tabs)")}>
                                 <ArrowLeft size={18} color="#f1f5f9" />
-                                <Text style={styles.backButtonText}>Geri</Text>
+                                <Text style={styles.backButtonText}>{t("newstudent.header.back")}</Text>
                             </TouchableOpacity>
 
                             <View style={styles.headerTitleRow}>
@@ -313,11 +305,13 @@ const YeniOgrenciScreen = () => {
                                 </View>
 
                                 <View>
-                                    <Text style={styles.headerTitle}>Yeni Öğrenci</Text>
+                                    <Text style={styles.headerTitle}>{t("newstudent.header.title")}</Text>
 
                                     <View style={styles.dateRow}>
                                         <Calendar size={14} color="#94a3b8" />
-                                        <Text style={styles.dateText}>Değerlendirme: {form.assessmentDate}</Text>
+                                        <Text style={styles.dateText}>
+                                            {t("newstudent.header.assessment_prefix")} {form.assessmentDate}
+                                        </Text>
                                     </View>
                                 </View>
                             </View>
@@ -332,274 +326,289 @@ const YeniOgrenciScreen = () => {
                     >
                         {/* BÖLÜM 1 */}
                         <View style={styles.sectionCard}>
-                            <Text style={styles.sectionTitle}>Kişisel Bilgiler</Text>
+                            <Text style={styles.sectionTitle}>{t("newstudent.section.personal_info")}</Text>
 
                             <FormInput
-                                label="Ad Soyad"
-                                placeholder="Ad Soyad"
+                                label={t("newstudent.label.full_name")}
+                                placeholder={t("newstudent.placeholder.full_name")}
                                 value={form.name}
-                                onChangeText={(t) => updateField("name", t)}
+                                onChangeText={(tx) => updateField("name", tx)}
                                 error={errors.name}
                             />
 
                             <View style={styles.row}>
                                 <View style={styles.rowItem}>
                                     <FormInput
-                                        label="Boy (cm)"
-                                        placeholder="168"
+                                        label={t("newstudent.label.height_cm")}
+                                        placeholder={t("newstudent.placeholder.height_cm")}
                                         keyboardType="numeric"
                                         value={form.boy}
-                                        onChangeText={(t) => updateField("boy", t)}
+                                        onChangeText={(tx) => updateField("boy", tx)}
                                         error={errors.boy}
                                     />
                                 </View>
 
                                 <View style={styles.rowItem}>
                                     <FormInput
-                                        label="Telefon"
-                                        placeholder="05xx xxx xx xx"
+                                        label={t("newstudent.label.phone")}
+                                        placeholder={t("newstudent.placeholder.phone")}
                                         keyboardType="phone-pad"
                                         value={form.number}
-                                        onChangeText={(t) => updateField("number", normalizeTRPhone(t))}
+                                        onChangeText={(tx) => updateField("number", normalizeTRPhone(tx))}
                                         error={errors.number}
                                     />
                                 </View>
                             </View>
 
                             <FormInput
-                                label="E-posta"
-                                placeholder="mail@example.com"
+                                label={t("newstudent.label.email")}
+                                placeholder={t("newstudent.placeholder.email")}
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 value={form.email}
-                                onChangeText={(t) => updateField("email", t)}
+                                onChangeText={(tx) => updateField("email", tx)}
                                 error={errors.email}
                             />
 
                             <View style={styles.row}>
                                 <View style={styles.rowItem}>
                                     <FormInput
-                                        label="Doğum Tarihi"
-                                        placeholder="YYYY-AA-GG"
+                                        label={t("newstudent.label.birth_date")}
+                                        placeholder={t("newstudent.placeholder.birth_date")}
                                         value={form.dateOfBirth}
-                                        onChangeText={(t) => updateField("dateOfBirth", t)}
+                                        onChangeText={(tx) => updateField("dateOfBirth", tx)}
                                         error={errors.dateOfBirth}
                                     />
                                 </View>
 
-
                                 <View style={styles.rowItem}>
-                                    <Text style={styles.label}>Cinsiyet</Text>
+                                    <Text style={styles.label}>{t("newstudent.label.gender")}</Text>
 
                                     <View style={styles.chipRow}>
-                                        <Chip label="Kadın" active={form.gender === "Kadın"} onPress={() => updateField("gender", "Kadın")} />
-                                        <Chip label="Erkek" active={form.gender === "Erkek"} onPress={() => updateField("gender", "Erkek")} />
+                                        <Chip
+                                            label={t("newstudent.gender.female")}
+                                            active={form.gender === "Kadın"}
+                                            onPress={() => updateField("gender", "Kadın")}
+                                        />
+                                        <Chip
+                                            label={t("newstudent.gender.male")}
+                                            active={form.gender === "Erkek"}
+                                            onPress={() => updateField("gender", "Erkek")}
+                                        />
                                     </View>
-                                    {errors.gender && (
-                                        <Text style={styles.errorText}>{errors.gender}</Text>
-                                    )}
+                                    {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
                                 </View>
                             </View>
 
-                            <Text style={styles.label}>Durum</Text>
+                            <Text style={styles.label}>{t("newstudent.label.status")}</Text>
                             <View style={styles.chipRow}>
-                                <Chip label="Aktif" active={form.aktif === "Aktif"} onPress={() => updateField("aktif", "Aktif")} />
-                                <Chip label="Pasif" active={form.aktif === "Pasif"} onPress={() => updateField("aktif", "Pasif")} />
+                                <Chip
+                                    label={t("newstudent.status.active")}
+                                    active={form.aktif === "Aktif"}
+                                    onPress={() => updateField("aktif", "Aktif")}
+                                />
+                                <Chip
+                                    label={t("newstudent.status.passive")}
+                                    active={form.aktif === "Pasif"}
+                                    onPress={() => updateField("aktif", "Pasif")}
+                                />
                             </View>
                         </View>
 
                         {/* BÖLÜM 2 - PAR-Q */}
                         <View style={styles.sectionCard}>
-                            <Text style={styles.sectionTitle}>PAR-Q Testi</Text>
+                            <Text style={styles.sectionTitle}>{t("newstudent.section.parq")}</Text>
 
                             <QuestionBool
-                                title="Doktorunuz kalp hastalığı veya yüksek tansiyon ile ilgili bir sorununuz olduğunu söyledi mi?"
+                                title={t("newstudent.parq.q1")}
                                 value={form.doctorSaidHeartOrHypertension}
                                 onChange={(v) => updateField("doctorSaidHeartOrHypertension", v)}
                             />
                             {form.doctorSaidHeartOrHypertension === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.doctorSaidHeartOrHypertensionNote}
-                                    onChangeText={(t) => updateField("doctorSaidHeartOrHypertensionNote", t)}
+                                    onChangeText={(tx) => updateField("doctorSaidHeartOrHypertensionNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Dinlenme sırasında, günlük aktiviteler sırasında ya da fiziksel aktivite sırasında göğsünüzde ağrı hisseder misiniz?"
+                                title={t("newstudent.parq.q2")}
                                 value={form.chestPainDuringActivityOrDaily}
                                 onChange={(v) => updateField("chestPainDuringActivityOrDaily", v)}
                             />
                             {form.chestPainDuringActivityOrDaily === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.chestPainDuringActivityOrDailyNote}
-                                    onChangeText={(t) => updateField("chestPainDuringActivityOrDailyNote", t)}
+                                    onChangeText={(tx) => updateField("chestPainDuringActivityOrDailyNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Baş dönmesi nedeniyle dengeniz bozulur mu, ya da son 12 ay içerisinde bilincinizi yitirdiniz mi?"
+                                title={t("newstudent.parq.q3")}
                                 value={form.dizzinessOrLostConsciousnessLast12Months}
                                 onChange={(v) => updateField("dizzinessOrLostConsciousnessLast12Months", v)}
                             />
                             {form.dizzinessOrLostConsciousnessLast12Months === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.dizzinessOrLostConsciousnessLast12MonthsNote}
-                                    onChangeText={(t) => updateField("dizzinessOrLostConsciousnessLast12MonthsNote", t)}
+                                    onChangeText={(tx) => updateField("dizzinessOrLostConsciousnessLast12MonthsNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Kalp ve tansiyon dışında bir başka kronik hastalık teşhisi aldınız mı?"
+                                title={t("newstudent.parq.q4")}
                                 value={form.diagnosedOtherChronicDisease}
                                 onChange={(v) => updateField("diagnosedOtherChronicDisease", v)}
                             />
                             {form.diagnosedOtherChronicDisease === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.diagnosedOtherChronicDiseaseNote}
-                                    onChangeText={(t) => updateField("diagnosedOtherChronicDiseaseNote", t)}
+                                    onChangeText={(tx) => updateField("diagnosedOtherChronicDiseaseNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Kronik bir hastalık nedeniyle ilaç kullanıyor musunuz?"
+                                title={t("newstudent.parq.q5")}
                                 value={form.usesMedicationForChronicDisease}
                                 onChange={(v) => updateField("usesMedicationForChronicDisease", v)}
                             />
                             {form.usesMedicationForChronicDisease === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.usesMedicationForChronicDiseaseNote}
-                                    onChangeText={(t) => updateField("usesMedicationForChronicDiseaseNote", t)}
+                                    onChangeText={(tx) => updateField("usesMedicationForChronicDiseaseNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Son 12 ay içerisinde fiziksel aktivite artışı ile kötüleşebilecek bir kemik, bağ, yumuşak doku probleminiz oldu mu?"
+                                title={t("newstudent.parq.q6")}
                                 value={form.boneJointSoftTissueProblemWorseWithActivity}
                                 onChange={(v) => updateField("boneJointSoftTissueProblemWorseWithActivity", v)}
                             />
                             {form.boneJointSoftTissueProblemWorseWithActivity === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.boneJointSoftTissueProblemWorseWithActivityNote}
-                                    onChangeText={(t) => updateField("boneJointSoftTissueProblemWorseWithActivityNote", t)}
+                                    onChangeText={(tx) =>
+                                        updateField("boneJointSoftTissueProblemWorseWithActivityNote", tx)
+                                    }
                                 />
                             )}
 
                             <QuestionBool
-                                title="Doktorunuz fiziksel aktivitenizi sadece tıbbi gözetim altında yapabileceğinizi söyledi mi?"
+                                title={t("newstudent.parq.q7")}
                                 value={form.doctorSaidOnlyUnderMedicalSupervision}
                                 onChange={(v) => updateField("doctorSaidOnlyUnderMedicalSupervision", v)}
                             />
                             {form.doctorSaidOnlyUnderMedicalSupervision === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.doctorSaidOnlyUnderMedicalSupervisionNote}
-                                    onChangeText={(t) => updateField("doctorSaidOnlyUnderMedicalSupervisionNote", t)}
+                                    onChangeText={(tx) => updateField("doctorSaidOnlyUnderMedicalSupervisionNote", tx)}
                                 />
                             )}
                         </View>
 
                         {/* BÖLÜM 3 - Kişisel Detaylar */}
                         <View style={styles.sectionCard}>
-                            <Text style={styles.sectionTitle}>Kişisel Detaylar</Text>
+                            <Text style={styles.sectionTitle}>{t("newstudent.section.personal_details")}</Text>
 
                             <QuestionBool
-                                title="Hiç ağrı veya yaralanman oldu mu? (ayak bileği, diz, kalça, sırt, omuz vb)"
+                                title={t("newstudent.details.q1")}
                                 value={form.hadPainOrInjury}
                                 onChange={(v) => updateField("hadPainOrInjury", v)}
                             />
                             {form.hadPainOrInjury === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.hadPainOrInjuryNote}
-                                    onChangeText={(t) => updateField("hadPainOrInjuryNote", t)}
+                                    onChangeText={(tx) => updateField("hadPainOrInjuryNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Hiç ameliyat geçirdin mi?"
+                                title={t("newstudent.details.q2")}
                                 value={form.hadSurgery}
                                 onChange={(v) => updateField("hadSurgery", v)}
                             />
                             {form.hadSurgery === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.hadSurgeryNote}
-                                    onChangeText={(t) => updateField("hadSurgeryNote", t)}
+                                    onChangeText={(tx) => updateField("hadSurgeryNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Bir doktor tarafından kalp hastalığı, yüksek tansiyon, kolesterol, diyabet gibi kronik bir hastalık teşhisi kondu mu?"
+                                title={t("newstudent.details.q3")}
                                 value={form.diagnosedChronicDiseaseByDoctor}
                                 onChange={(v) => updateField("diagnosedChronicDiseaseByDoctor", v)}
                             />
                             {form.diagnosedChronicDiseaseByDoctor === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.diagnosedChronicDiseaseByDoctorNote}
-                                    onChangeText={(t) => updateField("diagnosedChronicDiseaseByDoctorNote", t)}
+                                    onChangeText={(tx) => updateField("diagnosedChronicDiseaseByDoctorNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Halen almakta olduğun ilaçlar var mı?"
+                                title={t("newstudent.details.q4")}
                                 value={form.currentlyUsesMedications}
                                 onChange={(v) => updateField("currentlyUsesMedications", v)}
                             />
                             {form.currentlyUsesMedications === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.currentlyUsesMedicationsNote}
-                                    onChangeText={(t) => updateField("currentlyUsesMedicationsNote", t)}
+                                    onChangeText={(tx) => updateField("currentlyUsesMedicationsNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Haftalık fiziksel aktivite süreniz 30 dakika veya daha az mı?"
+                                title={t("newstudent.details.q5")}
                                 value={form.weeklyPhysicalActivity30MinOrLess}
                                 onChange={(v) => updateField("weeklyPhysicalActivity30MinOrLess", v)}
                             />
                             {form.weeklyPhysicalActivity30MinOrLess === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.weeklyPhysicalActivity30MinOrLessNote}
-                                    onChangeText={(t) => updateField("weeklyPhysicalActivity30MinOrLessNote", t)}
+                                    onChangeText={(tx) => updateField("weeklyPhysicalActivity30MinOrLessNote", tx)}
                                 />
                             )}
 
                             <QuestionBool
-                                title="Herhangi bir spor geçmişiniz veya şu an devam ettiğiniz bir spor branşı var mı?"
+                                title={t("newstudent.details.q6")}
                                 value={form.hasSportsHistoryOrCurrentlyDoingSport}
                                 onChange={(v) => updateField("hasSportsHistoryOrCurrentlyDoingSport", v)}
                             />
                             {form.hasSportsHistoryOrCurrentlyDoingSport === true && (
                                 <FormTextArea
-                                    label="Açıklama"
-                                    placeholder="Detay yaz..."
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
                                     value={form.hasSportsHistoryOrCurrentlyDoingSportNote}
-                                    onChangeText={(t) => updateField("hasSportsHistoryOrCurrentlyDoingSportNote", t)}
+                                    onChangeText={(tx) => updateField("hasSportsHistoryOrCurrentlyDoingSportNote", tx)}
                                 />
                             )}
 
-                            <Text style={styles.label}>Haftada kaç gün gelmeyi planlıyorsunuz?</Text>
+                            <Text style={styles.label}>{t("newstudent.label.planned_days")}</Text>
                             <View style={[styles.chipRow, { flexWrap: "wrap" }]}>
                                 {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                                     <Chip
@@ -612,38 +621,40 @@ const YeniOgrenciScreen = () => {
                             </View>
 
                             <FormTextArea
-                                label="Halihazırda yaptığınız iş nedir?"
-                                placeholder="Mesleğiniz..."
+                                label={t("newstudent.label.job_description")}
+                                placeholder={t("newstudent.placeholder.job_description")}
                                 value={form.jobDescription}
-                                onChangeText={(t) => updateField("jobDescription", t)}
+                                onChangeText={(tx) => updateField("jobDescription", tx)}
                             />
 
                             <QuestionBool
-                                title="Yaptığınız iş uzun süre oturmanızı gerektiriyor mu?"
+                                title={t("newstudent.details.q7")}
                                 value={form.jobRequiresLongSitting}
                                 onChange={(v) => updateField("jobRequiresLongSitting", v)}
                             />
 
                             <QuestionBool
-                                title="Yaptığınız iş uzun süre tekrarlı hareket gerektiriyor mu?"
+                                title={t("newstudent.details.q8")}
                                 value={form.jobRequiresRepetitiveMovement}
                                 onChange={(v) => updateField("jobRequiresRepetitiveMovement", v)}
                             />
 
                             <QuestionBool
-                                title="Yaptığınız iş topuklu ayakkabı giymenizi gerektiriyor mu?"
+                                title={t("newstudent.details.q9")}
                                 value={form.jobRequiresHighHeels}
                                 onChange={(v) => updateField("jobRequiresHighHeels", v)}
                             />
 
                             <QuestionBool
-                                title="Yaptığınız iş endişeye yol açıyor mu?"
+                                title={t("newstudent.details.q10")}
                                 value={form.jobCausesAnxiety}
                                 onChange={(v) => updateField("jobCausesAnxiety", v)}
                             />
 
-                            <Text style={[styles.sectionTitle, { marginTop: 14 }]}>Antrenman Hedefi</Text>
-                            <Text style={styles.helperText}>Birden fazla seçebilirsin</Text>
+                            <Text style={[styles.sectionTitle, { marginTop: 14 }]}>
+                                {t("newstudent.section.training_goal")}
+                            </Text>
+                            <Text style={styles.helperText}>{t("newstudent.helper.multi_select")}</Text>
 
                             <View style={[styles.chipRow, { flexWrap: "wrap", marginTop: 8 }]}>
                                 {trainingGoalOptions.map((opt) => (
@@ -657,10 +668,10 @@ const YeniOgrenciScreen = () => {
                             </View>
 
                             <FormTextArea
-                                label="Diğer (opsiyonel)"
-                                placeholder="Diğer hedefin..."
+                                label={t("newstudent.label.other_optional")}
+                                placeholder={t("newstudent.placeholder.other_optional")}
                                 value={form.otherGoal}
-                                onChangeText={(t) => updateField("otherGoal", t)}
+                                onChangeText={(tx) => updateField("otherGoal", tx)}
                             />
                         </View>
                     </ScrollView>
@@ -674,13 +685,12 @@ const YeniOgrenciScreen = () => {
                         >
                             <Save size={18} color="#0f172a" />
                             <Text style={styles.saveButtonText}>
-                                {saving ? "Kaydediliyor..." : "Öğrenciyi Kaydet"}
+                                {saving ? t("newstudent.button.saving") : t("newstudent.button.save_student")}
                             </Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </KeyboardAvoidingView>
-
         </SafeAreaView>
     );
 };
@@ -714,9 +724,7 @@ function FormInput({
                 autoCapitalize={autoCapitalize}
                 style={styles.input}
             />
-            {error && (
-                <Text style={styles.errorText}>{error}</Text>
-            )}
+            {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
     );
 }
@@ -773,17 +781,21 @@ function QuestionBool({
     value: Bool;
     onChange: (val: boolean) => void;
 }) {
+    const { t } = useTranslation();
+
     return (
         <View style={{ marginBottom: 16 }}>
             <Text style={styles.questionTitle}>{title}</Text>
 
             <View style={styles.chipRow}>
-                <Chip label="Evet" active={value === true} onPress={() => onChange(true)} />
-                <Chip label="Hayır" active={value === false} onPress={() => onChange(false)} />
+                <Chip label={t("newstudent.answer.yes")} active={value === true} onPress={() => onChange(true)} />
+                <Chip label={t("newstudent.answer.no")} active={value === false} onPress={() => onChange(false)} />
             </View>
         </View>
     );
 }
+
+// styles aynı kalacak (sen style atmayacağım demiştin, ben de ellemiyorum)
 
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: themeui.colors.background },

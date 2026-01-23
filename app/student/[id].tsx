@@ -22,6 +22,7 @@ import {
     User
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
     FlatList,
@@ -110,7 +111,6 @@ type RecordItem = {
 
 const formatDateTR = (iso?: string) => {
     if (!iso) return "-";
-    // iOS safe parse (YYYY-MM-DD)
     const parts = iso.split("-").map((x) => Number(x));
     if (parts.length !== 3) return "-";
     const [y, m, d] = parts;
@@ -126,6 +126,7 @@ const boolText = (v?: Bool) => {
 
 export default function StudentDetailScreen() {
     const router = useRouter();
+    const { t } = useTranslation();
     const { id } = useLocalSearchParams<{ id: string }>();
 
     const [student, setStudent] = useState<Student | null>(null);
@@ -134,48 +135,42 @@ export default function StudentDetailScreen() {
     const [loadingRecords, setLoadingRecords] = useState(true);
     const [toggling, setToggling] = useState(false);
 
-    // Question definitions (map ile temiz basacağız)
     const parqQuestions = useMemo(
         () => [
             {
                 key: "doctorSaidHeartOrHypertension" as const,
                 noteKey: "doctorSaidHeartOrHypertensionNote" as const,
-                label:
-                    "Doktorunuz kalp hastalığı veya yüksek tansiyon ile ilgili bir sorununuz olduğunu söyledi mi?",
+                labelKey: "parq.q1",
             },
             {
                 key: "chestPainDuringActivityOrDaily" as const,
                 noteKey: "chestPainDuringActivityOrDailyNote" as const,
-                label:
-                    "Dinlenme sırasında, günlük aktiviteler sırasında ya da fiziksel aktivite sırasında göğsünüzde ağrı hisseder misiniz?",
+                labelKey: "parq.q2",
             },
             {
                 key: "dizzinessOrLostConsciousnessLast12Months" as const,
                 noteKey: "dizzinessOrLostConsciousnessLast12MonthsNote" as const,
-                label:
-                    "Baş dönmesi nedeniyle dengeniz bozulur mu, ya da son 12 ay içerisinde bilincinizi yitirdiniz mi?",
+                labelKey: "parq.q3",
             },
             {
                 key: "diagnosedOtherChronicDisease" as const,
                 noteKey: "diagnosedOtherChronicDiseaseNote" as const,
-                label: "Kalp ve tansiyon dışında bir başka kronik hastalık teşhisi aldınız mı?",
+                labelKey: "parq.q4",
             },
             {
                 key: "usesMedicationForChronicDisease" as const,
                 noteKey: "usesMedicationForChronicDiseaseNote" as const,
-                label: "Kronik bir hastalık nedeniyle ilaç kullanıyor musunuz?",
+                labelKey: "parq.q5",
             },
             {
                 key: "boneJointSoftTissueProblemWorseWithActivity" as const,
                 noteKey: "boneJointSoftTissueProblemWorseWithActivityNote" as const,
-                label:
-                    "Son 12 ay içerisinde fiziksel aktivite artışı ile kötüleşebilecek bir kemik, bağ, yumuşak doku probleminiz oldu mu?",
+                labelKey: "parq.q6",
             },
             {
                 key: "doctorSaidOnlyUnderMedicalSupervision" as const,
                 noteKey: "doctorSaidOnlyUnderMedicalSupervisionNote" as const,
-                label:
-                    "Doktorunuz fiziksel aktivitenizi sadece tıbbi gözetim altında yapabileceğinizi söyledi mi?",
+                labelKey: "parq.q7",
             },
         ],
         []
@@ -186,43 +181,41 @@ export default function StudentDetailScreen() {
             {
                 key: "hadPainOrInjury" as const,
                 noteKey: "hadPainOrInjuryNote" as const,
-                label: "Hiç ağrı veya yaralanman oldu mu? (ayak bileği, diz, kalça, sırt, omuz vb)",
+                labelKey: "personal.q1",
             },
             {
                 key: "hadSurgery" as const,
                 noteKey: "hadSurgeryNote" as const,
-                label: "Hiç ameliyat geçirdin mi?",
+                labelKey: "personal.q2",
             },
             {
                 key: "diagnosedChronicDiseaseByDoctor" as const,
                 noteKey: "diagnosedChronicDiseaseByDoctorNote" as const,
-                label:
-                    "Bir doktor tarafından kalp hastalığı, yüksek tansiyon, kolesterol, diyabet gibi kronik bir hastalık teşhisi kondu mu?",
+                labelKey: "personal.q3",
             },
             {
                 key: "currentlyUsesMedications" as const,
                 noteKey: "currentlyUsesMedicationsNote" as const,
-                label: "Halen almakta olduğun ilaçlar var mı?",
+                labelKey: "personal.q4",
             },
             {
                 key: "weeklyPhysicalActivity30MinOrLess" as const,
                 noteKey: "weeklyPhysicalActivity30MinOrLessNote" as const,
-                label: "Haftalık fiziksel aktivite süreniz 30 dakika veya daha az mı?",
+                labelKey: "personal.q5",
             },
             {
                 key: "hasSportsHistoryOrCurrentlyDoingSport" as const,
                 noteKey: "hasSportsHistoryOrCurrentlyDoingSportNote" as const,
-                label: "Herhangi bir spor geçmişiniz veya şu an devam ettiğiniz bir spor branşı var mı?",
+                labelKey: "personal.q6",
             },
-            { key: "jobRequiresLongSitting" as const, label: "Yaptığınız iş uzun süre oturmanızı gerektiriyor mu?" },
-            { key: "jobRequiresRepetitiveMovement" as const, label: "Yaptığınız iş uzun süre tekrarlı hareket gerektiriyor mu?" },
-            { key: "jobRequiresHighHeels" as const, label: "Yaptığınız iş topuklu ayakkabı giymenizi gerektiriyor mu?" },
-            { key: "jobCausesAnxiety" as const, label: "Yaptığınız iş endişeye yol açıyor mu?" },
+            { key: "jobRequiresLongSitting" as const, labelKey: "personal.q7" },
+            { key: "jobRequiresRepetitiveMovement" as const, labelKey: "personal.q8" },
+            { key: "jobRequiresHighHeels" as const, labelKey: "personal.q9" },
+            { key: "jobCausesAnxiety" as const, labelKey: "personal.q10" },
         ],
         []
     );
 
-    // LOAD STUDENT
     useEffect(() => {
         if (!id) return;
 
@@ -240,7 +233,6 @@ export default function StudentDetailScreen() {
                 setStudent({
                     id: snap.id,
                     ...d,
-                    // fallbackler
                     aktif: d.aktif ?? "Aktif",
                     trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
                 });
@@ -255,11 +247,13 @@ export default function StudentDetailScreen() {
         load();
     }, [id]);
 
-    // LOAD RECORDS
     useEffect(() => {
         if (!id) return;
-        const qy = query(recordsColRef(auth.currentUser?.uid!), where("studentId", "==", id), orderBy("createdAt", "desc"));
-
+        const qy = query(
+            recordsColRef(auth.currentUser?.uid!),
+            where("studentId", "==", id),
+            orderBy("createdAt", "desc")
+        );
 
         const unsub = onSnapshot(
             qy,
@@ -306,13 +300,12 @@ export default function StudentDetailScreen() {
     const viewRecord = (recordId: string) =>
         router.push({ pathname: "/record/[id]", params: { id: recordId } });
 
-    // LOADING / ERROR
     if (loadingStudent) {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color="#60a5fa" />
-                    <Text style={styles.loadingText}>Öğrenci yükleniyor...</Text>
+                    <Text style={styles.loadingText}>{t("studentDetail.loading")}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -322,11 +315,11 @@ export default function StudentDetailScreen() {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
-                    <Text style={styles.errorText}>Öğrenci bulunamadı.</Text>
+                    <Text style={styles.errorText}>{t("studentDetail.notFound")}</Text>
 
                     <TouchableOpacity style={styles.backButton} onPress={goBack}>
                         <ArrowLeft size={18} color="#f1f5f9" />
-                        <Text style={styles.backButtonText}>Geri</Text>
+                        <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -338,12 +331,11 @@ export default function StudentDetailScreen() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
-                {/* HEADER */}
                 <View style={styles.header}>
                     <View style={styles.headerTopRow}>
                         <TouchableOpacity style={styles.backButton} onPress={goBack}>
                             <ArrowLeft size={18} color="#f1f5f9" />
-                            <Text style={styles.backButtonText}>Geri</Text>
+                            <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
                         </TouchableOpacity>
 
                         <View style={styles.headerActions}>
@@ -357,22 +349,20 @@ export default function StudentDetailScreen() {
                                 onPress={toggleAktif}
                                 disabled={toggling}
                             >
-                                <Text style={[
-                                    styles.toggleButtonText,
-                                    { color: themeui.colors.text.primary }
-                                ]}>
-                                    {student.aktif === "Aktif" ? "Pasif Yap" : "Aktif Yap"}
+                                <Text style={[styles.toggleButtonText, { color: themeui.colors.text.primary }]}>
+                                    {student.aktif === "Aktif"
+                                        ? t("studentDetail.toggle.makePassive")
+                                        : t("studentDetail.toggle.makeActive")}
                                 </Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.editButton} onPress={addRecord}>
                                 <Edit size={14} color="#f1f5f9" />
-                                <Text style={styles.editButtonText}>Kayıt Ekle</Text>
+                                <Text style={styles.editButtonText}>{t("studentDetail.addRecord")}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    {/* STUDENT CARD */}
                     <View style={styles.studentRow}>
                         <View style={styles.avatar}>
                             <Text style={styles.avatarText}>{firstLetter}</Text>
@@ -394,57 +384,60 @@ export default function StudentDetailScreen() {
                                             : styles.statusPassiveText
                                     }
                                 >
-                                    {student.aktif === "Aktif" ? "Aktif Öğrenci" : "Pasif Öğrenci"}
+                                    {student.aktif === "Aktif"
+                                        ? t("studentDetail.student.active")
+                                        : t("studentDetail.student.passive")}
                                 </Text>
                             </View>
 
                             <View style={styles.metaLine}>
                                 <Calendar size={14} color="#94a3b8" />
                                 <Text style={styles.metaText}>
-                                    Değerlendirme: {formatDateTR(student.assessmentDate)}
+                                    {t("studentDetail.student.assessmentDate")} {formatDateTR(student.assessmentDate)}
                                 </Text>
                             </View>
                         </View>
                     </View>
                 </View>
 
-                {/* CONTENT */}
                 <FlatList
                     data={records}
                     keyExtractor={(i) => i.id}
                     contentContainerStyle={{ paddingBottom: 40 }}
                     ListHeaderComponent={
                         <View>
-                            {/* Kişisel Bilgiler */}
                             <View style={styles.card}>
-                                <Text style={styles.cardTitle}>Kişisel Bilgiler</Text>
+                                <Text style={styles.cardTitle}>{t("studentDetail.section.personalInfo")}</Text>
 
                                 <InfoRow
-                                    label="E-posta"
+                                    label={t("studentDetail.label.email")}
                                     value={student.email || "-"}
                                     icon={<Mail size={16} color="#60a5fa" />}
                                 />
                                 <InfoRow
-                                    label="Telefon"
+                                    label={t("studentDetail.label.phone")}
                                     value={student.number || "-"}
                                     icon={<Phone size={16} color="#60a5fa" />}
                                 />
                                 <InfoRow
-                                    label="Cinsiyet"
+                                    label={t("studentDetail.label.gender")}
                                     value={student.gender || "-"}
                                     icon={<User size={16} color="#60a5fa" />}
                                 />
                                 <InfoRow
-                                    label="Doğum Tarihi"
+                                    label={t("studentDetail.label.birthDate")}
                                     value={formatDateTR(student.dateOfBirth)}
                                     icon={<Calendar size={16} color="#60a5fa" />}
                                 />
-                                <InfoRow label="Boy (cm)" value={student.boy || "-"} icon={<User size={16} color="#60a5fa" />} />
+                                <InfoRow
+                                    label={t("studentDetail.label.height")}
+                                    value={student.boy || "-"}
+                                    icon={<User size={16} color="#60a5fa" />}
+                                />
                             </View>
 
-                            {/* PAR-Q */}
                             <View style={styles.card}>
-                                <Text style={styles.cardTitle}>PAR-Q Testi</Text>
+                                <Text style={styles.cardTitle}>{t("studentDetail.section.parq")}</Text>
 
                                 {parqQuestions.map((q, idx) => {
                                     const answer = (student as any)[q.key] as Bool;
@@ -453,7 +446,7 @@ export default function StudentDetailScreen() {
                                         <QAItem
                                             key={q.key}
                                             index={idx + 1}
-                                            question={q.label}
+                                            question={t(q.labelKey)}
                                             answer={answer}
                                             note={note}
                                         />
@@ -461,9 +454,8 @@ export default function StudentDetailScreen() {
                                 })}
                             </View>
 
-                            {/* Kişisel Detaylar */}
                             <View style={styles.card}>
-                                <Text style={styles.cardTitle}>Kişisel Detaylar</Text>
+                                <Text style={styles.cardTitle}>{t("studentDetail.section.personalDetails")}</Text>
 
                                 {personalQuestions.map((q, idx) => {
                                     const answer = (student as any)[q.key] as Bool;
@@ -472,7 +464,7 @@ export default function StudentDetailScreen() {
                                         <QAItem
                                             key={q.key}
                                             index={idx + 1}
-                                            question={q.label}
+                                            question={t((q as any).labelKey)}
                                             answer={answer}
                                             note={note}
                                         />
@@ -480,19 +472,19 @@ export default function StudentDetailScreen() {
                                 })}
 
                                 <InfoRow
-                                    label="Haftada kaç gün gelmeyi planlıyor?"
+                                    label={t("studentDetail.label.plannedDaysPerWeek")}
                                     value={student.plannedDaysPerWeek ? String(student.plannedDaysPerWeek) : "-"}
                                     icon={<Calendar size={16} color="#60a5fa" />}
                                 />
 
                                 <InfoRow
-                                    label="Meslek"
+                                    label={t("studentDetail.label.job")}
                                     value={student.jobDescription || "-"}
                                     icon={<User size={16} color="#60a5fa" />}
                                 />
 
                                 <View style={{ marginTop: 12 }}>
-                                    <Text style={styles.subTitle}>Antrenman Hedefleri</Text>
+                                    <Text style={styles.subTitle}>{t("studentDetail.label.trainingGoals")}</Text>
 
                                     <View style={styles.chipWrap}>
                                         {student.trainingGoals && student.trainingGoals.length ? (
@@ -506,14 +498,14 @@ export default function StudentDetailScreen() {
 
                                     {!!student.otherGoal?.trim() && (
                                         <View style={{ marginTop: 10 }}>
-                                            <Text style={styles.miniLabel}>Diğer</Text>
+                                            <Text style={styles.miniLabel}>{t("studentDetail.label.other")}</Text>
                                             <Text style={styles.noteText}>{student.otherGoal}</Text>
                                         </View>
                                     )}
                                 </View>
                             </View>
 
-                            <Text style={styles.recordsTitle}>Kayıtlar</Text>
+                            <Text style={styles.recordsTitle}>{t("studentDetail.section.records")}</Text>
                         </View>
                     }
                     renderItem={({ item }) => {
@@ -541,7 +533,7 @@ export default function StudentDetailScreen() {
                         !loadingRecords ? (
                             <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
                                 <View style={styles.card}>
-                                    <Text style={styles.emptyText}>Kayıt bulunamadı.</Text>
+                                    <Text style={styles.emptyText}>{t("studentDetail.records.empty")}</Text>
                                 </View>
                             </View>
                         ) : null

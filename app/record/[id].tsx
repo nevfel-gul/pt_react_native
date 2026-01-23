@@ -14,6 +14,7 @@ import {
     VenusAndMars
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
     ScrollView,
@@ -47,6 +48,7 @@ type RecordType = {
 
 export default function RecordDetailScreen() {
     const router = useRouter();
+    const { t } = useTranslation();
     const { id } = useLocalSearchParams<{ id: string }>();
 
     const [record, setRecord] = useState<RecordType | null>(null);
@@ -67,7 +69,7 @@ export default function RecordDetailScreen() {
                 const recSnap = await getDoc(recRef);
 
                 if (!recSnap.exists()) {
-                    setError("Kayıt bulunamadı.");
+                    setError(t("recordDetail.notFound"));
                     setRecord(null);
                     return;
                 }
@@ -100,7 +102,7 @@ export default function RecordDetailScreen() {
                 }
             } catch (err: any) {
                 console.error("Kayıt detay hata:", err);
-                setError(err?.message ?? "Veri çekme hatası");
+                setError(err?.message ?? t("recordDetail.fetchError"));
             } finally {
                 setLoading(false);
             }
@@ -122,7 +124,7 @@ export default function RecordDetailScreen() {
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
                     <ActivityIndicator size="large" />
-                    <Text style={styles.loadingText}>Kayıt yükleniyor...</Text>
+                    <Text style={styles.loadingText}>{t("recordDetail.loading")}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -132,10 +134,10 @@ export default function RecordDetailScreen() {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
-                    <Text style={styles.errorText}>{error || "Kayıt bulunamadı."}</Text>
+                    <Text style={styles.errorText}>{error || t("recordDetail.notFound")}</Text>
                     <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
                         <ArrowLeft size={18} color="#e5e7eb" />
-                        <Text style={styles.backButtonText}>Geri</Text>
+                        <Text style={styles.backButtonText}>{t("recordDetail.back")}</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -153,7 +155,7 @@ export default function RecordDetailScreen() {
                         <View style={styles.headerTopRow}>
                             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
                                 <ArrowLeft size={18} color="#e5e7eb" />
-                                <Text style={styles.backButtonText}>Geri</Text>
+                                <Text style={styles.backButtonText}>{t("recordDetail.back")}</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -165,7 +167,7 @@ export default function RecordDetailScreen() {
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.studentName}>{student?.name ?? "-"}</Text>
                                 <Text style={styles.studentMeta}>
-                                    {student?.boy ? `${student.boy} cm` : ""}
+                                    {student?.boy ? `${student.boy} ${t("common.unit.cm")}` : ""}
                                 </Text>
                                 {student?.aktif && (
                                     <View style={styles.statusRow}>
@@ -185,8 +187,8 @@ export default function RecordDetailScreen() {
                                                 }
                                             >
                                                 {student.aktif === "Aktif"
-                                                    ? "Aktif Öğrenci"
-                                                    : "Pasif Öğrenci"}
+                                                    ? t("recordDetail.student.active")
+                                                    : t("recordDetail.student.passive")}
                                             </Text>
                                         </View>
                                     </View>
@@ -199,22 +201,22 @@ export default function RecordDetailScreen() {
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>
                             <User size={18} color="#60a5fa" />
-                            {"  "}Kişisel Bilgiler
+                            {"  "}{t("recordDetail.section.personal")}
                         </Text>
                         <InfoRow
                             icon={<Mail size={16} color="#9ca3af" />}
-                            label="Email"
+                            label={t("recordDetail.label.email")}
                             value={student?.email || "-"}
                             firstLine={true}
                         />
                         <InfoRow
                             icon={<Phone size={16} color="#9ca3af" />}
-                            label="Telefon"
+                            label={t("recordDetail.label.phone")}
                             value={student?.number || "-"}
                         />
                         <InfoRow
                             icon={<Calendar size={16} color="#9ca3af" />}
-                            label="Doğum Tarihi"
+                            label={t("recordDetail.label.dob")}
                             value={
                                 student?.dateOfBirth
                                     ? new Date(student.dateOfBirth).toLocaleDateString("tr-TR")
@@ -223,7 +225,7 @@ export default function RecordDetailScreen() {
                         />
                         <InfoRow
                             icon={<VenusAndMars size={16} color="#9ca3af" />}
-                            label="Cinsiyet"
+                            label={t("recordDetail.label.gender")}
                             value={student?.gender || "-"}
                         />
                     </View>
@@ -232,76 +234,50 @@ export default function RecordDetailScreen() {
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>
                             <HandHeart size={18} color="#60a5fa" />
-                            {"  "}Fiziksel Ölçümler (Tanita)
+                            {"  "}{t("recordDetail.section.tanita")}
                         </Text>
 
-                        <InfoRow label="Kilo" value={formatVal(record.weight, "kg")} firstLine={true} />
-                        {/* Kilo için özel analiz yok, geçiyoruz */}
+                        <InfoRow label={t("recordDetail.label.weight")} value={formatVal(record.weight, t("common.unit.kg"))} firstLine={true} />
 
-                        <InfoRow
-                            label="Vücut Yağ Oranı"
-                            value={formatVal(record.bodyFat, "%")}
-                        />
+                        <InfoRow label={t("recordDetail.label.bodyFat")} value={formatVal(record.bodyFat, t("common.unit.percent"))} />
                         <Text style={styles.analysisText}>
-                            Durum: {record.analysis?.bodyFatStatus || "-"}
+                            {t("recordDetail.analysis.status")} {record.analysis?.bodyFatStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Vücut Kitle İndeksi (BMI)"
-                            value={formatVal(record.bodyMassIndex)}
-                        />
+                        <InfoRow label={t("recordDetail.label.bmi")} value={formatVal(record.bodyMassIndex)} />
                         <Text style={styles.analysisText}>
-                            Durum: {record.analysis?.bmiStatus || "-"}
+                            {t("recordDetail.analysis.status")} {record.analysis?.bmiStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Bazal Metabolizma"
-                            value={formatVal(record.basalMetabolism, "kcal")}
-                        />
+                        <InfoRow label={t("recordDetail.label.bmr")} value={formatVal(record.basalMetabolism, t("common.unit.kcal"))} />
                         <Text style={styles.analysisText}>
-                            Durum: {record.analysis?.basalMetabolismStatus || "-"}
+                            {t("recordDetail.analysis.status")} {record.analysis?.basalMetabolismStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Toplam Kas Kütlesi"
-                            value={formatVal(record.totalMuscleMass, "kg")}
-                        />
-                        {/* Toplam kas için ayrı analiz yok */}
+                        <InfoRow label={t("recordDetail.label.totalMuscle")} value={formatVal(record.totalMuscleMass, t("common.unit.kg"))} />
 
-                        <InfoRow
-                            label="Yağsız Vücut Kütlesi"
-                            value={formatVal(record.leanBodyMass, "kg")}
-                        />
+                        <InfoRow label={t("recordDetail.label.leanBodyMass")} value={formatVal(record.leanBodyMass, t("common.unit.kg"))} />
                         <Text style={styles.analysisText}>
-                            Durum: {record.analysis?.leanBodyMassStatus || "-"}
+                            {t("recordDetail.analysis.status")} {record.analysis?.leanBodyMassStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Vücut Su Oranı"
-                            value={formatVal(record.bodyWaterMass, "%")}
-                        />
+                        <InfoRow label={t("recordDetail.label.bodyWater")} value={formatVal(record.bodyWaterMass, t("common.unit.percent"))} />
                         <Text style={styles.analysisText}>
-                            Durum: {record.analysis?.bodyWaterMassStatus || "-"}
+                            {t("recordDetail.analysis.status")} {record.analysis?.bodyWaterMassStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Metabolizma Yaşı"
-                            value={record.metabolicAge?.toString() ?? "-"}
-                        />
+                        <InfoRow label={t("recordDetail.label.metabolicAge")} value={record.metabolicAge?.toString() ?? "-"} />
                         <Text style={styles.analysisText}>
-                            Durum: {record.analysis?.metabolicAgeStatus || "-"}
+                            {t("recordDetail.analysis.status")} {record.analysis?.metabolicAgeStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Empedans"
-                            value={record.impedance?.toString() ?? "-"}
-                        />
+                        <InfoRow label={t("recordDetail.label.impedance")} value={record.impedance?.toString() ?? "-"} />
                         <Text style={styles.analysisText}>
-                            Durum: {record.analysis?.impedanceStatus || "-"}
+                            {t("recordDetail.analysis.status")} {record.analysis?.impedanceStatus || "-"}
                         </Text>
 
                         <InfoRow
-                            label="Bel-Kalça Oranı (ham değerler)"
+                            label={t("recordDetail.label.waistHipRaw")}
                             value={
                                 record.bel && record.kalca
                                     ? `Bel: ${record.bel} cm, Kalça: ${record.kalca} cm`
@@ -309,288 +285,139 @@ export default function RecordDetailScreen() {
                             }
                         />
                         <Text style={styles.analysisText}>
-                            Yorum: {record.analysis?.bellyHipRatioStatus || "-"}
+                            {t("recordDetail.analysis.comment")} {record.analysis?.bellyHipRatioStatus || "-"}
                         </Text>
                     </View>
 
-
                     {/* ÇEVRE ÖLÇÜMLERİ */}
                     <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Çevre Ölçümleri</Text>
-                        <InfoRow label="Boyun" value={formatVal(record.boyun, "cm")} firstLine={true} />
-                        <InfoRow label="Omuz" value={formatVal(record.omuz, "cm")} />
-                        {/* NewRecordScreen'deki alan adı "gogus" */}
-                        <InfoRow label="Göğüs" value={formatVal(record.gogus, "cm")} />
-                        <InfoRow label="Sağ Kol" value={formatVal(record.sagKol, "cm")} />
-                        <InfoRow label="Sol Kol" value={formatVal(record.solKol, "cm")} />
-                        <InfoRow label="Bel" value={formatVal(record.bel, "cm")} />
-                        <InfoRow label="Kalça" value={formatVal(record.kalca, "cm")} />
-                        <InfoRow
-                            label="Sağ Bacak"
-                            value={formatVal(record.sagBacak, "cm")}
-                        />
-                        <InfoRow
-                            label="Sol Bacak"
-                            value={formatVal(record.solBacak, "cm")}
-                        />
-                        <InfoRow
-                            label="Sağ Kalf"
-                            value={formatVal(record.sagKalf, "cm")}
-                        />
-                        <InfoRow
-                            label="Sol Kalf"
-                            value={formatVal(record.solKalf, "cm")}
-                        />
-                        <InfoRow
-                            label="Mezura Notu"
-                            value={record.mezuraNote || "-"}
-                            multiline
-                        />
+                        <Text style={styles.cardTitle}>{t("recordDetail.section.tape")}</Text>
+                        <InfoRow label={t("recordDetail.tape.neck")} value={formatVal(record.boyun, t("common.unit.cm"))} firstLine={true} />
+                        <InfoRow label={t("recordDetail.tape.shoulder")} value={formatVal(record.omuz, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.chest")} value={formatVal(record.gogus, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.rightArm")} value={formatVal(record.sagKol, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.leftArm")} value={formatVal(record.solKol, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.waist")} value={formatVal(record.bel, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.hip")} value={formatVal(record.kalca, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.rightLeg")} value={formatVal(record.sagBacak, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.leftLeg")} value={formatVal(record.solBacak, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.rightCalf")} value={formatVal(record.sagKalf, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.leftCalf")} value={formatVal(record.solKalf, t("common.unit.cm"))} />
+                        <InfoRow label={t("recordDetail.tape.note")} value={record.mezuraNote || "-"} multiline />
                     </View>
 
                     {/* AEROBİK TESTLER */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>
                             <SquareActivity size={18} color="#60a5fa" />
-                            {"  "}Aerobik Testler
+                            {"  "}{t("recordDetail.section.aerobic")}
                         </Text>
 
-                        <InfoRow
-                            label="Dinlenik Nabız"
-                            value={record.dinlenikNabiz?.toString() ?? "-"}
-                            firstLine={true}
-                        />
-                        {/* Direkt veri, ekstra yorum yok */}
+                        <InfoRow label={t("recordDetail.aerobic.restingHr")} value={record.dinlenikNabiz?.toString() ?? "-"} firstLine={true} />
 
-                        <InfoRow
-                            label="Carvonen (Zone)"
-                            value={record.carvonenMultiplier?.toString() ?? "-"}
-                        />
+                        <InfoRow label={t("recordDetail.aerobic.carvonen")} value={record.carvonenMultiplier?.toString() ?? "-"} />
                         <Text style={styles.analysisText}>
-                            Hedef Nabız:{" "}
+                            {t("recordDetail.analysis.targetHr")}{" "}
                             {record.analysis?.carvonenTargetHR
-                                ? `${record.analysis.carvonenTargetHR} atım/dk`
+                                ? `${record.analysis.carvonenTargetHR} ${t("common.unit.bpm")}`
                                 : "-"}
                         </Text>
 
-                        <InfoRow
-                            label="YMCA 3dk Toparlanma Nabzı"
-                            value={record.toparlanmaNabzi?.toString() ?? "-"}
-                        />
+                        <InfoRow label={t("recordDetail.aerobic.ymcaPulse")} value={record.toparlanmaNabzi?.toString() ?? "-"} />
                         <Text style={styles.analysisText}>
-                            YMCA Sonuç: {record.analysis?.ymcaStatus || "-"}
+                            {t("recordDetail.analysis.ymca")} {record.analysis?.ymcaStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Bruce Test Süresi (dk)"
-                            value={record.testSuresi?.toString() ?? "-"}
-                        />
+                        <InfoRow label={t("recordDetail.aerobic.bruceTime")} value={record.testSuresi?.toString() ?? "-"} />
                         <Text style={styles.analysisText}>
-                            VO₂max:{" "}
+                            {t("recordDetail.analysis.vo2")}{" "}
                             {record.analysis?.bruceVO2Max
-                                ? `${record.analysis.bruceVO2Max} ml/kg/dk`
+                                ? `${record.analysis.bruceVO2Max} ${t("common.unit.vo2")}`
                                 : "-"}{" "}
                             — {record.analysis?.vo2Status || "-"}
                         </Text>
                     </View>
 
-
                     {/* HAREKET & POSTÜR */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>
                             <PersonStanding size={18} color="#60a5fa" />
-                            {"  "}Hareket & Postür
+                            {"  "}{t("recordDetail.section.mobility")}
                         </Text>
-                        <InfoRow
-                            label="Ayak / Ayak Bileği (Önden)"
-                            value={record.ayakveayakbilegionden || "-"}
-                            multiline
-                            firstLine={true}
-                        />
-                        <InfoRow
-                            label="Ayak / Ayak Bileği (Yandan)"
-                            value={record.ayakveayakbilegiyandan || "-"}
-                            multiline
-                        />
-                        <InfoRow
-                            label="Ayak / Ayak Bileği (Arkadan)"
-                            value={record.ayakveayakbilegiarkadan || "-"}
-                            multiline
-                        />
 
-                        <InfoRow
-                            label="Diz (Önden)"
-                            value={record.dizonden || "-"}
-                            multiline
-                        />
-                        <InfoRow
-                            label="Diz (Yandan)"
-                            value={record.dizyandan || "-"}
-                            multiline
-                        />
-                        <InfoRow
-                            label="Diz (Arkadan)"
-                            value={record.dizarkadan || "-"}
-                            multiline
-                        />
+                        <InfoRow label={t("recordDetail.posture.ankle.front")} value={record.ayakveayakbilegionden || "-"} multiline firstLine={true} />
+                        <InfoRow label={t("recordDetail.posture.ankle.side")} value={record.ayakveayakbilegiyandan || "-"} multiline />
+                        <InfoRow label={t("recordDetail.posture.ankle.back")} value={record.ayakveayakbilegiarkadan || "-"} multiline />
 
-                        <InfoRow
-                            label="LPHK (Önden)"
-                            value={record.lphkonden || "-"}
-                            multiline
-                        />
-                        <InfoRow
-                            label="LPHK (Yandan)"
-                            value={record.lphkyandan || "-"}
-                            multiline
-                        />
-                        <InfoRow
-                            label="LPHK (Arkadan)"
-                            value={record.lphkarkadan || "-"}
-                            multiline
-                        />
+                        <InfoRow label={t("recordDetail.posture.knee.front")} value={record.dizonden || "-"} multiline />
+                        <InfoRow label={t("recordDetail.posture.knee.side")} value={record.dizyandan || "-"} multiline />
+                        <InfoRow label={t("recordDetail.posture.knee.back")} value={record.dizarkadan || "-"} multiline />
 
-                        <InfoRow
-                            label="Omuzlar (Önden)"
-                            value={record.omuzlaronden || "-"}
-                            multiline
-                        />
-                        <InfoRow
-                            label="Omuzlar (Yandan)"
-                            value={record.omuzlaryandan || "-"}
-                            multiline
-                        />
-                        <InfoRow
-                            label="Omuzlar (Arkadan)"
-                            value={record.omuzlararkadan || "-"}
-                            multiline
-                        />
+                        <InfoRow label={t("recordDetail.posture.lphk.front")} value={record.lphkonden || "-"} multiline />
+                        <InfoRow label={t("recordDetail.posture.lphk.side")} value={record.lphkyandan || "-"} multiline />
+                        <InfoRow label={t("recordDetail.posture.lphk.back")} value={record.lphkarkadan || "-"} multiline />
 
-                        <InfoRow
-                            label="Baş & Boyun (Önden)"
-                            value={record.basboyunonden || "-"}
-                            multiline
-                        />
-                        <InfoRow
-                            label="Baş & Boyun (Yandan)"
-                            value={record.basboyunyandan || "-"}
-                            multiline
-                        />
-                        <InfoRow
-                            label="Baş & Boyun (Arkadan)"
-                            value={record.basboyunarkadan || "-"}
-                            multiline
-                        />
+                        <InfoRow label={t("recordDetail.posture.shoulders.front")} value={record.omuzlaronden || "-"} multiline />
+                        <InfoRow label={t("recordDetail.posture.shoulders.side")} value={record.omuzlaryandan || "-"} multiline />
+                        <InfoRow label={t("recordDetail.posture.shoulders.back")} value={record.omuzlararkadan || "-"} multiline />
 
-                        <InfoRow
-                            label="Pronation Distortion Syndrome"
-                            value={record.pronation || "-"}
-                        />
-                        <InfoRow
-                            label="Lower Crossed Syndrome"
-                            value={record.lower || "-"}
-                        />
-                        <InfoRow
-                            label="Upper Crossed Syndrome"
-                            value={record.upper || "-"}
-                        />
+                        <InfoRow label={t("recordDetail.posture.headNeck.front")} value={record.basboyunonden || "-"} multiline />
+                        <InfoRow label={t("recordDetail.posture.headNeck.side")} value={record.basboyunyandan || "-"} multiline />
+                        <InfoRow label={t("recordDetail.posture.headNeck.back")} value={record.basboyunarkadan || "-"} multiline />
+
+                        <InfoRow label={t("recordDetail.posture.pronation")} value={record.pronation || "-"} />
+                        <InfoRow label={t("recordDetail.posture.lower")} value={record.lower || "-"} />
+                        <InfoRow label={t("recordDetail.posture.upper")} value={record.upper || "-"} />
                     </View>
 
                     {/* OVERHEAD SQUAT + SIT & REACH */}
                     <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Overhead Squat Testi</Text>
-                        <InfoRow
-                            label="Foot Turns Out"
-                            value={boolBadge(record.footTurnsOut)}
-                            firstLine={true}
-                        />
-                        <InfoRow
-                            label="Knee Moves Inward"
-                            value={boolBadge(record.kneeMovesInward)}
-                        />
-                        <InfoRow
-                            label="Knee Moves Outward"
-                            value={boolBadge(record.kneeMovesOutward)}
-                        />
-                        <InfoRow
-                            label="Excessive Forward Lean"
-                            value={boolBadge(record.excessiveForwardLean)}
-                        />
-                        <InfoRow
-                            label="Low Back Arches"
-                            value={boolBadge(record.lowBackArches)}
-                        />
-                        <InfoRow
-                            label="Low Back Round"
-                            value={boolBadge(record.lowBackRound)}
-                        />
-                        <InfoRow
-                            label="Arms Fall Forward"
-                            value={boolBadge(record.armsFallForward)}
-                        />
-                        <InfoRow
-                            label="Notlar"
-                            value={record.overheadsquatnotes || "-"}
-                            multiline
-                        />
+                        <Text style={styles.cardTitle}>{t("recordDetail.section.ohs")}</Text>
+                        <InfoRow label={t("recordDetail.ohs.footTurnsOut")} value={boolBadge(record.footTurnsOut)} firstLine={true} />
+                        <InfoRow label={t("recordDetail.ohs.kneeMovesInward")} value={boolBadge(record.kneeMovesInward)} />
+                        <InfoRow label={t("recordDetail.ohs.kneeMovesOutward")} value={boolBadge(record.kneeMovesOutward)} />
+                        <InfoRow label={t("recordDetail.ohs.excessiveForwardLean")} value={boolBadge(record.excessiveForwardLean)} />
+                        <InfoRow label={t("recordDetail.ohs.lowBackArches")} value={boolBadge(record.lowBackArches)} />
+                        <InfoRow label={t("recordDetail.ohs.lowBackRound")} value={boolBadge(record.lowBackRound)} />
+                        <InfoRow label={t("recordDetail.ohs.armsFallForward")} value={boolBadge(record.armsFallForward)} />
+                        <InfoRow label={t("recordDetail.ohs.notes")} value={record.overheadsquatnotes || "-"} multiline />
                     </View>
 
                     <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Sit and Reach Testi</Text>
+                        <Text style={styles.cardTitle}>{t("recordDetail.section.sitReach")}</Text>
 
-                        <InfoRow
-                            label="Değer 1"
-                            value={formatVal(record.sitandreach1)}
-                            firstLine={true}
-                        />
-                        <InfoRow
-                            label="Değer 2"
-                            value={formatVal(record.sitandreach2)}
-                        />
-                        <InfoRow
-                            label="Değer 3"
-                            value={formatVal(record.sitandreach3)}
-                        />
-                        <InfoRow
-                            label="Hissedilen Gerginlik"
-                            value={record.sitandreachnotes || "-"}
-                            multiline
-                        />
+                        <InfoRow label={t("recordDetail.sitReach.value1")} value={formatVal(record.sitandreach1)} firstLine={true} />
+                        <InfoRow label={t("recordDetail.sitReach.value2")} value={formatVal(record.sitandreach2)} />
+                        <InfoRow label={t("recordDetail.sitReach.value3")} value={formatVal(record.sitandreach3)} />
+                        <InfoRow label={t("recordDetail.sitReach.tightness")} value={record.sitandreachnotes || "-"} multiline />
                         <Text
                             style={[
                                 styles.analysisText,
-                                {
-                                    borderTopColor: "#0f172a", borderTopWidth: 1, paddingVertical: 6,
-                                }
+                                { borderTopColor: "#0f172a", borderTopWidth: 1, paddingVertical: 6 }
                             ]}
                         >
-                            En İyi Değer:{" "}
+                            {t("recordDetail.analysis.bestValue")}{" "}
                             {record.analysis?.sitAndReachBest != null
-                                ? `${record.analysis.sitAndReachBest} cm`
+                                ? `${record.analysis.sitAndReachBest} ${t("common.unit.cm")}`
                                 : "-"}
-                            {"  "} |  Durum: {record.analysis?.sitAndReachStatus || "-"}
+                            {"  "} |  {t("recordDetail.analysis.status")} {record.analysis?.sitAndReachStatus || "-"}
                         </Text>
                     </View>
-
 
                     {/* KUVVET TESTLERİ */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>
                             <BicepsFlexed size={18} color="#60a5fa" />
-                            {"  "}Kuvvet Testleri
+                            {"  "}{t("recordDetail.section.strength")}
                         </Text>
 
-                        <InfoRow
-                            label="Push up (1 dk)"
-                            value={record.pushup?.toString() ?? "-"}
-                            firstLine={true}
-                        />
+                        <InfoRow label={t("recordDetail.strength.pushup")} value={record.pushup?.toString() ?? "-"} firstLine={true} />
                         <Text style={styles.analysisText}>
-                            Push up Skoru: {record.analysis?.pushupStatus || "-"}
+                            {t("recordDetail.analysis.pushupScore")} {record.analysis?.pushupStatus || "-"}
                         </Text>
 
                         <InfoRow
-                            label="Push up diz üstü mü?"
+                            label={t("recordDetail.strength.modifiedPushup")}
                             value={
                                 typeof record.modifiedpushup === "string"
                                     ? record.modifiedpushup
@@ -602,49 +429,29 @@ export default function RecordDetailScreen() {
                             }
                         />
 
-                        <InfoRow
-                            label="Wall Sit (sn)"
-                            value={record.wallsit?.toString() ?? "-"}
-                        />
+                        <InfoRow label={t("recordDetail.strength.wallSit")} value={record.wallsit?.toString() ?? "-"} />
                         <Text style={styles.analysisText}>
-                            Wall Sit Skoru: {record.analysis?.wallSitStatus || "-"}
+                            {t("recordDetail.analysis.wallSitScore")} {record.analysis?.wallSitStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Plank (sn)"
-                            value={record.plank?.toString() ?? "-"}
-                        />
+                        <InfoRow label={t("recordDetail.strength.plank")} value={record.plank?.toString() ?? "-"} />
                         <Text style={styles.analysisText}>
-                            Plank Skoru: {record.analysis?.plankStatus || "-"}
+                            {t("recordDetail.analysis.plankScore")} {record.analysis?.plankStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Mekik (1 dk)"
-                            value={record.mekik?.toString() ?? "-"}
-                        />
+                        <InfoRow label={t("recordDetail.strength.situp")} value={record.mekik?.toString() ?? "-"} />
                         <Text style={styles.analysisText}>
-                            Mekik Skoru: {record.analysis?.mekikStatus || "-"}
+                            {t("recordDetail.analysis.situpScore")} {record.analysis?.mekikStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="1RM Squat - Kilo"
-                            value={record.rmsquatweight?.toString() ?? "-"}
-                        />
-                        <InfoRow
-                            label="1RM Squat - Tekrar"
-                            value={record.rmsquatrep?.toString() ?? "-"}
-                        />
+                        <InfoRow label={t("recordDetail.strength.rmSquatWeight")} value={record.rmsquatweight?.toString() ?? "-"} />
+                        <InfoRow label={t("recordDetail.strength.rmSquatRep")} value={record.rmsquatrep?.toString() ?? "-"} />
                         <Text style={styles.analysisText}>
-                            1RM Squat Skoru: {record.analysis?.rmSquatStatus || "-"}
+                            {t("recordDetail.analysis.rmSquatScore")} {record.analysis?.rmSquatStatus || "-"}
                         </Text>
 
-                        <InfoRow
-                            label="Kuvvet Notları"
-                            value={record.kuvvetnotes || "-"}
-                            multiline
-                        />
+                        <InfoRow label={t("recordDetail.strength.notes")} value={record.kuvvetnotes || "-"} multiline />
                     </View>
-
                 </ScrollView>
             </View>
         </SafeAreaView>

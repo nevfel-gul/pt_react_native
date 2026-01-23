@@ -12,6 +12,7 @@ import {
     Zap
 } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
     Animated,
     Dimensions,
@@ -27,9 +28,9 @@ const { width, height } = Dimensions.get("window");
 
 export default function LandingScreen() {
     const router = useRouter();
+    const { t } = useTranslation();
     const scrollY = useRef(new Animated.Value(0)).current;
 
-    // Giriş Animasyonları
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -50,11 +51,10 @@ export default function LandingScreen() {
 
     const handleStart = () => router.push("/(tabs)");
 
-    // Hero bölümünün kaybolma efekti
     const heroOpacity = scrollY.interpolate({
         inputRange: [0, height * 0.4],
         outputRange: [1, 0],
-        extrapolate: 'clamp'
+        extrapolate: "clamp",
     });
 
     return (
@@ -69,10 +69,11 @@ export default function LandingScreen() {
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
             >
-                {/* --- BÖLÜM 1: HERO (GİRİŞ) --- */}
                 <View style={{ height: height }}>
                     <Animated.Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070' }}
+                        source={{
+                            uri: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070",
+                        }}
                         style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
                     />
                     <LinearGradient
@@ -81,89 +82,100 @@ export default function LandingScreen() {
                     />
 
                     <SafeAreaView style={styles.heroContent}>
-                        <Animated.View style={{
-                            opacity: heroOpacity, transform: [{
-                                translateY: scrollY.interpolate({
-                                    inputRange: [0, 500],
-                                    outputRange: [0, 100],
-                                    extrapolate: 'clamp'
-                                })
-                            }]
-                        }}>
-                            <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+                        <Animated.View
+                            style={{
+                                opacity: heroOpacity,
+                                transform: [
+                                    {
+                                        translateY: scrollY.interpolate({
+                                            inputRange: [0, 500],
+                                            outputRange: [0, 100],
+                                            extrapolate: "clamp",
+                                        }),
+                                    },
+                                ],
+                            }}
+                        >
+                            <Animated.View
+                                style={[
+                                    styles.header,
+                                    { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+                                ]}
+                            >
                                 <View style={styles.logoBadge}>
                                     <Activity size={18} color={themeui.colors.primary} />
-                                    <Text style={styles.logoBadgeText}>PRO COACH v0.1</Text>
+                                    <Text style={styles.logoBadgeText}>{t("app.version_badge")}</Text>
                                 </View>
-                                <Text style={styles.brandName}>ATHLE<Text style={{ color: themeui.colors.primary }}>TRACK</Text></Text>
+
+                                {/* ✅ BUNU ESKİSİ GİBİ BIRAKTIM (keyword yok -> es geç) */}
+                                <Text style={styles.brandName}>
+                                    ATHLE<Text style={{ color: themeui.colors.primary }}>TRACK</Text>
+                                </Text>
                             </Animated.View>
 
                             <View style={styles.middleSection}>
                                 <Animated.Text style={[styles.mainTitle, { opacity: fadeAnim }]}>
-                                    Sınırlarını{"\n"}
-                                    <Text style={styles.highlightText}>Analiz Et</Text>
+                                    {t("landing.hero.title.line1")}
+                                    {"\n"}
+                                    <Text style={styles.highlightText}>
+                                        {t("landing.hero.title.highlight")}
+                                    </Text>
                                 </Animated.Text>
 
                                 <Animated.Text style={[styles.description, { opacity: fadeAnim }]}>
-                                    Sporcularının gelişimini Tanita verileri, postür analizleri ve performans testleri ile bilimsel düzeyde takip et.
+                                    {t("landing.hero.description")}
                                 </Animated.Text>
                             </View>
                         </Animated.View>
 
-                        {/* Aşağı Kaydır İpucu */}
                         <Animated.View style={[styles.scrollHint, { opacity: heroOpacity }]}>
-                            <Text style={styles.scrollHintText}>Neler Yapıyoruz?</Text>
+                            <Text style={styles.scrollHintText}>{t("landing.scroll_hint")}</Text>
                             <ChevronDown size={24} color={themeui.colors.primary} />
                         </Animated.View>
                     </SafeAreaView>
                 </View>
 
-                {/* --- BÖLÜM 2: BİZ KİMİZ / NE YAPIYORUZ? --- */}
                 <View style={styles.infoSection}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTag}>MİSYONUMUZ</Text>
-                        <Text style={styles.sectionTitle}>Antrenörün Dijital Asistanı</Text>
+                        <Text style={styles.sectionTag}>{t("landing.mission.tag")}</Text>
+                        <Text style={styles.sectionTitle}>{t("landing.mission.title")}</Text>
                         <View style={styles.divider} />
                     </View>
 
-                    <Text style={styles.infoText}>
-                        AthleTrack, karmaşık ölçüm süreçlerini dijitalleştirerek antrenörlerin sporcu gelişimine odaklanmasını sağlar.
-                        Kağıt-kalem devrini kapatıp, veriye dayalı karar verme mekanizması sunuyoruz.
-                    </Text>
+                    <Text style={styles.infoText}>{t("landing.mission.description")}</Text>
 
-                    {/* Özellik Kartları Grid */}
                     <View style={styles.featureGrid}>
                         <InfoCard
                             icon={<BarChart3 size={24} color="#60a5fa" />}
-                            title="Veri Analizi"
-                            desc="Tanita ve vücut kompozisyonu verilerini saniyeler içinde analiz edin."
+                            title={t("landing.feature.analysis.title")}
+                            desc={t("landing.feature.analysis.desc")}
                         />
                         <InfoCard
                             icon={<ShieldCheck size={24} color="#22c55e" />}
-                            title="Postür Takibi"
-                            desc="Statik ve dinamik postür testleriyle sakatlık risklerini önceden belirleyin."
+                            title={t("landing.feature.posture.title")}
+                            desc={t("landing.feature.posture.desc")}
                         />
                         <InfoCard
                             icon={<Zap size={24} color="#f97316" />}
-                            title="Performans"
-                            desc="Bruce, YMCA ve kuvvet testleriyle sporcunun gerçek potansiyelini görün."
+                            title={t("landing.feature.performance.title")}
+                            desc={t("landing.feature.performance.desc")}
                         />
                         <InfoCard
                             icon={<Users size={24} color="#e879f9" />}
-                            title="Öğrenci Yönetimi"
-                            desc="PAR-Q testleri ve kişisel hedeflerle her sporcuya özel plan oluşturun."
+                            title={t("landing.feature.students.title")}
+                            desc={t("landing.feature.students.desc")}
                         />
                     </View>
                 </View>
 
-                {/* --- BÖLÜM 3: FINAL CTA --- */}
                 <View style={styles.finalSection}>
-                    <LinearGradient
-                        colors={["#1e293b", "#0A0F1A"]}
-                        style={styles.ctaCard}
-                    >
-                        <Sparkles size={40} color={themeui.colors.primary} style={{ marginBottom: 16 }} />
-                        <Text style={styles.ctaTitle}>Spora Bilim Katmaya Hazır mısın?</Text>
+                    <LinearGradient colors={["#1e293b", "#0A0F1A"]} style={styles.ctaCard}>
+                        <Sparkles
+                            size={40}
+                            color={themeui.colors.primary}
+                            style={{ marginBottom: 16 }}
+                        />
+                        <Text style={styles.ctaTitle}>{t("landing.cta.title")}</Text>
 
                         <TouchableOpacity
                             style={styles.primaryButton}
@@ -176,20 +188,18 @@ export default function LandingScreen() {
                                 end={{ x: 1, y: 0 }}
                                 style={styles.buttonGradient}
                             >
-                                <Text style={styles.buttonText}>Hemen Başla</Text>
+                                <Text style={styles.buttonText}>{t("landing.cta.button")}</Text>
                                 <ArrowRight size={20} color="#0f172a" strokeWidth={3} />
                             </LinearGradient>
                         </TouchableOpacity>
                     </LinearGradient>
                 </View>
-
             </Animated.ScrollView>
         </View>
     );
 }
 
-// Yardımcı Bileşen: Bilgi Kartı
-function InfoCard({ icon, title, desc }: { icon: any, title: string, desc: string }) {
+function InfoCard({ icon, title, desc }: { icon: any; title: string; desc: string }) {
     return (
         <View style={styles.infoCard}>
             <View style={styles.iconCircle}>{icon}</View>

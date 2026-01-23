@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { ArrowRight, Dna, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
     KeyboardAvoidingView,
     Platform,
@@ -22,6 +23,8 @@ import {
 import { auth } from "../services/firebase";
 
 export default function Login() {
+    const { t } = useTranslation();
+
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -33,7 +36,7 @@ export default function Login() {
 
     const handleSubmit = async () => {
         if (!email || !password || (!isLoginMode && !name)) {
-            alert("Lütfen tüm alanları doldur cano.");
+            alert(t("login.validation.fill_all"));
             return;
         }
 
@@ -49,7 +52,7 @@ export default function Login() {
             router.replace("/(tabs)");
         } catch (error: any) {
             console.error("Auth hatası:", error.message);
-            alert(`Hata: ${error.message}`);
+            alert(`${t("login.error.prefix")} ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -67,10 +70,10 @@ export default function Login() {
                         <Dna size={40} color={themeui.colors.primary} />
                     </View>
                     <Text style={styles.welcomeText}>
-                        {isLoginMode ? "Tekrar Hoş Geldin" : "Aramıza Katıl"}
+                        {isLoginMode ? t("login.header.welcome_back") : t("login.header.join_us")}
                     </Text>
                     <Text style={styles.subText}>
-                        {isLoginMode ? "Verilerini yönetmeye devam et" : "Sporcularını analiz etmeye başla"}
+                        {isLoginMode ? t("login.header.sub_continue") : t("login.header.sub_start")}
                     </Text>
                 </View>
 
@@ -80,7 +83,7 @@ export default function Login() {
                         <View style={styles.inputWrapper}>
                             <User size={20} color="#64748b" style={styles.inputIcon} />
                             <TextInput
-                                placeholder="Adın Soyadın"
+                                placeholder={t("login.placeholder.full_name")}
                                 value={name}
                                 onChangeText={setName}
                                 style={styles.input}
@@ -92,7 +95,7 @@ export default function Login() {
                     <View style={styles.inputWrapper}>
                         <Mail size={20} color="#64748b" style={styles.inputIcon} />
                         <TextInput
-                            placeholder="E-posta Adresin"
+                            placeholder={t("login.placeholder.email")}
                             value={email}
                             onChangeText={setEmail}
                             style={styles.input}
@@ -105,7 +108,7 @@ export default function Login() {
                     <View style={styles.inputWrapper}>
                         <Lock size={20} color="#64748b" style={styles.inputIcon} />
                         <TextInput
-                            placeholder="Şifren"
+                            placeholder={t("login.placeholder.password")}
                             placeholderTextColor="#64748b"
                             secureTextEntry={!isPasswordVisible}
                             value={password}
@@ -128,11 +131,11 @@ export default function Login() {
                                 trackColor={{ false: "#1e293b", true: themeui.colors.primary }}
                                 thumbColor="#f8fafc"
                             />
-                            <Text style={styles.rememberText}>Beni hatırla</Text>
+                            <Text style={styles.rememberText}>{t("login.remember_me")}</Text>
                         </View>
                         {isLoginMode && (
                             <TouchableOpacity>
-                                <Text style={styles.forgotText}>Şifremi Unuttum</Text>
+                                <Text style={styles.forgotText}>{t("login.forgot_password")}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -149,7 +152,7 @@ export default function Login() {
                             style={styles.buttonGradient}
                         >
                             <Text style={styles.buttonText}>
-                                {loading ? "İşlem yapılıyor..." : (isLoginMode ? "Giriş Yap" : "Kayıt Ol")}
+                                {loading ? t("login.button.loading") : (isLoginMode ? t("login.button.sign_in") : t("login.button.sign_up"))}
                             </Text>
                             <ArrowRight size={20} color="#0f172a" strokeWidth={3} />
                         </LinearGradient>
@@ -163,10 +166,10 @@ export default function Login() {
                 >
                     <Text style={styles.toggleText}>
                         {isLoginMode
-                            ? "Henüz hesabın yok mu? "
-                            : "Zaten buralarda mısın? "}
+                            ? t("login.toggle.no_account")
+                            : t("login.toggle.already_here")}
                         <Text style={styles.toggleTextHighlight}>
-                            {isLoginMode ? "Kayıt Ol" : "Giriş Yap"}
+                            {isLoginMode ? t("login.toggle.sign_up") : t("login.toggle.sign_in")}
                         </Text>
                     </Text>
                 </TouchableOpacity>
