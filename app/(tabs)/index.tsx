@@ -35,11 +35,14 @@ type Student = {
   name: string;
   email: string;
   number: string;
-  aktif: "Aktif" | "Pasif";
+  aktif: "Aktif" | "Pasif"; // DB değeri TR kalsın; UI text'i t() ile çevriliyor
   assessmentDate: string;
 };
 
 export default function KayitlarScreen() {
+  const { t, i18n } = useTranslation();
+  const router = useRouter();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [searchActive, setSearchActive] = useState(false);
   const safeSearch = searchTerm ?? "";
@@ -47,18 +50,20 @@ export default function KayitlarScreen() {
 
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filtre state'i DB'deki değerlerle aynı kalsın (Aktif/Pasif)
   const [filterDurum, setFilterDurum] = useState<"" | "Aktif" | "Pasif">("");
+
   const totalCount = students.length;
   const activeCount = students.filter((s) => s.aktif === "Aktif").length;
   const passiveCount = students.filter((s) => s.aktif === "Pasif").length;
+
   const [notifOpen, setNotifOpen] = useState(false);
+
   const overlayOpacity = searchAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 0.55],
   });
-
-  const { t, i18n } = useTranslation();
-
 
   const openAnimatedSearch = () => {
     setSearchActive(true);
@@ -79,9 +84,7 @@ export default function KayitlarScreen() {
       setSearchTerm("");
     });
   };
-  const router = useRouter();
 
-  // Logo ve diğer iconlar için opacity animasyonu
   const iconsOpacity = searchAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 0],
@@ -100,7 +103,10 @@ export default function KayitlarScreen() {
   }, [students, safeSearch, filterDurum]);
 
   useEffect(() => {
-    const q = query(studentsColRef(auth.currentUser?.uid!), orderBy("createdAt", "desc"));
+    const q = query(
+      studentsColRef(auth.currentUser?.uid!),
+      orderBy("createdAt", "desc")
+    );
 
     const unsubscribe = onSnapshot(
       q,
@@ -130,6 +136,8 @@ export default function KayitlarScreen() {
     return () => unsubscribe();
   }, []);
 
+  const dateLocale = i18n.language?.startsWith("en") ? "en-US" : "tr-TR";
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -139,7 +147,7 @@ export default function KayitlarScreen() {
             { justifyContent: "center", alignItems: "center" },
           ]}
         >
-          <Text style={{ color: "#e5e7eb" }}>Öğrenciler yükleniyor...</Text>
+          <Text style={{ color: "#e5e7eb" }}>{t("students.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -158,7 +166,6 @@ export default function KayitlarScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* TÜM EKRANI KAPLAYAN OVERLAY - Search açıkken her yere tıklayınca kapansın */}
       {searchActive && (
         <TouchableWithoutFeedback onPress={closeAnimatedSearch}>
           <Animated.View
@@ -179,16 +186,15 @@ export default function KayitlarScreen() {
       <View style={styles.container}>
         <View style={styles.headerWrapper}>
           <View style={styles.headerTopRow}>
-            {/* LEFT : LOGO - Animasyonlu opacity */}
             <Animated.View
               style={[styles.leftHeaderArea, { opacity: iconsOpacity }]}
               pointerEvents={searchActive ? "none" : "auto"}
             >
-              <Text style={styles.logoText}>{t("athletrack")}</Text>
+              {/* ✅ Logo text'i dil paketinden */}
+              <Text style={styles.logoText}>{t("brand.name")}</Text>
             </Animated.View>
 
             <View style={styles.rightHeaderArea}>
-              {/* NOTIFICATION - Animasyonlu opacity */}
               <Animated.View style={{ opacity: iconsOpacity }}>
                 <TouchableOpacity
                   onPress={() => setNotifOpen(!notifOpen)}
@@ -199,7 +205,6 @@ export default function KayitlarScreen() {
                 </TouchableOpacity>
               </Animated.View>
 
-              {/* SEARCH - Sadece ikonu burada */}
               {!searchActive && (
                 <TouchableOpacity
                   onPress={openAnimatedSearch}
@@ -217,7 +222,6 @@ export default function KayitlarScreen() {
                 </TouchableOpacity>
               )}
 
-              {/* PROFILE - Animasyonlu opacity */}
               <Animated.View style={{ opacity: iconsOpacity }}>
                 <TouchableOpacity
                   style={styles.titleIconWrapper}
@@ -229,7 +233,6 @@ export default function KayitlarScreen() {
                 </TouchableOpacity>
               </Animated.View>
 
-              {/* SEARCH BAR - headerTopRow'un içinde ama dışarıda (absolute) */}
               {searchActive && (
                 <Animated.View
                   style={{
@@ -254,7 +257,6 @@ export default function KayitlarScreen() {
                     opacity: searchAnim,
                   }}
                 >
-                  {/* Geri Butonu */}
                   <TouchableOpacity
                     onPress={closeAnimatedSearch}
                     style={{ marginRight: 8 }}
@@ -262,9 +264,8 @@ export default function KayitlarScreen() {
                     <ArrowLeft size={20} color="#f1f5f9" />
                   </TouchableOpacity>
 
-                  {/* TextInput */}
                   <TextInput
-                    placeholder="Öğrenci ara..."
+                    placeholder={t("search.student.placeholder")}
                     placeholderTextColor="#94a3b8"
                     value={searchTerm}
                     onChangeText={setSearchTerm}
@@ -277,10 +278,8 @@ export default function KayitlarScreen() {
                     }}
                   />
 
-                  {/* AI Butonu - SAĞ TARAF */}
                   <TouchableOpacity
                     onPress={() => {
-                      // not: AI fonks buraa eklencek
                       console.log("AI butonu tıklandı");
                     }}
                     style={{
@@ -296,7 +295,6 @@ export default function KayitlarScreen() {
                     <Sparkles size={18} color="#fff" />
                   </TouchableOpacity>
 
-                  {/* Temizle butonu - Sağda AI butonundan önce */}
                   {searchTerm.length > 0 && (
                     <TouchableOpacity
                       onPress={() => setSearchTerm("")}
@@ -308,38 +306,45 @@ export default function KayitlarScreen() {
                 </Animated.View>
               )}
             </View>
-
           </View>
 
-
-          <Text style={{ marginBottom: 12, color: "#f1f5f9" }}>Dil: {i18n.language}</Text>
+          <Text style={{ marginBottom: 12, color: "#f1f5f9" }}>
+            {t("language.label")}: {i18n.language}
+          </Text>
 
           <TouchableOpacity
             onPress={() => setAppLanguage("tr")}
-            style={{ padding: 12, borderWidth: 1, borderRadius: 12, marginBottom: 8, backgroundColor: i18n.language === "tr" ? "#0064fb" : "#445269" }}
+            style={{
+              padding: 12,
+              borderWidth: 1,
+              borderRadius: 12,
+              marginBottom: 8,
+              backgroundColor: i18n.language === "tr" ? "#0064fb" : "#445269",
+            }}
           >
-            <Text>Türkçe</Text>
+            <Text>{t("language.turkish")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => setAppLanguage("en")}
-            style={{ padding: 12, borderWidth: 1, borderRadius: 12, backgroundColor: i18n.language === "en" ? "#0064fb" : "#445269" }}
+            style={{
+              padding: 12,
+              borderWidth: 1,
+              borderRadius: 12,
+              backgroundColor: i18n.language === "en" ? "#0064fb" : "#445269",
+            }}
           >
-            <Text>English</Text>
+            <Text>{t("language.english")}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* LİSTE */}
         <View style={styles.listWrapper}>
-          {/* FİLTRELER */}
           <View style={styles.filterBoxRow}>
             <TouchableOpacity
               onPress={() => setFilterDurum("")}
               style={[
                 styles.filterBox,
-                {
-                  backgroundColor: "#0f172a",
-                },
+                { backgroundColor: "#0f172a" },
                 filterDurum === "" && styles.filterBoxActiveALL,
               ]}
             >
@@ -357,16 +362,15 @@ export default function KayitlarScreen() {
                   filterDurum === "" && styles.filterBoxTextActive,
                 ]}
               >
-                Tümü
+                {t("filter.all")}
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               onPress={() => setFilterDurum("Aktif")}
               style={[
                 styles.filterBox,
-                {
-                  backgroundColor: "#3a8b55",
-                },
+                { backgroundColor: "#3a8b55" },
                 filterDurum === "Aktif" && styles.filterBoxActiveA,
               ]}
             >
@@ -384,7 +388,7 @@ export default function KayitlarScreen() {
                   filterDurum === "Aktif" && styles.filterBoxTextActive,
                 ]}
               >
-                Aktif
+                {t("status.active")}
               </Text>
             </TouchableOpacity>
 
@@ -392,9 +396,7 @@ export default function KayitlarScreen() {
               onPress={() => setFilterDurum("Pasif")}
               style={[
                 styles.filterBox,
-                {
-                  backgroundColor: "#993131",
-                },
+                { backgroundColor: "#993131" },
                 filterDurum === "Pasif" && styles.filterBoxActiveP,
               ]}
             >
@@ -412,12 +414,11 @@ export default function KayitlarScreen() {
                   filterDurum === "Pasif" && styles.filterBoxTextActive,
                 ]}
               >
-                Pasif
+                {t("status.passive")}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* LİSTE */}
           {filteredStudents.length > 0 ? (
             <FlatList
               data={filteredStudents}
@@ -440,7 +441,7 @@ export default function KayitlarScreen() {
                       <Calendar size={16} color="#9ca3af" />
                       <Text style={styles.cardRowText}>
                         {new Date(item.assessmentDate).toLocaleDateString(
-                          "tr-TR"
+                          dateLocale
                         )}
                       </Text>
                     </View>
@@ -462,13 +463,15 @@ export default function KayitlarScreen() {
                             : styles.statusTextInactive
                         }
                       >
-                        {item.aktif}
+                        {item.aktif === "Aktif"
+                          ? t("status.active")
+                          : t("status.passive")}
                       </Text>
                     </View>
 
                     <View style={styles.detailPill}>
                       <Eye size={16} color="#e5e7eb" />
-                      <Text style={styles.detailPillText}>Detay</Text>
+                      <Text style={styles.detailPillText}>{t("detail")}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -476,10 +479,8 @@ export default function KayitlarScreen() {
             />
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Sonuç yok</Text>
-              <Text style={styles.emptySubtitle}>
-                Arama kriterlerine uygun öğrenci bulunamadı.
-              </Text>
+              <Text style={styles.emptyTitle}>{t("empty.title")}</Text>
+              <Text style={styles.emptySubtitle}>{t("empty.subtitle")}</Text>
             </View>
           )}
         </View>
@@ -491,6 +492,7 @@ export default function KayitlarScreen() {
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -854,7 +856,6 @@ const styles = StyleSheet.create({
     fontSize: themeui.fontSize.lg,
     fontWeight: "800",
     color: themeui.colors.primary,
-
   },
 
   notifText: {

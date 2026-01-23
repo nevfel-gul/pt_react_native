@@ -6,7 +6,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Tabs } from "expo-router";
 import React from "react";
 import { View } from "react-native";
-
+import { useTranslation } from "react-i18next";
 import { auth } from "@/services/firebase";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
@@ -19,6 +19,8 @@ export default function TabLayout() {
   const [authReady, setAuthReady] = React.useState(false);
   const [isAuthed, setIsAuthed] = React.useState<boolean>(!!auth.currentUser);
 
+  const { t } = useTranslation();
+
   React.useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setIsAuthed(!!u);
@@ -30,6 +32,7 @@ export default function TabLayout() {
 
   if (!authReady) return null;
   if (!isAuthed) return null;
+
   const premiumHref = hasPremium ? undefined : "/premium";
 
   return (
@@ -45,12 +48,11 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
       }}
       initialRouteName="index"
-
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
+          title: t("tabs.dashboard"),
           tabBarIcon: ({ color, focused }) => (
             <View
               style={[
@@ -61,12 +63,12 @@ export default function TabLayout() {
                   justifyContent: "center",
                 },
                 focused && {
-                  backgroundColor: "rgba(56,189,248,0.10)", // glow
+                  backgroundColor: "rgba(56,189,248,0.10)",
                   shadowColor: "#38bdf8",
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.6,
                   shadowRadius: 4,
-                  elevation: 6, // android
+                  elevation: 6,
                 },
               ]}
             >
@@ -75,10 +77,11 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="kolpa"
         options={{
-          title: "Kolpa",
+          title: t("tabs.kolpa"),
           tabBarIcon: ({ color, focused }) => (
             <View
               style={[
@@ -89,12 +92,12 @@ export default function TabLayout() {
                   justifyContent: "center",
                 },
                 focused && {
-                  backgroundColor: "rgba(56,189,248,0.10)", // glow
+                  backgroundColor: "rgba(56,189,248,0.10)",
                   shadowColor: "#38bdf8",
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.6,
                   shadowRadius: 6,
-                  elevation: 6, // android
+                  elevation: 6,
                 },
               ]}
             >
@@ -103,10 +106,11 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: t("tabs.settings"),
           tabBarIcon: ({ color, focused }) => (
             <View
               style={[
@@ -117,12 +121,12 @@ export default function TabLayout() {
                   justifyContent: "center",
                 },
                 focused && {
-                  backgroundColor: "rgba(56,189,248,0.10)", // glow
+                  backgroundColor: "rgba(56,189,248,0.10)",
                   shadowColor: "#38bdf8",
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.6,
                   shadowRadius: 6,
-                  elevation: 10, // Android
+                  elevation: 10,
                 },
               ]}
             >
@@ -131,10 +135,11 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="premium"
         options={{
-          title: "Premium Al",
+          title: t("tabs.premium"),
           tabBarIcon: ({ focused }) => <AnimatedStar focused={focused} />,
           href: premiumHref,
         }}

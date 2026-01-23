@@ -1,8 +1,8 @@
 import { themeui } from "@/constants/themeui";
 import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
-import { User as FirebaseUser, onAuthStateChanged } from "@firebase/auth";
 import { useRouter } from "expo-router";
+import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { addDoc, serverTimestamp } from "firebase/firestore";
 import { ArrowLeft, Calendar, Save, User as UserIcon } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
@@ -17,6 +17,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Gender = "Kadın" | "Erkek" | "";

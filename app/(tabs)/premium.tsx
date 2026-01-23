@@ -1,11 +1,8 @@
 import { themeui } from "@/constants/themeui";
 import { useRouter } from "expo-router";
-import {
-  Check,
-  Crown,
-  Sparkles
-} from "lucide-react-native";
+import { Check, Crown, Sparkles } from "lucide-react-native";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   ScrollView,
   StyleSheet,
@@ -17,13 +14,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const features = [
-    "Sınırsız öğrenci & kayıt",
-    "Gelişmiş istatistik ve raporlar",
-    "Online randevu & takvim senkronizasyonu",
-    "Otomatik bildirimler",
-    "Premium destek",
+    t("premium.feature.unlimited"),
+    t("premium.feature.advancedStats"),
+    t("premium.feature.calendarSync"),
+    t("premium.feature.notifications"),
+    t("premium.feature.support"),
   ];
 
   return (
@@ -36,22 +34,20 @@ export default function PremiumScreen() {
               <Crown size={34} color="#facc15" />
             </View>
 
-            <Text style={styles.heroTitle}>Premium’a Geç</Text>
-            <Text style={styles.heroSubtitle}>
-              İşini büyütmek için tüm profesyonel araçlara eriş
-            </Text>
+            <Text style={styles.heroTitle}>{t("premium.hero.title")}</Text>
+            <Text style={styles.heroSubtitle}>{t("premium.hero.subtitle")}</Text>
           </View>
 
           {/* PLAN CARD */}
           <View style={styles.planCard}>
             <View style={styles.planHeader}>
               <Sparkles size={18} color="#a78bfa" />
-              <Text style={styles.planTitle}>Premium Plan</Text>
+              <Text style={styles.planTitle}>{t("premium.plan.title")}</Text>
             </View>
 
             <View style={styles.priceRow}>
               <Text style={styles.price}>₺249</Text>
-              <Text style={styles.period}> / ay</Text>
+              <Text style={styles.period}> {t("premium.plan.period")}</Text>
             </View>
 
             <View style={styles.featureList}>
@@ -72,21 +68,20 @@ export default function PremiumScreen() {
             activeOpacity={0.85}
             onPress={() => {
               // BURASI ŞİMDİLİK DUMMY
-              alert("Premium satın alım (dummy)");
+              alert(t("premium.alert.purchaseDummy"));
             }}
           >
-            <Text style={styles.buyButtonText}>Premium Satın Al</Text>
+            <Text style={styles.buyButtonText}>{t("premium.cta.buy")}</Text>
           </TouchableOpacity>
 
           {/* FOOTER NOTE */}
-          <Text style={styles.footerNote}>
-            İstediğin zaman iptal edebilirsin. Gizli ücret yok.
-          </Text>
+          <Text style={styles.footerNote}>{t("premium.footer.note")}</Text>
         </ScrollView>
       </View>
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
