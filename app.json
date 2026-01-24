@@ -9,8 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.athletrack.athletrack",
       "supportsTablet": true,
-      "bundleIdentifier": "com.athletrack.athletrack"
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -45,6 +48,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d10c4dd5-b0ff-4cb8-9cb0-ceafd45790a9"
+      }
+    },
+    "owner": "nevfelbusiness"
   }
 }
