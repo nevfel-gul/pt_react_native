@@ -281,28 +281,28 @@ export default function SettingsScreen() {
         />
       </View>
 
-<Section
-  title="Uygulama Hakkında"
-  icon={<Info size={18} color={themeui.colors.text.secondary} />}
-/>
+      <Section
+        title="Uygulama Hakkında"
+        icon={<Info size={18} color={themeui.colors.text.secondary} />}
+      />
 
-<View style={styles.card}>
-  <SettingRow
-    label="Sürüm"
-    right={<Text style={styles.settingValueText}>v0.0.0</Text>}
-  />
+      <View style={styles.card}>
+        <SettingRow
+          label="Sürüm"
+          right={<Text style={styles.settingValueText}>v0.0.0</Text>}
+        />
 
-  <SettingRow
-    label="Lisans"
-    right={<Text style={styles.settingValueText}>PT Lab</Text>}
-  />
+        <SettingRow
+          label="Lisans"
+          right={<Text style={styles.settingValueText}>PT Lab</Text>}
+        />
 
-  <SettingRow
-    label="Gizlilik Politikası"
-    right={<Text style={styles.badgeMuted}>Aç</Text>}
-    isLast={true}
-  />
-</View>
+        <SettingRow
+          label="Gizlilik Politikası"
+          right={<Text style={styles.badgeMuted}>Aç</Text>}
+          isLast={true}
+        />
+      </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={() => { handleLogout(); }}>
         <LogOut size={18} color="#fca5a5" />
