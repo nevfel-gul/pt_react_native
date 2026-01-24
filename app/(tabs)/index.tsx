@@ -1,98 +1,880 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { themeui } from "@/constants/themeui";
+import { auth } from "@/services/firebase";
+import { studentsColRef } from "@/services/firestorePaths";
+import { setAppLanguage } from "@/services/i18n";
+import { useRouter } from "expo-router";
+import { onSnapshot, orderBy, query } from "firebase/firestore";
+import {
+  ArrowLeft,
+  Bell,
+  Calendar,
+  Eye,
+  Phone,
+  Plus,
+  Search,
+  Sparkles,
+  Users,
+  XIcon,
+} from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Animated,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+type Student = {
+  id: string;
+  name: string;
+  email: string;
+  number: string;
+  aktif: "Aktif" | "Pasif"; // DB değeri TR kalsın; UI text'i t() ile çevriliyor
+  assessmentDate: string;
+};
 
-export default function HomeScreen() {
+export default function KayitlarScreen() {
+  const { t, i18n } = useTranslation();
+  const router = useRouter();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchActive, setSearchActive] = useState(false);
+  const safeSearch = searchTerm ?? "";
+  const searchAnim = useRef(new Animated.Value(0)).current;
+
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filtre state'i DB'deki değerlerle aynı kalsın (Aktif/Pasif)
+  const [filterDurum, setFilterDurum] = useState<"" | "Aktif" | "Pasif">("");
+
+  const totalCount = students.length;
+  const activeCount = students.filter((s) => s.aktif === "Aktif").length;
+  const passiveCount = students.filter((s) => s.aktif === "Pasif").length;
+
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const overlayOpacity = searchAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.55],
+  });
+
+  const openAnimatedSearch = () => {
+    setSearchActive(true);
+    Animated.timing(searchAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const closeAnimatedSearch = () => {
+    Animated.timing(searchAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start(() => {
+      setSearchActive(false);
+      setSearchTerm("");
+    });
+  };
+
+  const iconsOpacity = searchAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
+  });
+
+  const filteredStudents = useMemo(() => {
+    return students.filter((student) => {
+      const matchesSearch =
+        student.name.toLowerCase().includes(safeSearch.toLowerCase()) ||
+        student.email.toLowerCase().includes(safeSearch.toLowerCase());
+
+      const matchesDurum = !filterDurum || student.aktif === filterDurum;
+
+      return matchesSearch && matchesDurum;
+    });
+  }, [students, safeSearch, filterDurum]);
+
+  useEffect(() => {
+    const q = query(
+      studentsColRef(auth.currentUser?.uid!),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list: Student[] = snapshot.docs.map((doc) => {
+          const data = doc.data() as any;
+
+          return {
+            id: doc.id,
+            name: data.name ?? "",
+            email: data.email ?? "",
+            number: data.number ?? "",
+            aktif: (data.aktif as "Aktif" | "Pasif") ?? "Aktif",
+            assessmentDate: data.assessmentDate ?? new Date().toISOString(),
+          };
+        });
+
+        setStudents(list);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("students dinlenirken hata:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  const dateLocale = i18n.language?.startsWith("en") ? "en-US" : "tr-TR";
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View
+          style={[
+            styles.container,
+            { justifyContent: "center", alignItems: "center" },
+          ]}
+        >
+          <Text style={{ color: "#e5e7eb" }}>{t("students.loading")}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const handleViewDetails = (studentId: string) => {
+    router.push({
+      pathname: "/student/[id]",
+      params: { id: studentId },
+    });
+  };
+
+  const handleAddStudent = () => {
+    router.replace("/newstudent");
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.safeArea}>
+      {searchActive && (
+        <TouchableWithoutFeedback onPress={closeAnimatedSearch}>
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "black",
+              opacity: overlayOpacity,
+              zIndex: 998,
+            }}
+          />
+        </TouchableWithoutFeedback>
+      )}
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View style={styles.container}>
+        <View style={styles.headerWrapper}>
+          <View style={styles.headerTopRow}>
+            <Animated.View
+              style={[styles.leftHeaderArea, { opacity: iconsOpacity }]}
+              pointerEvents={searchActive ? "none" : "auto"}
+            >
+              {/* ✅ Logo text'i dil paketinden */}
+              <Text style={styles.logoText}>{t("brand.name")}</Text>
+            </Animated.View>
+
+            <View style={styles.rightHeaderArea}>
+              <Animated.View style={{ opacity: iconsOpacity }}>
+                <TouchableOpacity
+                  onPress={() => setNotifOpen(!notifOpen)}
+                  style={styles.titleIconWrapper}
+                  disabled={searchActive}
+                >
+                  <Bell size={22} color="#f1f5f9" />
+                </TouchableOpacity>
+              </Animated.View>
+
+              {!searchActive && (
+                <TouchableOpacity
+                  onPress={openAnimatedSearch}
+                  style={{
+                    backgroundColor: "#1e293b",
+                    height: 40,
+                    width: 40,
+                    alignItems: "center",
+                    borderRadius: 99,
+                    justifyContent: "center",
+                    marginLeft: 6,
+                  }}
+                >
+                  <Search size={22} color="#f1f5f9" />
+                </TouchableOpacity>
+              )}
+
+              <Animated.View style={{ opacity: iconsOpacity }}>
+                <TouchableOpacity
+                  style={styles.titleIconWrapper}
+                  activeOpacity={0.7}
+                  onPress={() => router.push("/profile")}
+                  disabled={searchActive}
+                >
+                  <Users size={24} color="#60a5fa" />
+                </TouchableOpacity>
+              </Animated.View>
+
+              {searchActive && (
+                <Animated.View
+                  style={{
+                    position: "absolute",
+                    left: 10,
+                    right: 10,
+                    top: 0,
+                    height: 48,
+                    backgroundColor: "#1e293b",
+                    borderRadius: 99,
+                    paddingHorizontal: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "#475569",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 8,
+                    zIndex: 999,
+                    opacity: searchAnim,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={closeAnimatedSearch}
+                    style={{ marginRight: 8 }}
+                  >
+                    <ArrowLeft size={20} color="#f1f5f9" />
+                  </TouchableOpacity>
+
+                  <TextInput
+                    placeholder={t("search.student.placeholder")}
+                    placeholderTextColor="#94a3b8"
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                    autoFocus
+                    style={{
+                      flex: 1,
+                      color: "#f1f5f9",
+                      fontSize: 15,
+                      fontWeight: "500",
+                    }}
+                  />
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      console.log("AI butonu tıklandı");
+                    }}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 99,
+                      backgroundColor: "#7c3aed",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginLeft: 8,
+                    }}
+                  >
+                    <Sparkles size={18} color="#fff" />
+                  </TouchableOpacity>
+
+                  {searchTerm.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setSearchTerm("")}
+                      style={{ marginLeft: 8 }}
+                    >
+                      <XIcon size={18} color="#94a3b8" />
+                    </TouchableOpacity>
+                  )}
+                </Animated.View>
+              )}
+            </View>
+          </View>
+
+          <Text style={{ marginBottom: 12, color: "#f1f5f9" }}>
+            {t("language.label")}: {i18n.language}
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => setAppLanguage("tr")}
+            style={{
+              padding: 12,
+              borderWidth: 1,
+              borderRadius: 12,
+              marginBottom: 8,
+              backgroundColor: i18n.language === "tr" ? "#0064fb" : "#445269",
+            }}
+          >
+            <Text>{t("language.turkish")}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setAppLanguage("en")}
+            style={{
+              padding: 12,
+              borderWidth: 1,
+              borderRadius: 12,
+              backgroundColor: i18n.language === "en" ? "#0064fb" : "#445269",
+            }}
+          >
+            <Text>{t("language.english")}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.listWrapper}>
+          <View style={styles.filterBoxRow}>
+            <TouchableOpacity
+              onPress={() => setFilterDurum("")}
+              style={[
+                styles.filterBox,
+                { backgroundColor: "#0f172a" },
+                filterDurum === "" && styles.filterBoxActiveALL,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterBoxNumber,
+                  filterDurum === "" && styles.filterBoxNumberActive,
+                ]}
+              >
+                {totalCount}
+              </Text>
+              <Text
+                style={[
+                  styles.filterBoxText,
+                  filterDurum === "" && styles.filterBoxTextActive,
+                ]}
+              >
+                {t("filter.all")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setFilterDurum("Aktif")}
+              style={[
+                styles.filterBox,
+                { backgroundColor: "#3a8b55" },
+                filterDurum === "Aktif" && styles.filterBoxActiveA,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterBoxNumber,
+                  filterDurum === "Aktif" && styles.filterBoxNumberActive,
+                ]}
+              >
+                {activeCount}
+              </Text>
+              <Text
+                style={[
+                  styles.filterBoxText,
+                  filterDurum === "Aktif" && styles.filterBoxTextActive,
+                ]}
+              >
+                {t("status.active")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setFilterDurum("Pasif")}
+              style={[
+                styles.filterBox,
+                { backgroundColor: "#993131" },
+                filterDurum === "Pasif" && styles.filterBoxActiveP,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterBoxNumber,
+                  filterDurum === "Pasif" && styles.filterBoxNumberActive,
+                ]}
+              >
+                {passiveCount}
+              </Text>
+              <Text
+                style={[
+                  styles.filterBoxText,
+                  filterDurum === "Pasif" && styles.filterBoxTextActive,
+                ]}
+              >
+                {t("status.passive")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {filteredStudents.length > 0 ? (
+            <FlatList
+              data={filteredStudents}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.card}
+                  onPress={() => handleViewDetails(item.id)}
+                >
+                  <View style={styles.cardLeft}>
+                    <Text style={styles.cardName}>{item.name}</Text>
+
+                    <View style={styles.cardRow}>
+                      <Phone size={16} color="#9ca3af" />
+                      <Text style={styles.cardRowText}>{item.number}</Text>
+                    </View>
+
+                    <View style={styles.cardRow}>
+                      <Calendar size={16} color="#9ca3af" />
+                      <Text style={styles.cardRowText}>
+                        {new Date(item.assessmentDate).toLocaleDateString(
+                          dateLocale
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.cardRight}>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        item.aktif === "Aktif"
+                          ? styles.statusBadgeActive
+                          : styles.statusBadgeInactive,
+                      ]}
+                    >
+                      <Text
+                        style={
+                          item.aktif === "Aktif"
+                            ? styles.statusTextActive
+                            : styles.statusTextInactive
+                        }
+                      >
+                        {item.aktif === "Aktif"
+                          ? t("status.active")
+                          : t("status.passive")}
+                      </Text>
+                    </View>
+
+                    <View style={styles.detailPill}>
+                      <Eye size={16} color="#e5e7eb" />
+                      <Text style={styles.detailPillText}>{t("detail")}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>{t("empty.title")}</Text>
+              <Text style={styles.emptySubtitle}>{t("empty.subtitle")}</Text>
+            </View>
+          )}
+        </View>
+
+        <TouchableOpacity style={styles.fab} onPress={handleAddStudent}>
+          <Plus size={24} color="#0f172a" />
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  safeArea: {
+    flex: 1,
+    backgroundColor: themeui.colors.background,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#0A0F1A",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
+
+  headerWrapper: {
+    paddingHorizontal: themeui.spacing.lg,
+    paddingTop: themeui.spacing.xs + 2,
+    paddingBottom: themeui.spacing.sm,
+    backgroundColor: themeui.colors.background,
+  },
+
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: themeui.spacing.md,
+  },
+
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  titleIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.surfaceSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: themeui.spacing.sm,
+    borderWidth: 1,
+    borderColor: themeui.colors.border,
+  },
+
+  title: {
+    fontSize: themeui.fontSize.title,
+    fontWeight: "700",
+    color: themeui.colors.text.primary,
+  },
+
+  subtitle: {
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.secondary,
+    marginTop: 2,
+  },
+
+  searchIcon: {
+    position: "absolute",
+    left: 12,
+    top: "50%",
+    marginTop: -9,
+    zIndex: 1,
+  },
+
+  searchInput: {
+    backgroundColor: themeui.colors.background,
+    borderWidth: 1,
+    borderColor: themeui.colors.border,
+    borderRadius: themeui.radius.pill,
+    paddingVertical: themeui.spacing.sm - 2,
+    paddingHorizontal: 40,
+    fontSize: themeui.fontSize.md,
+    color: themeui.colors.text.primary,
+  },
+
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: themeui.spacing.xs,
+    marginTop: 4,
+    marginBottom: themeui.spacing.sm,
+  },
+
+  filterChip: {
+    paddingHorizontal: themeui.spacing.md - 4,
+    paddingVertical: themeui.spacing.xs,
+    borderRadius: themeui.radius.pill,
+    borderWidth: 1,
+    borderColor: themeui.colors.border,
+    backgroundColor: themeui.colors.background,
+  },
+  filterChipActive: {
+    backgroundColor: themeui.colors.primary,
+    borderColor: themeui.colors.primary,
+  },
+
+  filterChipText: {
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.secondary,
+  },
+  filterChipTextActive: {
+    color: themeui.colors.text.primary,
+    fontWeight: "600",
+  },
+
+  statsRow: {
+    flexDirection: "row",
+    gap: themeui.spacing.sm,
+    marginTop: 4,
+  },
+
+  statCard: {
+    flex: 1,
+    backgroundColor: themeui.colors.background,
+    borderRadius: themeui.radius.lg,
+    paddingVertical: themeui.spacing.sm,
+    paddingHorizontal: themeui.spacing.sm,
+    borderWidth: 1,
+    borderColor: themeui.colors.border,
+  },
+
+  statValue: {
+    fontSize: themeui.fontSize.xl,
+    fontWeight: "700",
+    color: themeui.colors.text.primary,
+  },
+
+  statLabel: {
+    fontSize: themeui.fontSize.xs,
+    color: themeui.colors.text.muted,
+    marginTop: 2,
+  },
+
+  listWrapper: {
+    flex: 1,
+    backgroundColor: themeui.colors.background,
+    borderTopLeftRadius: themeui.radius.xl,
+    borderTopRightRadius: themeui.radius.xl,
+    paddingTop: themeui.spacing.xs,
+  },
+
+  listContent: {
+    paddingHorizontal: themeui.spacing.md,
+    paddingBottom: 80,
+    paddingTop: themeui.spacing.sm,
+  },
+
+  card: {
+    backgroundColor: themeui.colors.surface,
+    borderRadius: themeui.radius.lg,
+    paddingVertical: themeui.spacing.sm + 2,
+    paddingHorizontal: themeui.spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginBottom: themeui.spacing.lg - 4,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: themeui.spacing.sm,
+    ...themeui.shadow.soft,
+  },
+
+  cardLeft: { flex: 1 },
+
+  cardName: {
+    fontSize: themeui.fontSize.lg,
+    fontWeight: "600",
+    color: themeui.colors.text.primary,
+    marginBottom: themeui.spacing.xs,
+  },
+
+  cardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: themeui.spacing.xs,
+    marginBottom: 3,
+  },
+
+  cardRowText: {
+    fontSize: themeui.fontSize.md,
+    color: themeui.colors.text.secondary,
+  },
+
+  cardRight: {
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+  },
+
+  statusBadge: {
+    paddingHorizontal: themeui.spacing.sm - 4,
+    paddingVertical: themeui.spacing.xs - 2,
+    borderRadius: themeui.radius.pill,
+  },
+  statusBadgeActive: { backgroundColor: themeui.colors.successSoft },
+  statusBadgeInactive: { backgroundColor: themeui.colors.dangerSoft },
+
+  statusTextActive: {
+    fontSize: themeui.fontSize.xs,
+    fontWeight: "600",
+    color: themeui.colors.success,
+  },
+  statusTextInactive: {
+    fontSize: themeui.fontSize.xs,
+    fontWeight: "600",
+    color: themeui.colors.danger,
+  },
+
+  detailPill: {
+    marginTop: themeui.spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: themeui.spacing.xs,
+    paddingHorizontal: themeui.spacing.sm,
+    paddingVertical: themeui.spacing.xs,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.background,
+    borderWidth: 1,
+    borderColor: themeui.colors.border,
+  },
+  detailPillText: {
+    fontSize: themeui.fontSize.sm,
+    color: themeui.colors.text.primary,
+    fontWeight: "500",
+  },
+
+  emptyState: {
+    alignItems: "center",
+    marginTop: 40,
+  },
+  emptyTitle: {
+    fontSize: themeui.fontSize.lg,
+    fontWeight: "600",
+    color: themeui.colors.text.primary,
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: themeui.fontSize.md - 1,
+    color: themeui.colors.text.secondary,
+    textAlign: "center",
+    paddingHorizontal: themeui.spacing.lg,
+  },
+
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: themeui.radius.pill,
+    backgroundColor: themeui.colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
+  },
+
+  searchPanel: {
+    position: "absolute",
+    top: 0,
     left: 0,
-    position: 'absolute',
+    right: 0,
+    backgroundColor: themeui.colors.surface,
+    paddingTop: 60,
+    paddingHorizontal: themeui.spacing.md,
+    paddingBottom: themeui.spacing.lg - 4,
+    zIndex: 999,
+    borderBottomWidth: 1,
+    borderBottomColor: themeui.colors.border,
+  },
+
+  searchHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: themeui.spacing.md,
+  },
+
+  filterBoxRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: themeui.spacing.md,
+    marginBottom: themeui.spacing.md - 2,
+    marginTop: themeui.spacing.xs,
+  },
+
+  filterBox: {
+    flex: 1,
+    marginHorizontal: 4,
+    height: 92,
+    borderRadius: themeui.radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "#0A0F1A",
+  },
+
+  filterBoxActiveALL: {
+    shadowColor: "#3B82F6",
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+
+  filterBoxActiveA: {
+    shadowColor: "#82cd00",
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+
+  filterBoxActiveP: {
+    shadowColor: "#cd6118ff",
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+
+  filterBoxText: {
+    fontSize: themeui.fontSize.sm,
+    fontWeight: "600",
+    color: "#EDEDED",
+  },
+  filterBoxTextActive: {
+    fontSize: themeui.fontSize.lg - 2,
+    fontWeight: "700",
+    color: "#EDEDED",
+  },
+  filterBoxNumber: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#EDEDED",
+    marginBottom: 4,
+  },
+  filterBoxNumberActive: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginBottom: 4,
+  },
+
+  notifPanel: {
+    position: "absolute",
+    top: 70,
+    right: 20,
+    backgroundColor: "rgba(30,30,30,0.95)",
+    borderRadius: themeui.radius.lg,
+    paddingHorizontal: themeui.spacing.sm,
+    paddingVertical: themeui.spacing.xs,
+    width: 200,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    zIndex: 999,
+  },
+
+  notifItem: {
+    paddingVertical: themeui.spacing.sm - 2,
+  },
+
+  logoText: {
+    fontSize: themeui.fontSize.lg,
+    fontWeight: "800",
+    color: themeui.colors.primary,
+  },
+
+  notifText: {
+    color: "#fff",
+    fontSize: themeui.fontSize.lg - 2,
+    fontWeight: "500",
+  },
+
+  leftHeaderArea: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: themeui.spacing.md - 4,
+  },
+  rightHeaderArea: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: themeui.spacing.xs,
+    flex: 1,
   },
 });
