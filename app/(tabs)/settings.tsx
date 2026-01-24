@@ -10,9 +10,10 @@ import {
   Moon,
   Palette,
   Shield,
-  Smartphone
+  Smartphone,
 } from "lucide-react-native";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ScrollView,
   StyleSheet,
@@ -28,6 +29,8 @@ type TabKey = "preferences" | "security";
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+
   const [activeTab, setActiveTab] = useState<TabKey>("preferences");
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(false);
@@ -37,7 +40,6 @@ export default function SettingsScreen() {
   const [twoFactor, setTwoFactor] = useState(false);
 
   const handleBack = () => router.back();
-
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -110,18 +112,20 @@ export default function SettingsScreen() {
     </TouchableOpacity>
   );
 
-
   // -------------------------
   // PREFERENCES TAB
   // -------------------------
   const renderPreferencesTab = () => (
     <>
-      <Section title="Tercihler" icon={<Palette size={18} color="#a78bfa" />} />
+      <Section
+        title={t("settings.section.preferences")}
+        icon={<Palette size={18} color="#a78bfa" />}
+      />
 
       <View style={styles.card}>
         <SettingRow
-          label="Karanlık Tema"
-          subtitle="Gece modunu aç/kapat"
+          label={t("settings.preference.darkTheme")}
+          subtitle={t("settings.preference.darkTheme.sub")}
           right={
             <Switch
               value={darkMode}
@@ -131,27 +135,33 @@ export default function SettingsScreen() {
             />
           }
         />
+
         <SettingRow
-          label="Dil"
-          subtitle="Uygulama dili"
-          right={<Text style={styles.settingValueText}>Türkçe</Text>}
+          label={t("settings.preference.language")}
+          subtitle={t("settings.preference.language.sub")}
+          right={
+            <Text style={styles.settingValueText}>{t("settings.value.turkish")}</Text>
+          }
           onPress={() => { }}
         />
 
         <SettingRow
-          label="Bölge"
-          subtitle="Tarih & saat formatı"
-          right={<Text style={styles.settingValueText}>Türkiye</Text>}
+          label={t("settings.preference.region")}
+          subtitle={t("settings.preference.region.sub")}
+          right={<Text style={styles.settingValueText}>{t("settings.value.turkey")}</Text>}
           isLast={true}
         />
       </View>
 
-      <Section title="Bildirimler" icon={<Bell size={18} color="#facc15" />} />
+      <Section
+        title={t("settings.section.notifications")}
+        icon={<Bell size={18} color="#facc15" />}
+      />
 
       <View style={styles.card}>
         <SettingRow
-          label="Push Bildirimleri"
-          subtitle="Seans hatırlatmaları, yeni mesajlar"
+          label={t("settings.notifications.push")}
+          subtitle={t("settings.notifications.push.sub")}
           right={
             <Switch
               value={pushEnabled}
@@ -163,8 +173,8 @@ export default function SettingsScreen() {
         />
 
         <SettingRow
-          label="E-posta Bildirimleri"
-          subtitle="Haftalık özet raporlar"
+          label={t("settings.notifications.email")}
+          subtitle={t("settings.notifications.email.sub")}
           right={
             <Switch
               value={emailEnabled}
@@ -176,8 +186,8 @@ export default function SettingsScreen() {
         />
 
         <SettingRow
-          label="Titreşim & Haptik"
-          subtitle="Dokunsal geri bildirim"
+          label={t("settings.notifications.haptic")}
+          subtitle={t("settings.notifications.haptic.sub")}
           right={
             <Switch
               value={hapticEnabled}
@@ -190,25 +200,28 @@ export default function SettingsScreen() {
         />
       </View>
 
-      <Section title="Uygulama" icon={<Smartphone size={18} color="#38bdf8" />} />
+      <Section
+        title={t("settings.section.app")}
+        icon={<Smartphone size={18} color="#38bdf8" />}
+      />
 
       <View style={styles.card}>
         <SettingRow
-          label="Takvim Görünümü"
-          subtitle="Varsayılan görünüm"
-          right={<Text style={styles.settingValueText}>Haftalık</Text>}
+          label={t("settings.app.calendarView")}
+          subtitle={t("settings.app.calendarView.sub")}
+          right={<Text style={styles.settingValueText}>{t("settings.value.weekly")}</Text>}
         />
 
         <SettingRow
-          label="Saat Formatı"
-          subtitle="12/24 saat"
-          right={<Text style={styles.settingValueText}>24 saat</Text>}
+          label={t("settings.app.timeFormat")}
+          subtitle={t("settings.app.timeFormat.sub")}
+          right={<Text style={styles.settingValueText}>{t("settings.value.24h")}</Text>}
         />
 
         <SettingRow
-          label="Önbelleği Temizle"
-          subtitle="Geçici verileri sil"
-          right={<Text style={styles.badgeMuted}>Temizle</Text>}
+          label={t("settings.app.clearCache")}
+          subtitle={t("settings.app.clearCache.sub")}
+          right={<Text style={styles.badgeMuted}>{t("settings.action.delete")}</Text>}
           isLast={true}
         />
       </View>
@@ -220,12 +233,12 @@ export default function SettingsScreen() {
   // -------------------------
   const renderSecurityTab = () => (
     <>
-      <Section title="Güvenlik" icon={<Shield size={18} color="#f97316" />} />
+      <Section title={t("settings.section.security")} icon={<Shield size={18} color="#f97316" />} />
 
       <View style={styles.card}>
         <SettingRow
-          label="Oturumu Hatırla"
-          subtitle="Bu cihazda girişimi kaydet"
+          label={t("settings.security.rememberSession")}
+          subtitle={t("settings.security.rememberSession.sub")}
           right={
             <Switch
               value={saveLogin}
@@ -237,8 +250,8 @@ export default function SettingsScreen() {
         />
 
         <SettingRow
-          label="İki Aşamalı Doğrulama"
-          subtitle="Ek güvenlik katmanı"
+          label={t("settings.security.twoFactor")}
+          subtitle={t("settings.security.twoFactor.sub")}
           right={
             <Switch
               value={twoFactor}
@@ -250,63 +263,66 @@ export default function SettingsScreen() {
         />
 
         <SettingRow
-          label="Şifre Değiştir"
-          subtitle="Giriş şifreni güncelle"
-          right={<Text style={styles.badgeMuted}>Değiştir</Text>}
+          label={t("settings.security.changePassword")}
+          subtitle={t("settings.security.changePassword.sub")}
+          right={<Text style={styles.badgeMuted}>{t("settings.security.change")}</Text>}
           isLast={true}
-
         />
       </View>
 
-      <Section title="Hesap" icon={<Globe size={18} color="#22c55e" />} />
+      <Section title={t("settings.section.account")} icon={<Globe size={18} color="#22c55e" />} />
 
       <View style={styles.card}>
         <SettingRow
-          label="Giriş Yapılan Cihazlar"
-          subtitle="Aktif oturumlar"
-          right={<Text style={styles.settingValueText}>3 cihaz</Text>}
+          label={t("settings.account.loggedInDevices")}
+          subtitle={t("settings.account.loggedInDevices.sub")}
+          right={<Text style={styles.settingValueText}>3 {t("settings.account.loggedInDevices.sub")}</Text>}
         />
 
         <SettingRow
-          label="Veri Dışa Aktarma"
-          subtitle="Öğrenci kayıtlarını indir"
+          label={t("settings.account.exportData")}
+          subtitle={t("settings.account.exportData.sub")}
           right={<Text style={styles.badgeMuted}>JSON</Text>}
         />
 
         <SettingRow
-          label="Hesabı Sil"
-          subtitle="Geri alınamaz işlem"
-          right={<Text style={[styles.badgeMuted, { color: themeui.colors.danger, }]}>Sil</Text>}
+          label={t("settings.account.deleteAccount")}
+          subtitle={t("settings.account.deleteAccount.sub")}
+          right={
+            <Text style={[styles.badgeMuted, { color: themeui.colors.danger }]}>
+              {t("settings.action.delete")}
+            </Text>
+          }
           isLast={true}
         />
       </View>
 
       <Section
-        title="Uygulama Hakkında"
+        title={t("settings.section.about")}
         icon={<Info size={18} color={themeui.colors.text.secondary} />}
       />
 
       <View style={styles.card}>
         <SettingRow
-          label="Sürüm"
+          label={t("settings.about.version")}
           right={<Text style={styles.settingValueText}>v0.0.0</Text>}
         />
 
         <SettingRow
-          label="Lisans"
+          label={t("settings.about.license")}
           right={<Text style={styles.settingValueText}>PT Lab</Text>}
         />
 
         <SettingRow
-          label="Gizlilik Politikası"
-          right={<Text style={styles.badgeMuted}>Aç</Text>}
+          label={t("settings.about.privacyPolicy")}
+          right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
           isLast={true}
         />
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={() => { handleLogout(); }}>
         <LogOut size={18} color="#fca5a5" />
-        <Text style={styles.logoutText}>Çıkış Yap</Text>
+        <Text style={styles.logoutText}>{t("settings.logout")}</Text>
       </TouchableOpacity>
     </>
   );
@@ -326,18 +342,17 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
-            <Text style={styles.headerTitle}>Ayarlar</Text>
+            <Text style={styles.headerTitle}>{t("settings.title")}</Text>
             <View style={{ width: 60 }} />
           </View>
 
           {/* TABS */}
           <View style={styles.tabsRow}>
-            {renderTabButton("preferences", "Tercihler", <Moon size={16} color="#bfdbfe" />)}
-            {renderTabButton("security", "Güvenlik", <Shield size={16} color="#bfdbfe" />)}
+            {renderTabButton("preferences", t("settings.tab.preferences"), <Moon size={16} color="#bfdbfe" />)}
+            {renderTabButton("security", t("settings.tab.security"), <Shield size={16} color="#bfdbfe" />)}
           </View>
         </View>
 

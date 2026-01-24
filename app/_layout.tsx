@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { auth } from '@/services/firebase';
+import { initI18n } from "@/services/i18n";
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -17,7 +18,8 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // <-- burada true olmalı
+  const [loading, setLoading] = useState(true);
+  const [i18nReady, setI18nReady] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -29,15 +31,31 @@ export default function RootLayout() {
     return () => unsubscribe();
   }, []);
 
-  // login sayfasına yönlendirme burada, render sırasında değil!
   useEffect(() => {
     if (!loading && !user) {
       router.replace('/landing');
     }
   }, [loading, user, router]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        await initI18n();
+        if (mounted) setI18nReady(true);
+      } catch (e) {
+        console.log("i18n init error:", e);
+        if (mounted) setI18nReady(true);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   if (loading) {
-    // Uygulama açılırken küçük bir loading ekranı
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#4f46e5" />
@@ -46,6 +64,7 @@ export default function RootLayout() {
     );
   }
 
+  if (!i18nReady) return null;
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack >

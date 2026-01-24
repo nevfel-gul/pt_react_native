@@ -1,6 +1,7 @@
 import { themeui } from "@/constants/themeui";
 import { Activity, BarChart2, Users } from "lucide-react-native";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ScrollView,
   StyleSheet,
@@ -13,6 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 type RangeKey = "7g" | "30g" | "all";
 
 export default function SummaryScreen() {
+  const { t } = useTranslation();
+
   const [selectedRange, setSelectedRange] = useState<RangeKey>("7g");
 
   const bars = [0.3, 0.6, 0.9, 0.5, 0.7];
@@ -26,18 +29,15 @@ export default function SummaryScreen() {
         >
           {/* HEADER */}
           <View style={styles.header}>
-            <Text style={styles.pageTitle}>Özet / Analiz</Text>
+            <Text style={styles.pageTitle}>{t("summary.title")}</Text>
 
-            <Text style={styles.pageSubtitle}>
-              Bu ekran tamamen kolpa verilerle taslak olarak hazır. Sonra
-              backend’den gelen gerçek istatistikleri buraya bağlarız.
-            </Text>
+            <Text style={styles.pageSubtitle}>{t("summary.subtitle")}</Text>
 
             {/* RANGE CHIPS */}
             <View style={styles.rangeRow}>
               <View style={{ flex: 1 }}>
                 <RangeChip
-                  label="Son 7 gün"
+                  labelKey="summary.range.7d"
                   active={selectedRange === "7g"}
                   onPress={() => setSelectedRange("7g")}
                 />
@@ -45,7 +45,7 @@ export default function SummaryScreen() {
 
               <View style={{ flex: 1 }}>
                 <RangeChip
-                  label="Son 30 gün"
+                  labelKey="summary.range.30d"
                   active={selectedRange === "30g"}
                   onPress={() => setSelectedRange("30g")}
                 />
@@ -53,36 +53,41 @@ export default function SummaryScreen() {
 
               <View style={{ flex: 1 }}>
                 <RangeChip
-                  label="Tümü"
+                  labelKey="filter.all"
                   active={selectedRange === "all"}
                   onPress={() => setSelectedRange("all")}
                 />
               </View>
             </View>
-
           </View>
 
           {/* KART 1 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <BarChart2 size={18} color="#60a5fa" />
-              <Text style={styles.cardTitle}>Genel İstatistikler</Text>
+              <Text style={styles.cardTitle}>
+                {t("summary.card.generalStats")}
+              </Text>
             </View>
 
             <Text style={styles.cardHint}>
-              Rakamlar şimdilik uydurma, sadece yer tutucu.
+              {t("summary.card.generalStats.hint")}
             </Text>
 
-            <StatRow label="Toplam öğrenci" value="23" sub="Aktif + pasif" />
             <StatRow
-              label="Aktif öğrenci"
-              value="18"
-              sub="Son 60 gün içinde ölçüm yapılmış"
+              labelKey="summary.stat.totalStudents"
+              value="23"
+              subKey="summary.stat.totalStudents.sub"
             />
             <StatRow
-              label="Bu hafta ölçüm"
+              labelKey="summary.stat.activeStudents"
+              value="18"
+              subKey="summary.stat.activeStudents.sub"
+            />
+            <StatRow
+              labelKey="summary.stat.thisWeekMeasurement"
               value="5"
-              sub="Tanita veya performans testi"
+              subKey="summary.stat.thisWeekMeasurement.sub"
             />
           </View>
 
@@ -90,57 +95,68 @@ export default function SummaryScreen() {
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Activity size={18} color="#22c55e" />
-              <Text style={styles.cardTitle}>Hedef Bazlı İlerleme</Text>
+              <Text style={styles.cardTitle}>{t("summary.card.goalProgress")}</Text>
             </View>
 
             <Text style={styles.cardHint}>
-              Kolpa yüzdeler. Gerçek değerler backend’den gelecek.
+              {t("summary.card.goalProgress.hint")}
             </Text>
 
-            <ProgressRow label="Yağ kaybı odaklı" percent={60} />
-            <ProgressRow label="Kas kazanımı odaklı" percent={45} />
-            <ProgressRow label="Genel sağlık / hareketlilik" percent={55} />
+            <ProgressRow labelKey="summary.goal.fatLoss" percent={60} />
+            <ProgressRow labelKey="summary.goal.muscleGain" percent={45} />
+            <ProgressRow labelKey="summary.goal.generalHealth" percent={55} />
           </View>
 
           {/* KART 3 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Users size={18} color="#38bdf8" />
-              <Text style={styles.cardTitle}>Öğrenci Segmentleri</Text>
+              <Text style={styles.cardTitle}>
+                {t("summary.card.studentSegments")}
+              </Text>
             </View>
 
-            <TagRow label="Haftada 2 gün gelen" value="9 kişi" />
-            <TagRow label="Haftada 3 gün gelen" value="6 kişi" />
-            <TagRow label="Online / hibrit" value="4 kişi" />
-            <TagRow label="Tam başlangıç seviyesi" value="7 kişi" />
+            <TagRow
+              labelKey="summary.segment.twiceWeek"
+              value={t("summary.segment.people", { count: 9 })}
+            />
+            <TagRow
+              labelKey="summary.segment.threeTimesWeek"
+              value={t("summary.segment.people", { count: 6 })}
+            />
+            <TagRow
+              labelKey="summary.segment.onlineHybrid"
+              value={t("summary.segment.people", { count: 4 })}
+            />
+            <TagRow
+              labelKey="summary.segment.beginner"
+              value={t("summary.segment.people", { count: 7 })}
+            />
           </View>
 
           {/* KART 4 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <BarChart2 size={18} color="#f97316" />
-              <Text style={styles.cardTitle}>Günlük Seans Doluluk</Text>
+              <Text style={styles.cardTitle}>
+                {t("summary.card.dailySessionFill")}
+              </Text>
             </View>
 
             <Text style={styles.cardHint}>
-              Backend yok, çubuklar demo amaçlı 🙂
+              {t("summary.card.dailySessionFill.hint")}
             </Text>
 
             <View style={styles.chartContainer}>
               {bars.map((ratio, idx) => (
                 <View key={idx} style={styles.chartBarWrapper}>
-                  <View
-                    style={[
-                      styles.chartBar,
-                      { height: 80 + 60 * ratio },
-                    ]}
-                  />
+                  <View style={[styles.chartBar, { height: 80 + 60 * ratio }]} />
                 </View>
               ))}
             </View>
 
             <Text style={styles.chartFooterText}>
-              Bugünün tahmini doluluk oranı: %72 (uydurma)
+              {t("summary.dailyFill.todayEstimate")}
             </Text>
           </View>
 
@@ -148,24 +164,28 @@ export default function SummaryScreen() {
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Activity size={18} color="#a855f7" />
-              <Text style={styles.cardTitle}>Son Aktiviteler</Text>
+              <Text style={styles.cardTitle}>
+                {t("summary.card.recentActivities")}
+              </Text>
             </View>
 
-            {[
-              "Ayşe Y. için Tanita ölçümü eklendi",
-              "Can B. kuvvet testleri güncellendi",
-              "Zehra K. postür notu kaydedildi",
-              "Mert A. için yeni program oluşturuldu",
-            ].map((text, index) => (
+            {(
+              [
+                "summary.activity.tanitaAdded",
+                "summary.activity.strengthUpdated",
+                "summary.activity.postureSaved",
+                "summary.activity.programCreated",
+              ] as const
+            ).map((key, index) => (
               <View
-                key={index}
+                key={key}
                 style={[
                   styles.activityRow,
                   index > 0 && styles.activityRowBorder,
                 ]}
               >
                 <View style={styles.activityDot} />
-                <Text style={styles.activityText}>{text}</Text>
+                <Text style={styles.activityText}>{t(key)}</Text>
               </View>
             ))}
           </View>
@@ -178,70 +198,73 @@ export default function SummaryScreen() {
 /* COMPONENTS -------------------------------------------------- */
 
 function RangeChip({
-  label,
+  labelKey,
   active,
   onPress,
 }: {
-  label: string;
+  labelKey: string;
   active: boolean;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <TouchableOpacity
       onPress={onPress}
       style={[styles.rangeChip, active && styles.rangeChipActive]}
     >
       <Text style={[styles.rangeChipText, active && styles.rangeChipTextActive]}>
-        {label}
+        {t(labelKey)}
       </Text>
     </TouchableOpacity>
   );
 }
 
 function StatRow({
-  label,
+  labelKey,
   value,
-  sub,
+  subKey,
 }: {
-  label: string;
+  labelKey: string;
   value: string;
-  sub?: string;
+  subKey?: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.statRow}>
       <View>
-        <Text style={styles.statLabel}>{label}</Text>
-        {sub && <Text style={styles.statSub}>{sub}</Text>}
+        <Text style={styles.statLabel}>{t(labelKey)}</Text>
+        {subKey && <Text style={styles.statSub}>{t(subKey)}</Text>}
       </View>
       <Text style={styles.statValue}>{value}</Text>
     </View>
   );
 }
 
-function ProgressRow({ label, percent }: { label: string; percent: number }) {
+function ProgressRow({ labelKey, percent }: { labelKey: string; percent: number }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.progressRow}>
       <View style={styles.progressHeader}>
-        <Text style={styles.progressLabel}>{label}</Text>
+        <Text style={styles.progressLabel}>{t(labelKey)}</Text>
         <Text style={styles.progressLabel}>{percent}%</Text>
       </View>
 
       <View style={styles.progressBar}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${percent}%` },
-          ]}
-        />
+        <View style={[styles.progressFill, { width: `${percent}%` }]} />
       </View>
     </View>
   );
 }
 
-function TagRow({ label, value }: { label: string; value: string }) {
+function TagRow({ labelKey, value }: { labelKey: string; value: string }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.tagRow}>
-      <Text style={styles.tagLabel}>{label}</Text>
+      <Text style={styles.tagLabel}>{t(labelKey)}</Text>
 
       <View style={styles.tagPill}>
         <Text style={styles.tagPillText}>{value}</Text>
