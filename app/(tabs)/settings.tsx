@@ -1,4 +1,4 @@
-import { themeui } from "@/constants/themeui";
+// ❌ kaldır: import { themeui } from "@/constants/themeui";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import {
@@ -12,24 +12,25 @@ import {
   Shield,
   Smartphone,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { auth } from "../../services/firebase";
+
+// ✅ NEW THEME
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
 
 type TabKey = "preferences" | "security";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+
+  // ✅ theme
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [activeTab, setActiveTab] = useState<TabKey>("preferences");
   const [pushEnabled, setPushEnabled] = useState(true);
@@ -57,9 +58,7 @@ export default function SettingsScreen() {
         style={[styles.tabButton, isActive && styles.tabButtonActive]}
       >
         <View style={styles.tabIcon}>{icon}</View>
-        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-          {label}
-        </Text>
+        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{label}</Text>
       </TouchableOpacity>
     );
   };
@@ -107,7 +106,7 @@ export default function SettingsScreen() {
       {right}
 
       {showChevron ? (
-        <ChevronRight size={16} color="#64748b" style={{ marginLeft: 6 }} />
+        <ChevronRight size={16} color={theme.colors.text.muted} style={{ marginLeft: 6 }} />
       ) : null}
     </TouchableOpacity>
   );
@@ -119,7 +118,7 @@ export default function SettingsScreen() {
     <>
       <Section
         title={t("settings.section.preferences")}
-        icon={<Palette size={18} color="#a78bfa" />}
+        icon={<Palette size={18} color={theme.colors.premium} />}
       />
 
       <View style={styles.card}>
@@ -130,8 +129,8 @@ export default function SettingsScreen() {
             <Switch
               value={darkMode}
               onValueChange={setDarkMode}
-              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
-              thumbColor={darkMode ? "#e5e7eb" : "#e5e7eb"}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor={theme.colors.text.primary}
             />
           }
         />
@@ -139,9 +138,7 @@ export default function SettingsScreen() {
         <SettingRow
           label={t("settings.preference.language")}
           subtitle={t("settings.preference.language.sub")}
-          right={
-            <Text style={styles.settingValueText}>{t("settings.value.turkish")}</Text>
-          }
+          right={<Text style={styles.settingValueText}>{t("settings.value.turkish")}</Text>}
           onPress={() => { }}
         />
 
@@ -155,7 +152,7 @@ export default function SettingsScreen() {
 
       <Section
         title={t("settings.section.notifications")}
-        icon={<Bell size={18} color="#facc15" />}
+        icon={<Bell size={18} color={theme.colors.gold} />}
       />
 
       <View style={styles.card}>
@@ -166,8 +163,8 @@ export default function SettingsScreen() {
             <Switch
               value={pushEnabled}
               onValueChange={setPushEnabled}
-              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
-              thumbColor={pushEnabled ? "#e5e7eb" : "#e5e7eb"}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor={theme.colors.text.primary}
             />
           }
         />
@@ -179,8 +176,8 @@ export default function SettingsScreen() {
             <Switch
               value={emailEnabled}
               onValueChange={setEmailEnabled}
-              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
-              thumbColor={emailEnabled ? "#e5e7eb" : "#e5e7eb"}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor={theme.colors.text.primary}
             />
           }
         />
@@ -192,8 +189,8 @@ export default function SettingsScreen() {
             <Switch
               value={hapticEnabled}
               onValueChange={setHapticEnabled}
-              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
-              thumbColor={hapticEnabled ? "#e5e7eb" : "#e5e7eb"}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor={theme.colors.text.primary}
             />
           }
           isLast={true}
@@ -202,7 +199,7 @@ export default function SettingsScreen() {
 
       <Section
         title={t("settings.section.app")}
-        icon={<Smartphone size={18} color="#38bdf8" />}
+        icon={<Smartphone size={18} color={theme.colors.accent} />}
       />
 
       <View style={styles.card}>
@@ -233,7 +230,10 @@ export default function SettingsScreen() {
   // -------------------------
   const renderSecurityTab = () => (
     <>
-      <Section title={t("settings.section.security")} icon={<Shield size={18} color="#f97316" />} />
+      <Section
+        title={t("settings.section.security")}
+        icon={<Shield size={18} color={theme.colors.warning} />}
+      />
 
       <View style={styles.card}>
         <SettingRow
@@ -243,8 +243,8 @@ export default function SettingsScreen() {
             <Switch
               value={saveLogin}
               onValueChange={setSaveLogin}
-              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
-              thumbColor={saveLogin ? "#e5e7eb" : "#e5e7eb"}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor={theme.colors.text.primary}
             />
           }
         />
@@ -256,8 +256,8 @@ export default function SettingsScreen() {
             <Switch
               value={twoFactor}
               onValueChange={setTwoFactor}
-              trackColor={{ false: "#1e293b", true: "#60a5fa" }}
-              thumbColor={twoFactor ? "#e5e7eb" : "#e5e7eb"}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor={theme.colors.text.primary}
             />
           }
         />
@@ -270,13 +270,20 @@ export default function SettingsScreen() {
         />
       </View>
 
-      <Section title={t("settings.section.account")} icon={<Globe size={18} color="#22c55e" />} />
+      <Section
+        title={t("settings.section.account")}
+        icon={<Globe size={18} color={theme.colors.success} />}
+      />
 
       <View style={styles.card}>
         <SettingRow
           label={t("settings.account.loggedInDevices")}
           subtitle={t("settings.account.loggedInDevices.sub")}
-          right={<Text style={styles.settingValueText}>3 {t("settings.account.loggedInDevices.sub")}</Text>}
+          right={
+            <Text style={styles.settingValueText}>
+              3 {t("settings.account.loggedInDevices.sub")}
+            </Text>
+          }
         />
 
         <SettingRow
@@ -289,7 +296,7 @@ export default function SettingsScreen() {
           label={t("settings.account.deleteAccount")}
           subtitle={t("settings.account.deleteAccount.sub")}
           right={
-            <Text style={[styles.badgeMuted, { color: themeui.colors.danger }]}>
+            <Text style={[styles.badgeMuted, { color: theme.colors.danger }]}>
               {t("settings.action.delete")}
             </Text>
           }
@@ -299,7 +306,7 @@ export default function SettingsScreen() {
 
       <Section
         title={t("settings.section.about")}
-        icon={<Info size={18} color={themeui.colors.text.secondary} />}
+        icon={<Info size={18} color={theme.colors.text.secondary} />}
       />
 
       <View style={styles.card}>
@@ -367,222 +374,224 @@ export default function SettingsScreen() {
 // -------------------------
 // STYLES
 // -------------------------
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: themeui.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: themeui.colors.background,
-  },
+function makeStyles(theme: ThemeUI) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
 
-  /* HEADER */
-  header: {
-    paddingHorizontal: themeui.spacing.md,
-    paddingTop: themeui.spacing.sm + 4,
-    paddingBottom: themeui.spacing.sm - 4,
-  },
-  headerTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: themeui.spacing.sm,
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.xs,
-    paddingHorizontal: themeui.spacing.sm,
-    paddingVertical: themeui.spacing.xs,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.surface,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-  },
-  backButtonText: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.sm,
-  },
-  headerTitle: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.lg + 2,
-    fontWeight: "700",
-  },
+    /* HEADER */
+    header: {
+      paddingHorizontal: theme.spacing.md,
+      paddingTop: theme.spacing.sm + 4,
+      paddingBottom: theme.spacing.sm - 4,
+    },
+    headerTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: theme.spacing.sm,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    backButtonText: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.sm,
+    },
+    headerTitle: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.lg + 2,
+      fontWeight: "700",
+    },
 
-  /* TABS */
-  tabsRow: {
-    flexDirection: "row",
-    backgroundColor: themeui.colors.surface,
-    borderRadius: themeui.radius.pill,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-    padding: themeui.spacing.xs - 2,
-    gap: themeui.spacing.xs,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: themeui.spacing.xs,
-    borderRadius: themeui.radius.pill,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: themeui.spacing.xs,
-  },
-  tabButtonActive: {
-    backgroundColor: "rgba(96,165,250,0.25)",
-    borderWidth: 1,
-    borderColor: themeui.colors.primary,
-  },
-  tabIcon: { marginTop: 1 },
-  tabText: {
-    color: themeui.colors.text.secondary,
-    fontSize: themeui.fontSize.sm,
-    fontWeight: "500",
-  },
-  tabTextActive: {
-    color: "#bfdbfe",
-    textDecorationColor: themeui.colors.success,
-    textDecorationStyle: "solid",
-  },
+    /* TABS */
+    tabsRow: {
+      flexDirection: "row",
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.pill,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.xs - 2,
+      gap: theme.spacing.xs,
+    },
+    tabButton: {
+      flex: 1,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.pill,
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: theme.spacing.xs,
+    },
+    tabButtonActive: {
+      backgroundColor: theme.colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+    },
+    tabIcon: { marginTop: 1 },
+    tabText: {
+      color: theme.colors.text.secondary,
+      fontSize: theme.fontSize.sm,
+      fontWeight: "500",
+    },
+    tabTextActive: {
+      color: theme.colors.text.primary,
+      textDecorationColor: theme.colors.success,
+      textDecorationStyle: "solid",
+    },
 
-  /* CARDS */
-  card: {
-    marginHorizontal: themeui.spacing.md,
-    marginBottom: themeui.spacing.sm,
-    backgroundColor: themeui.colors.surface,
-    borderRadius: themeui.radius.lg,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-    padding: themeui.spacing.md,
-    ...themeui.shadow.soft,
-  },
+    /* CARDS */
+    card: {
+      marginHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.md,
+      ...theme.shadow.soft,
+    },
 
-  sectionHeader: {
-    marginHorizontal: themeui.spacing.md,
-    marginTop: themeui.spacing.sm,
-    marginBottom: themeui.spacing.xs,
-  },
-  sectionTitle: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.md,
-    fontWeight: "600",
-  },
+    sectionHeader: {
+      marginHorizontal: theme.spacing.md,
+      marginTop: theme.spacing.sm,
+      marginBottom: theme.spacing.xs,
+    },
+    sectionTitle: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.md,
+      fontWeight: "600",
+    },
 
-  /* PROFILE */
-  profileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.md,
-    marginBottom: themeui.spacing.sm,
-  },
-  avatar: {
-    width: 58,
-    height: 58,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    color: themeui.colors.surface,
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  profileName: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.lg + 2,
-    fontWeight: "700",
-  },
-  profileEmail: {
-    color: themeui.colors.text.secondary,
-    fontSize: themeui.fontSize.sm,
-  },
-  profileTag: {
-    color: themeui.colors.primary,
-    fontSize: themeui.fontSize.xs,
-    marginTop: 2,
-  },
+    /* PROFILE */
+    profileRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+    },
+    avatar: {
+      width: 58,
+      height: 58,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarText: {
+      color: theme.colors.surface,
+      fontSize: 22,
+      fontWeight: "800",
+    },
+    profileName: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.lg + 2,
+      fontWeight: "700",
+    },
+    profileEmail: {
+      color: theme.colors.text.secondary,
+      fontSize: theme.fontSize.sm,
+    },
+    profileTag: {
+      color: theme.colors.primary,
+      fontSize: theme.fontSize.xs,
+      marginTop: 2,
+    },
 
-  profileMetaRow: {
-    flexDirection: "row",
-    marginTop: themeui.spacing.xs,
-    justifyContent: "space-between",
-  },
-  profileMetaItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  profileMetaLabel: {
-    color: themeui.colors.text.muted,
-    fontSize: themeui.fontSize.xs,
-  },
-  profileMetaValue: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.md - 1,
-    fontWeight: "600",
-    marginTop: 2,
-  },
+    profileMetaRow: {
+      flexDirection: "row",
+      marginTop: theme.spacing.xs,
+      justifyContent: "space-between",
+    },
+    profileMetaItem: {
+      flex: 1,
+      alignItems: "center",
+    },
+    profileMetaLabel: {
+      color: theme.colors.text.muted,
+      fontSize: theme.fontSize.xs,
+    },
+    profileMetaValue: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.md - 1,
+      fontWeight: "600",
+      marginTop: 2,
+    },
 
-  /* SETTING ROW */
-  settingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: themeui.spacing.sm - 2,
-    borderBottomWidth: 1,
-    borderBottomColor: themeui.colors.border,
-    gap: themeui.spacing.xs,
-  },
-  settingLabel: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.md - 1,
-    fontWeight: "500",
-  },
-  settingSubtitle: {
-    color: themeui.colors.text.muted,
-    fontSize: themeui.fontSize.xs,
-    marginTop: 2,
-  },
-  settingValueText: {
-    color: themeui.colors.text.secondary,
-    fontSize: themeui.fontSize.sm,
-    fontWeight: "500",
-  },
+    /* SETTING ROW */
+    settingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: theme.spacing.sm - 2,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      gap: theme.spacing.xs,
+    },
+    settingLabel: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.md - 1,
+      fontWeight: "500",
+    },
+    settingSubtitle: {
+      color: theme.colors.text.muted,
+      fontSize: theme.fontSize.xs,
+      marginTop: 2,
+    },
+    settingValueText: {
+      color: theme.colors.text.secondary,
+      fontSize: theme.fontSize.sm,
+      fontWeight: "500",
+    },
 
-  /* BADGE */
-  badgeMuted: {
-    paddingHorizontal: themeui.spacing.sm - 2,
-    paddingVertical: themeui.spacing.xs - 2,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.surface,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.xs,
-  },
+    /* BADGE */
+    badgeMuted: {
+      paddingHorizontal: theme.spacing.sm - 2,
+      paddingVertical: theme.spacing.xs - 2,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.xs,
+    },
 
-  /* LOGOUT */
-  logoutButton: {
-    marginHorizontal: themeui.spacing.md,
-    marginTop: themeui.spacing.md,
-    paddingVertical: themeui.spacing.sm,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.dangerSoft,
-    borderWidth: 1,
-    borderColor: themeui.colors.danger,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: themeui.spacing.sm - 2,
-  },
-  logoutText: {
-    color: themeui.colors.danger,
-    fontSize: themeui.fontSize.md,
-    fontWeight: "700",
-  },
+    /* LOGOUT */
+    logoutButton: {
+      marginHorizontal: theme.spacing.md,
+      marginTop: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.dangerSoft,
+      borderWidth: 1,
+      borderColor: theme.colors.danger,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: theme.spacing.sm - 2,
+    },
+    logoutText: {
+      color: theme.colors.danger,
+      fontSize: theme.fontSize.md,
+      fontWeight: "700",
+    },
 
-  settingRowLast: {
-    borderBottomWidth: 0,
-    paddingBottom: themeui.spacing.xs,
-  },
-});
+    settingRowLast: {
+      borderBottomWidth: 0,
+      paddingBottom: theme.spacing.xs,
+    },
+  });
+}

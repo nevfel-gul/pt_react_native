@@ -1,4 +1,4 @@
-import { themeui } from "@/constants/themeui";
+// ❌ kaldır: import { themeui } from "@/constants/themeui";
 import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
 import { setAppLanguage } from "@/services/i18n";
@@ -30,6 +30,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// ✅ NEW
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
+
 type Student = {
   id: string;
   name: string;
@@ -43,6 +47,10 @@ export default function KayitlarScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
 
+  // ✅ theme
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [searchActive, setSearchActive] = useState(false);
   const safeSearch = searchTerm ?? "";
@@ -51,7 +59,6 @@ export default function KayitlarScreen() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filtre state'i DB'deki değerlerle aynı kalsın (Aktif/Pasif)
   const [filterDurum, setFilterDurum] = useState<"" | "Aktif" | "Pasif">("");
 
   const totalCount = students.length;
@@ -147,7 +154,9 @@ export default function KayitlarScreen() {
             { justifyContent: "center", alignItems: "center" },
           ]}
         >
-          <Text style={{ color: "#e5e7eb" }}>{t("students.loading")}</Text>
+          <Text style={{ color: theme.colors.text.secondary }}>
+            {t("students.loading")}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -175,7 +184,7 @@ export default function KayitlarScreen() {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: "black",
+              backgroundColor: theme.colors.black,
               opacity: overlayOpacity,
               zIndex: 998,
             }}
@@ -190,7 +199,6 @@ export default function KayitlarScreen() {
               style={[styles.leftHeaderArea, { opacity: iconsOpacity }]}
               pointerEvents={searchActive ? "none" : "auto"}
             >
-              {/* ✅ Logo text'i dil paketinden */}
               <Text style={styles.logoText}>{t("brand.name")}</Text>
             </Animated.View>
 
@@ -201,7 +209,7 @@ export default function KayitlarScreen() {
                   style={styles.titleIconWrapper}
                   disabled={searchActive}
                 >
-                  <Bell size={22} color="#f1f5f9" />
+                  <Bell size={22} color={theme.colors.text.primary} />
                 </TouchableOpacity>
               </Animated.View>
 
@@ -209,16 +217,16 @@ export default function KayitlarScreen() {
                 <TouchableOpacity
                   onPress={openAnimatedSearch}
                   style={{
-                    backgroundColor: "#1e293b",
+                    backgroundColor: theme.colors.surfaceSoft,
                     height: 40,
                     width: 40,
                     alignItems: "center",
-                    borderRadius: 99,
+                    borderRadius: theme.radius.pill,
                     justifyContent: "center",
                     marginLeft: 6,
                   }}
                 >
-                  <Search size={22} color="#f1f5f9" />
+                  <Search size={22} color={theme.colors.text.primary} />
                 </TouchableOpacity>
               )}
 
@@ -229,7 +237,7 @@ export default function KayitlarScreen() {
                   onPress={() => router.push("/profile")}
                   disabled={searchActive}
                 >
-                  <Users size={24} color="#60a5fa" />
+                  <Users size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
               </Animated.View>
 
@@ -241,14 +249,14 @@ export default function KayitlarScreen() {
                     right: 10,
                     top: 0,
                     height: 48,
-                    backgroundColor: "#1e293b",
-                    borderRadius: 99,
+                    backgroundColor: theme.colors.surfaceSoft,
+                    borderRadius: theme.radius.pill,
                     paddingHorizontal: 12,
                     flexDirection: "row",
                     alignItems: "center",
                     borderWidth: 1,
-                    borderColor: "#475569",
-                    shadowColor: "#000",
+                    borderColor: theme.colors.border,
+                    shadowColor: theme.colors.black,
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
                     shadowRadius: 8,
@@ -261,18 +269,18 @@ export default function KayitlarScreen() {
                     onPress={closeAnimatedSearch}
                     style={{ marginRight: 8 }}
                   >
-                    <ArrowLeft size={20} color="#f1f5f9" />
+                    <ArrowLeft size={20} color={theme.colors.text.primary} />
                   </TouchableOpacity>
 
                   <TextInput
                     placeholder={t("search.student.placeholder")}
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={theme.colors.text.muted}
                     value={searchTerm}
                     onChangeText={setSearchTerm}
                     autoFocus
                     style={{
                       flex: 1,
-                      color: "#f1f5f9",
+                      color: theme.colors.text.primary,
                       fontSize: 15,
                       fontWeight: "500",
                     }}
@@ -285,8 +293,8 @@ export default function KayitlarScreen() {
                     style={{
                       width: 36,
                       height: 36,
-                      borderRadius: 99,
-                      backgroundColor: "#7c3aed",
+                      borderRadius: theme.radius.pill,
+                      backgroundColor: theme.colors.premium,
                       alignItems: "center",
                       justifyContent: "center",
                       marginLeft: 8,
@@ -300,7 +308,7 @@ export default function KayitlarScreen() {
                       onPress={() => setSearchTerm("")}
                       style={{ marginLeft: 8 }}
                     >
-                      <XIcon size={18} color="#94a3b8" />
+                      <XIcon size={18} color={theme.colors.text.muted} />
                     </TouchableOpacity>
                   )}
                 </Animated.View>
@@ -308,7 +316,7 @@ export default function KayitlarScreen() {
             </View>
           </View>
 
-          <Text style={{ marginBottom: 12, color: "#f1f5f9" }}>
+          <Text style={{ marginBottom: 12, color: theme.colors.text.primary }}>
             {t("language.label")}: {i18n.language}
           </Text>
 
@@ -319,10 +327,14 @@ export default function KayitlarScreen() {
               borderWidth: 1,
               borderRadius: 12,
               marginBottom: 8,
-              backgroundColor: i18n.language === "tr" ? "#0064fb" : "#445269",
+              borderColor: theme.colors.border,
+              backgroundColor:
+                i18n.language === "tr" ? theme.colors.info : theme.colors.surfaceSoft,
             }}
           >
-            <Text>{t("language.turkish")}</Text>
+            <Text style={{ color: theme.colors.text.primary }}>
+              {t("language.turkish")}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -331,10 +343,14 @@ export default function KayitlarScreen() {
               padding: 12,
               borderWidth: 1,
               borderRadius: 12,
-              backgroundColor: i18n.language === "en" ? "#0064fb" : "#445269",
+              borderColor: theme.colors.border,
+              backgroundColor:
+                i18n.language === "en" ? theme.colors.info : theme.colors.surfaceSoft,
             }}
           >
-            <Text>{t("language.english")}</Text>
+            <Text style={{ color: theme.colors.text.primary }}>
+              {t("language.english")}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -344,7 +360,7 @@ export default function KayitlarScreen() {
               onPress={() => setFilterDurum("")}
               style={[
                 styles.filterBox,
-                { backgroundColor: "#0f172a" },
+                { backgroundColor: theme.colors.filterAll },
                 filterDurum === "" && styles.filterBoxActiveALL,
               ]}
             >
@@ -370,7 +386,7 @@ export default function KayitlarScreen() {
               onPress={() => setFilterDurum("Aktif")}
               style={[
                 styles.filterBox,
-                { backgroundColor: "#3a8b55" },
+                { backgroundColor: theme.colors.filterActive },
                 filterDurum === "Aktif" && styles.filterBoxActiveA,
               ]}
             >
@@ -396,7 +412,7 @@ export default function KayitlarScreen() {
               onPress={() => setFilterDurum("Pasif")}
               style={[
                 styles.filterBox,
-                { backgroundColor: "#993131" },
+                { backgroundColor: theme.colors.filterPassive },
                 filterDurum === "Pasif" && styles.filterBoxActiveP,
               ]}
             >
@@ -433,12 +449,12 @@ export default function KayitlarScreen() {
                     <Text style={styles.cardName}>{item.name}</Text>
 
                     <View style={styles.cardRow}>
-                      <Phone size={16} color="#9ca3af" />
+                      <Phone size={16} color={theme.colors.text.muted} />
                       <Text style={styles.cardRowText}>{item.number}</Text>
                     </View>
 
                     <View style={styles.cardRow}>
-                      <Calendar size={16} color="#9ca3af" />
+                      <Calendar size={16} color={theme.colors.text.muted} />
                       <Text style={styles.cardRowText}>
                         {new Date(item.assessmentDate).toLocaleDateString(
                           dateLocale
@@ -470,7 +486,7 @@ export default function KayitlarScreen() {
                     </View>
 
                     <View style={styles.detailPill}>
-                      <Eye size={16} color="#e5e7eb" />
+                      <Eye size={16} color={theme.colors.text.primary} />
                       <Text style={styles.detailPillText}>{t("detail")}</Text>
                     </View>
                   </View>
@@ -486,395 +502,255 @@ export default function KayitlarScreen() {
         </View>
 
         <TouchableOpacity style={styles.fab} onPress={handleAddStudent}>
-          <Plus size={24} color="#0f172a" />
+          <Plus size={24} color={theme.colors.surfaceDark} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: themeui.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0F1A",
-  },
+function makeStyles(theme: ThemeUI) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.surfaceDark,
+    },
 
-  headerWrapper: {
-    paddingHorizontal: themeui.spacing.lg,
-    paddingTop: themeui.spacing.xs + 2,
-    paddingBottom: themeui.spacing.sm,
-    backgroundColor: themeui.colors.background,
-  },
+    headerWrapper: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.xs + 2,
+      paddingBottom: theme.spacing.sm,
+      backgroundColor: theme.colors.background,
+    },
 
-  headerTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: themeui.spacing.md,
-  },
+    headerTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: theme.spacing.md,
+    },
 
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+    titleIconWrapper: {
+      width: 40,
+      height: 40,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surfaceSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: theme.spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
 
-  titleIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.surfaceSoft,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: themeui.spacing.sm,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-  },
+    listWrapper: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      borderTopLeftRadius: theme.radius.xl,
+      borderTopRightRadius: theme.radius.xl,
+      paddingTop: theme.spacing.xs,
+    },
 
-  title: {
-    fontSize: themeui.fontSize.title,
-    fontWeight: "700",
-    color: themeui.colors.text.primary,
-  },
+    listContent: {
+      paddingHorizontal: theme.spacing.md,
+      paddingBottom: 80,
+      paddingTop: theme.spacing.sm,
+    },
 
-  subtitle: {
-    fontSize: themeui.fontSize.sm,
-    color: themeui.colors.text.secondary,
-    marginTop: 2,
-  },
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      paddingVertical: theme.spacing.sm + 2,
+      paddingHorizontal: theme.spacing.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginBottom: theme.spacing.lg - 4,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: theme.spacing.sm,
+      ...theme.shadow.soft,
+    },
 
-  searchIcon: {
-    position: "absolute",
-    left: 12,
-    top: "50%",
-    marginTop: -9,
-    zIndex: 1,
-  },
+    cardLeft: { flex: 1 },
 
-  searchInput: {
-    backgroundColor: themeui.colors.background,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-    borderRadius: themeui.radius.pill,
-    paddingVertical: themeui.spacing.sm - 2,
-    paddingHorizontal: 40,
-    fontSize: themeui.fontSize.md,
-    color: themeui.colors.text.primary,
-  },
+    cardName: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: "600",
+      color: theme.colors.text.primary,
+      marginBottom: theme.spacing.xs,
+    },
 
-  filterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.xs,
-    marginTop: 4,
-    marginBottom: themeui.spacing.sm,
-  },
+    cardRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.xs,
+      marginBottom: 3,
+    },
 
-  filterChip: {
-    paddingHorizontal: themeui.spacing.md - 4,
-    paddingVertical: themeui.spacing.xs,
-    borderRadius: themeui.radius.pill,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-    backgroundColor: themeui.colors.background,
-  },
-  filterChipActive: {
-    backgroundColor: themeui.colors.primary,
-    borderColor: themeui.colors.primary,
-  },
+    cardRowText: {
+      fontSize: theme.fontSize.md,
+      color: theme.colors.text.secondary,
+    },
 
-  filterChipText: {
-    fontSize: themeui.fontSize.sm,
-    color: themeui.colors.text.secondary,
-  },
-  filterChipTextActive: {
-    color: themeui.colors.text.primary,
-    fontWeight: "600",
-  },
+    cardRight: {
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+    },
 
-  statsRow: {
-    flexDirection: "row",
-    gap: themeui.spacing.sm,
-    marginTop: 4,
-  },
+    statusBadge: {
+      paddingHorizontal: theme.spacing.sm - 4,
+      paddingVertical: theme.spacing.xs - 2,
+      borderRadius: theme.radius.pill,
+    },
+    statusBadgeActive: { backgroundColor: theme.colors.successSoft },
+    statusBadgeInactive: { backgroundColor: theme.colors.dangerSoft },
 
-  statCard: {
-    flex: 1,
-    backgroundColor: themeui.colors.background,
-    borderRadius: themeui.radius.lg,
-    paddingVertical: themeui.spacing.sm,
-    paddingHorizontal: themeui.spacing.sm,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-  },
+    statusTextActive: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: "600",
+      color: theme.colors.success,
+    },
+    statusTextInactive: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: "600",
+      color: theme.colors.danger,
+    },
 
-  statValue: {
-    fontSize: themeui.fontSize.xl,
-    fontWeight: "700",
-    color: themeui.colors.text.primary,
-  },
+    detailPill: {
+      marginTop: theme.spacing.sm,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.background,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    detailPillText: {
+      fontSize: theme.fontSize.sm,
+      color: theme.colors.text.primary,
+      fontWeight: "500",
+    },
 
-  statLabel: {
-    fontSize: themeui.fontSize.xs,
-    color: themeui.colors.text.muted,
-    marginTop: 2,
-  },
+    emptyState: {
+      alignItems: "center",
+      marginTop: 40,
+    },
+    emptyTitle: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: "600",
+      color: theme.colors.text.primary,
+      marginBottom: 4,
+    },
+    emptySubtitle: {
+      fontSize: theme.fontSize.md - 1,
+      color: theme.colors.text.secondary,
+      textAlign: "center",
+      paddingHorizontal: theme.spacing.lg,
+    },
 
-  listWrapper: {
-    flex: 1,
-    backgroundColor: themeui.colors.background,
-    borderTopLeftRadius: themeui.radius.xl,
-    borderTopRightRadius: themeui.radius.xl,
-    paddingTop: themeui.spacing.xs,
-  },
+    fab: {
+      position: "absolute",
+      right: 20,
+      bottom: 20,
+      width: 56,
+      height: 56,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: theme.colors.black,
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 6,
+    },
 
-  listContent: {
-    paddingHorizontal: themeui.spacing.md,
-    paddingBottom: 80,
-    paddingTop: themeui.spacing.sm,
-  },
+    filterBoxRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.md - 2,
+      marginTop: theme.spacing.xs,
+    },
 
-  card: {
-    backgroundColor: themeui.colors.surface,
-    borderRadius: themeui.radius.lg,
-    paddingVertical: themeui.spacing.sm + 2,
-    paddingHorizontal: themeui.spacing.md,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    marginBottom: themeui.spacing.lg - 4,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: themeui.spacing.sm,
-    ...themeui.shadow.soft,
-  },
+    filterBox: {
+      flex: 1,
+      marginHorizontal: 4,
+      height: 92,
+      borderRadius: theme.radius.lg,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.18)",
+    },
 
-  cardLeft: { flex: 1 },
+    filterBoxActiveALL: {
+      shadowColor: theme.colors.info,
+      shadowOpacity: 0.8,
+      shadowRadius: 16,
+      elevation: 10,
+    },
 
-  cardName: {
-    fontSize: themeui.fontSize.lg,
-    fontWeight: "600",
-    color: themeui.colors.text.primary,
-    marginBottom: themeui.spacing.xs,
-  },
+    filterBoxActiveA: {
+      shadowColor: theme.colors.success,
+      shadowOpacity: 0.8,
+      shadowRadius: 16,
+      elevation: 10,
+    },
 
-  cardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.xs,
-    marginBottom: 3,
-  },
+    filterBoxActiveP: {
+      shadowColor: theme.colors.danger,
+      shadowOpacity: 0.8,
+      shadowRadius: 16,
+      elevation: 10,
+    },
 
-  cardRowText: {
-    fontSize: themeui.fontSize.md,
-    color: themeui.colors.text.secondary,
-  },
+    filterBoxText: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: "600",
+      color: "#EDEDED",
+    },
+    filterBoxTextActive: {
+      fontSize: theme.fontSize.lg - 2,
+      fontWeight: "700",
+      color: "#EDEDED",
+    },
+    filterBoxNumber: {
+      fontSize: 26,
+      fontWeight: "800",
+      color: "#EDEDED",
+      marginBottom: 4,
+    },
+    filterBoxNumberActive: {
+      fontSize: 32,
+      fontWeight: "700",
+      color: "#FFFFFF",
+      marginBottom: 4,
+    },
 
-  cardRight: {
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-  },
+    logoText: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: "800",
+      color: theme.colors.primary,
+    },
 
-  statusBadge: {
-    paddingHorizontal: themeui.spacing.sm - 4,
-    paddingVertical: themeui.spacing.xs - 2,
-    borderRadius: themeui.radius.pill,
-  },
-  statusBadgeActive: { backgroundColor: themeui.colors.successSoft },
-  statusBadgeInactive: { backgroundColor: themeui.colors.dangerSoft },
-
-  statusTextActive: {
-    fontSize: themeui.fontSize.xs,
-    fontWeight: "600",
-    color: themeui.colors.success,
-  },
-  statusTextInactive: {
-    fontSize: themeui.fontSize.xs,
-    fontWeight: "600",
-    color: themeui.colors.danger,
-  },
-
-  detailPill: {
-    marginTop: themeui.spacing.sm,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.xs,
-    paddingHorizontal: themeui.spacing.sm,
-    paddingVertical: themeui.spacing.xs,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.background,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-  },
-  detailPillText: {
-    fontSize: themeui.fontSize.sm,
-    color: themeui.colors.text.primary,
-    fontWeight: "500",
-  },
-
-  emptyState: {
-    alignItems: "center",
-    marginTop: 40,
-  },
-  emptyTitle: {
-    fontSize: themeui.fontSize.lg,
-    fontWeight: "600",
-    color: themeui.colors.text.primary,
-    marginBottom: 4,
-  },
-  emptySubtitle: {
-    fontSize: themeui.fontSize.md - 1,
-    color: themeui.colors.text.secondary,
-    textAlign: "center",
-    paddingHorizontal: themeui.spacing.lg,
-  },
-
-  fab: {
-    position: "absolute",
-    right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
-  },
-
-  searchPanel: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: themeui.colors.surface,
-    paddingTop: 60,
-    paddingHorizontal: themeui.spacing.md,
-    paddingBottom: themeui.spacing.lg - 4,
-    zIndex: 999,
-    borderBottomWidth: 1,
-    borderBottomColor: themeui.colors.border,
-  },
-
-  searchHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.md,
-  },
-
-  filterBoxRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: themeui.spacing.md,
-    marginBottom: themeui.spacing.md - 2,
-    marginTop: themeui.spacing.xs,
-  },
-
-  filterBox: {
-    flex: 1,
-    marginHorizontal: 4,
-    height: 92,
-    borderRadius: themeui.radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-    backgroundColor: "#0A0F1A",
-  },
-
-  filterBoxActiveALL: {
-    shadowColor: "#3B82F6",
-    shadowOpacity: 0.8,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  filterBoxActiveA: {
-    shadowColor: "#82cd00",
-    shadowOpacity: 0.8,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  filterBoxActiveP: {
-    shadowColor: "#cd6118ff",
-    shadowOpacity: 0.8,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-
-  filterBoxText: {
-    fontSize: themeui.fontSize.sm,
-    fontWeight: "600",
-    color: "#EDEDED",
-  },
-  filterBoxTextActive: {
-    fontSize: themeui.fontSize.lg - 2,
-    fontWeight: "700",
-    color: "#EDEDED",
-  },
-  filterBoxNumber: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#EDEDED",
-    marginBottom: 4,
-  },
-  filterBoxNumberActive: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    marginBottom: 4,
-  },
-
-  notifPanel: {
-    position: "absolute",
-    top: 70,
-    right: 20,
-    backgroundColor: "rgba(30,30,30,0.95)",
-    borderRadius: themeui.radius.lg,
-    paddingHorizontal: themeui.spacing.sm,
-    paddingVertical: themeui.spacing.xs,
-    width: 200,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-    zIndex: 999,
-  },
-
-  notifItem: {
-    paddingVertical: themeui.spacing.sm - 2,
-  },
-
-  logoText: {
-    fontSize: themeui.fontSize.lg,
-    fontWeight: "800",
-    color: themeui.colors.primary,
-  },
-
-  notifText: {
-    color: "#fff",
-    fontSize: themeui.fontSize.lg - 2,
-    fontWeight: "500",
-  },
-
-  leftHeaderArea: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.md - 4,
-  },
-  rightHeaderArea: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: themeui.spacing.xs,
-    flex: 1,
-  },
-});
+    leftHeaderArea: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.md - 4,
+    },
+    rightHeaderArea: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      gap: theme.spacing.xs,
+      flex: 1,
+    },
+  });
+}

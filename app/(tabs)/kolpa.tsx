@@ -1,20 +1,22 @@
-import { themeui } from "@/constants/themeui";
+// ❌ kaldır: import { themeui } from "@/constants/themeui";
 import { Activity, BarChart2, Users } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// ✅ NEW THEME
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
 
 type RangeKey = "7g" | "30g" | "all";
 
 export default function SummaryScreen() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+
+  // ✅ styles theme’e bağlı
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [selectedRange, setSelectedRange] = useState<RangeKey>("7g");
 
@@ -40,6 +42,7 @@ export default function SummaryScreen() {
                   labelKey="summary.range.7d"
                   active={selectedRange === "7g"}
                   onPress={() => setSelectedRange("7g")}
+                  theme={theme}
                 />
               </View>
 
@@ -48,6 +51,7 @@ export default function SummaryScreen() {
                   labelKey="summary.range.30d"
                   active={selectedRange === "30g"}
                   onPress={() => setSelectedRange("30g")}
+                  theme={theme}
                 />
               </View>
 
@@ -56,6 +60,7 @@ export default function SummaryScreen() {
                   labelKey="filter.all"
                   active={selectedRange === "all"}
                   onPress={() => setSelectedRange("all")}
+                  theme={theme}
                 />
               </View>
             </View>
@@ -64,88 +69,83 @@ export default function SummaryScreen() {
           {/* KART 1 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <BarChart2 size={18} color="#60a5fa" />
-              <Text style={styles.cardTitle}>
-                {t("summary.card.generalStats")}
-              </Text>
+              <BarChart2 size={18} color={theme.colors.primary} />
+              <Text style={styles.cardTitle}>{t("summary.card.generalStats")}</Text>
             </View>
 
-            <Text style={styles.cardHint}>
-              {t("summary.card.generalStats.hint")}
-            </Text>
+            <Text style={styles.cardHint}>{t("summary.card.generalStats.hint")}</Text>
 
             <StatRow
               labelKey="summary.stat.totalStudents"
               value="23"
               subKey="summary.stat.totalStudents.sub"
+              theme={theme}
             />
             <StatRow
               labelKey="summary.stat.activeStudents"
               value="18"
               subKey="summary.stat.activeStudents.sub"
+              theme={theme}
             />
             <StatRow
               labelKey="summary.stat.thisWeekMeasurement"
               value="5"
               subKey="summary.stat.thisWeekMeasurement.sub"
+              theme={theme}
             />
           </View>
 
           {/* KART 2 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <Activity size={18} color="#22c55e" />
+              <Activity size={18} color={theme.colors.success} />
               <Text style={styles.cardTitle}>{t("summary.card.goalProgress")}</Text>
             </View>
 
-            <Text style={styles.cardHint}>
-              {t("summary.card.goalProgress.hint")}
-            </Text>
+            <Text style={styles.cardHint}>{t("summary.card.goalProgress.hint")}</Text>
 
-            <ProgressRow labelKey="summary.goal.fatLoss" percent={60} />
-            <ProgressRow labelKey="summary.goal.muscleGain" percent={45} />
-            <ProgressRow labelKey="summary.goal.generalHealth" percent={55} />
+            <ProgressRow labelKey="summary.goal.fatLoss" percent={60} theme={theme} />
+            <ProgressRow labelKey="summary.goal.muscleGain" percent={45} theme={theme} />
+            <ProgressRow labelKey="summary.goal.generalHealth" percent={55} theme={theme} />
           </View>
 
           {/* KART 3 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <Users size={18} color="#38bdf8" />
-              <Text style={styles.cardTitle}>
-                {t("summary.card.studentSegments")}
-              </Text>
+              <Users size={18} color={theme.colors.accent} />
+              <Text style={styles.cardTitle}>{t("summary.card.studentSegments")}</Text>
             </View>
 
             <TagRow
               labelKey="summary.segment.twiceWeek"
               value={t("summary.segment.people", { count: 9 })}
+              theme={theme}
             />
             <TagRow
               labelKey="summary.segment.threeTimesWeek"
               value={t("summary.segment.people", { count: 6 })}
+              theme={theme}
             />
             <TagRow
               labelKey="summary.segment.onlineHybrid"
               value={t("summary.segment.people", { count: 4 })}
+              theme={theme}
             />
             <TagRow
               labelKey="summary.segment.beginner"
               value={t("summary.segment.people", { count: 7 })}
+              theme={theme}
             />
           </View>
 
           {/* KART 4 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <BarChart2 size={18} color="#f97316" />
-              <Text style={styles.cardTitle}>
-                {t("summary.card.dailySessionFill")}
-              </Text>
+              <BarChart2 size={18} color={theme.colors.warning} />
+              <Text style={styles.cardTitle}>{t("summary.card.dailySessionFill")}</Text>
             </View>
 
-            <Text style={styles.cardHint}>
-              {t("summary.card.dailySessionFill.hint")}
-            </Text>
+            <Text style={styles.cardHint}>{t("summary.card.dailySessionFill.hint")}</Text>
 
             <View style={styles.chartContainer}>
               {bars.map((ratio, idx) => (
@@ -155,18 +155,14 @@ export default function SummaryScreen() {
               ))}
             </View>
 
-            <Text style={styles.chartFooterText}>
-              {t("summary.dailyFill.todayEstimate")}
-            </Text>
+            <Text style={styles.chartFooterText}>{t("summary.dailyFill.todayEstimate")}</Text>
           </View>
 
           {/* KART 5 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <Activity size={18} color="#a855f7" />
-              <Text style={styles.cardTitle}>
-                {t("summary.card.recentActivities")}
-              </Text>
+              <Activity size={18} color={theme.colors.premium} />
+              <Text style={styles.cardTitle}>{t("summary.card.recentActivities")}</Text>
             </View>
 
             {(
@@ -179,10 +175,7 @@ export default function SummaryScreen() {
             ).map((key, index) => (
               <View
                 key={key}
-                style={[
-                  styles.activityRow,
-                  index > 0 && styles.activityRowBorder,
-                ]}
+                style={[styles.activityRow, index > 0 && styles.activityRowBorder]}
               >
                 <View style={styles.activityDot} />
                 <Text style={styles.activityText}>{t(key)}</Text>
@@ -201,12 +194,15 @@ function RangeChip({
   labelKey,
   active,
   onPress,
+  theme,
 }: {
   labelKey: string;
   active: boolean;
   onPress: () => void;
+  theme: ThemeUI;
 }) {
   const { t } = useTranslation();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <TouchableOpacity
@@ -224,12 +220,15 @@ function StatRow({
   labelKey,
   value,
   subKey,
+  theme,
 }: {
   labelKey: string;
   value: string;
   subKey?: string;
+  theme: ThemeUI;
 }) {
   const { t } = useTranslation();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <View style={styles.statRow}>
@@ -242,8 +241,17 @@ function StatRow({
   );
 }
 
-function ProgressRow({ labelKey, percent }: { labelKey: string; percent: number }) {
+function ProgressRow({
+  labelKey,
+  percent,
+  theme,
+}: {
+  labelKey: string;
+  percent: number;
+  theme: ThemeUI;
+}) {
   const { t } = useTranslation();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <View style={styles.progressRow}>
@@ -259,8 +267,17 @@ function ProgressRow({ labelKey, percent }: { labelKey: string; percent: number 
   );
 }
 
-function TagRow({ labelKey, value }: { labelKey: string; value: string }) {
+function TagRow({
+  labelKey,
+  value,
+  theme,
+}: {
+  labelKey: string;
+  value: string;
+  theme: ThemeUI;
+}) {
   const { t } = useTranslation();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <View style={styles.tagRow}>
@@ -274,201 +291,203 @@ function TagRow({ labelKey, value }: { labelKey: string; value: string }) {
 }
 
 /* STYLES ------------------------------------------------------ */
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: themeui.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: themeui.colors.background,
-  },
+function makeStyles(theme: ThemeUI) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
 
-  /* HEADER */
-  header: {
-    paddingHorizontal: themeui.spacing.md,
-    paddingTop: themeui.spacing.sm + 4,
-    paddingBottom: themeui.spacing.xs,
-  },
-  pageTitle: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.title,
-    fontWeight: "700",
-  },
-  pageSubtitle: {
-    color: themeui.colors.text.secondary,
-    fontSize: themeui.fontSize.xs,
-    marginTop: themeui.spacing.xs - 2,
-  },
-  rangeRow: {
-    flexDirection: "row",
-    marginTop: themeui.spacing.sm - 2,
-  },
+    /* HEADER */
+    header: {
+      paddingHorizontal: theme.spacing.md,
+      paddingTop: theme.spacing.sm + 4,
+      paddingBottom: theme.spacing.xs,
+    },
+    pageTitle: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.title,
+      fontWeight: "700",
+    },
+    pageSubtitle: {
+      color: theme.colors.text.secondary,
+      fontSize: theme.fontSize.xs,
+      marginTop: theme.spacing.xs - 2,
+    },
+    rangeRow: {
+      flexDirection: "row",
+      marginTop: theme.spacing.sm - 2,
+    },
 
-  /* RANGE CHIPS */
-  rangeChip: {
-    paddingHorizontal: themeui.spacing.md - 4,
-    paddingVertical: themeui.spacing.xs,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.surface,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-    marginRight: themeui.spacing.xs,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rangeChipActive: {
-    backgroundColor: "rgba(96,165,250,0.25)",
-    borderColor: themeui.colors.primary,
-  },
-  rangeChipText: {
-    fontSize: themeui.fontSize.sm,
-    color: themeui.colors.text.secondary,
-  },
-  rangeChipTextActive: {
-    color: "#bfdbfe",
-    fontWeight: "600",
-  },
+    /* RANGE CHIPS */
+    rangeChip: {
+      paddingHorizontal: theme.spacing.md - 4,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginRight: theme.spacing.xs,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rangeChipActive: {
+      backgroundColor: theme.colors.surfaceElevated,
+      borderColor: theme.colors.primary,
+    },
+    rangeChipText: {
+      fontSize: theme.fontSize.sm,
+      color: theme.colors.text.secondary,
+    },
+    rangeChipTextActive: {
+      color: theme.colors.text.primary,
+      fontWeight: "600",
+    },
 
-  /* CARD */
-  card: {
-    marginHorizontal: themeui.spacing.md,
-    marginTop: themeui.spacing.md - 2,
-    backgroundColor: themeui.colors.surface,
-    borderRadius: themeui.radius.lg,
-    borderWidth: 1,
-    borderColor: themeui.colors.border,
-    padding: themeui.spacing.md,
-    ...themeui.shadow.soft,
-  },
-  cardTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  cardTitle: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.lg - 1,
-    fontWeight: "600",
-    marginLeft: themeui.spacing.xs,
-  },
-  cardHint: {
-    color: themeui.colors.text.muted,
-    fontSize: themeui.fontSize.xs,
-    marginTop: themeui.spacing.xs - 2,
-    marginBottom: themeui.spacing.sm - 2,
-  },
+    /* CARD */
+    card: {
+      marginHorizontal: theme.spacing.md,
+      marginTop: theme.spacing.md - 2,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.md,
+      ...theme.shadow.soft,
+    },
+    cardTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    cardTitle: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.lg - 1,
+      fontWeight: "600",
+      marginLeft: theme.spacing.xs,
+    },
+    cardHint: {
+      color: theme.colors.text.muted,
+      fontSize: theme.fontSize.xs,
+      marginTop: theme.spacing.xs - 2,
+      marginBottom: theme.spacing.sm - 2,
+    },
 
-  /* STAT ROW */
-  statRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: themeui.spacing.sm - 2,
-    borderTopWidth: 1,
-    borderTopColor: themeui.colors.border,
-  },
-  statLabel: {
-    color: themeui.colors.text.secondary,
-    fontSize: themeui.fontSize.sm,
-  },
-  statSub: {
-    color: themeui.colors.text.muted,
-    fontSize: themeui.fontSize.xs,
-    marginTop: 2,
-  },
-  statValue: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.md,
-    fontWeight: "600",
-  },
+    /* STAT ROW */
+    statRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: theme.spacing.sm - 2,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    statLabel: {
+      color: theme.colors.text.secondary,
+      fontSize: theme.fontSize.sm,
+    },
+    statSub: {
+      color: theme.colors.text.muted,
+      fontSize: theme.fontSize.xs,
+      marginTop: 2,
+    },
+    statValue: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.md,
+      fontWeight: "600",
+    },
 
-  /* PROGRESS */
-  progressRow: { marginTop: themeui.spacing.sm - 2 },
-  progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: themeui.spacing.xs - 2,
-  },
-  progressLabel: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.sm,
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.border,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.primary,
-  },
+    /* PROGRESS */
+    progressRow: { marginTop: theme.spacing.sm - 2 },
+    progressHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: theme.spacing.xs - 2,
+    },
+    progressLabel: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.sm,
+    },
+    progressBar: {
+      height: 8,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.border,
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: "100%",
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.primary,
+    },
 
-  /* TAG ROW */
-  tagRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: themeui.spacing.sm - 2,
-    borderTopWidth: 1,
-    borderTopColor: themeui.colors.border,
-  },
-  tagLabel: {
-    color: themeui.colors.text.secondary,
-    fontSize: themeui.fontSize.sm,
-  },
-  tagPill: {
-    paddingHorizontal: themeui.spacing.sm - 4,
-    paddingVertical: themeui.spacing.xs - 2,
-    backgroundColor: "rgba(148,163,184,0.15)",
-    borderRadius: themeui.radius.pill,
-  },
-  tagPillText: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.xs,
-  },
+    /* TAG ROW */
+    tagRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: theme.spacing.sm - 2,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    tagLabel: {
+      color: theme.colors.text.secondary,
+      fontSize: theme.fontSize.sm,
+    },
+    tagPill: {
+      paddingHorizontal: theme.spacing.sm - 4,
+      paddingVertical: theme.spacing.xs - 2,
+      backgroundColor: theme.colors.surfaceElevated,
+      borderRadius: theme.radius.pill,
+    },
+    tagPillText: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.xs,
+    },
 
-  /* CHART */
-  chartContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    marginTop: themeui.spacing.sm,
-  },
-  chartBarWrapper: {
-    flex: 1,
-    alignItems: "center",
-  },
-  chartBar: {
-    width: 12,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.primary,
-  },
-  chartFooterText: {
-    color: themeui.colors.text.muted,
-    fontSize: themeui.fontSize.xs,
-    marginTop: themeui.spacing.sm - 2,
-  },
+    /* CHART */
+    chartContainer: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+      marginTop: theme.spacing.sm,
+    },
+    chartBarWrapper: {
+      flex: 1,
+      alignItems: "center",
+    },
+    chartBar: {
+      width: 12,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.primary,
+    },
+    chartFooterText: {
+      color: theme.colors.text.muted,
+      fontSize: theme.fontSize.xs,
+      marginTop: theme.spacing.sm - 2,
+    },
 
-  /* ACTIVITY */
-  activityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: themeui.spacing.sm - 2,
-  },
-  activityRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: themeui.colors.border,
-  },
-  activityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.success,
-    marginRight: themeui.spacing.sm - 4,
-  },
-  activityText: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.sm,
-    flex: 1,
-  },
-});
+    /* ACTIVITY */
+    activityRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: theme.spacing.sm - 2,
+    },
+    activityRowBorder: {
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    activityDot: {
+      width: 6,
+      height: 6,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.success,
+      marginRight: theme.spacing.sm - 4,
+    },
+    activityText: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.sm,
+      flex: 1,
+    },
+  });
+}

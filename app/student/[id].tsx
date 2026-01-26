@@ -1,6 +1,8 @@
 // app/student/[id].tsx
 
-import { themeui } from "@/constants/themeui";
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
+
 import { auth } from "@/services/firebase";
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -10,7 +12,7 @@ import {
     orderBy,
     query,
     updateDoc,
-    where
+    where,
 } from "firebase/firestore";
 import {
     ArrowLeft,
@@ -19,7 +21,7 @@ import {
     Eye,
     Mail,
     Phone,
-    User
+    User,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -128,6 +130,9 @@ export default function StudentDetailScreen() {
     const router = useRouter();
     const { t } = useTranslation();
     const { id } = useLocalSearchParams<{ id: string }>();
+
+    const { theme } = useTheme();
+    const styles = useMemo(() => makeStyles(theme), [theme]);
 
     const [student, setStudent] = useState<Student | null>(null);
     const [records, setRecords] = useState<RecordItem[]>([]);
@@ -283,7 +288,9 @@ export default function StudentDetailScreen() {
         try {
             setToggling(true);
             const newStatus = student.aktif === "Aktif" ? "Pasif" : "Aktif";
-            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), { aktif: newStatus });
+            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), {
+                aktif: newStatus,
+            });
             setStudent({ ...student, aktif: newStatus });
         } catch (err) {
             console.error(err);
@@ -304,7 +311,7 @@ export default function StudentDetailScreen() {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#60a5fa" />
+                    <ActivityIndicator size="large" color={theme.colors.accent} />
                     <Text style={styles.loadingText}>{t("studentDetail.loading")}</Text>
                 </View>
             </SafeAreaView>
@@ -318,7 +325,7 @@ export default function StudentDetailScreen() {
                     <Text style={styles.errorText}>{t("studentDetail.notFound")}</Text>
 
                     <TouchableOpacity style={styles.backButton} onPress={goBack}>
-                        <ArrowLeft size={18} color="#f1f5f9" />
+                        <ArrowLeft size={18} color={theme.colors.text.primary} />
                         <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
                     </TouchableOpacity>
                 </View>
@@ -334,7 +341,7 @@ export default function StudentDetailScreen() {
                 <View style={styles.header}>
                     <View style={styles.headerTopRow}>
                         <TouchableOpacity style={styles.backButton} onPress={goBack}>
-                            <ArrowLeft size={18} color="#f1f5f9" />
+                            <ArrowLeft size={18} color={theme.colors.text.primary} />
                             <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
                         </TouchableOpacity>
 
@@ -344,12 +351,12 @@ export default function StudentDetailScreen() {
                                     styles.toggleButton,
                                     student.aktif === "Aktif"
                                         ? styles.toggleButtonPassive
-                                        : styles.toggleButtonActive
+                                        : styles.toggleButtonActive,
                                 ]}
                                 onPress={toggleAktif}
                                 disabled={toggling}
                             >
-                                <Text style={[styles.toggleButtonText, { color: themeui.colors.text.primary }]}>
+                                <Text style={styles.toggleButtonText}>
                                     {student.aktif === "Aktif"
                                         ? t("studentDetail.toggle.makePassive")
                                         : t("studentDetail.toggle.makeActive")}
@@ -357,8 +364,10 @@ export default function StudentDetailScreen() {
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.editButton} onPress={addRecord}>
-                                <Edit size={14} color="#f1f5f9" />
-                                <Text style={styles.editButtonText}>{t("studentDetail.addRecord")}</Text>
+                                <Edit size={14} color={theme.colors.text.onAccent} />
+                                <Text style={styles.editButtonText}>
+                                    {t("studentDetail.addRecord")}
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -374,7 +383,9 @@ export default function StudentDetailScreen() {
                             <View
                                 style={[
                                     styles.statusBadge,
-                                    student.aktif === "Aktif" ? styles.statusActive : styles.statusPassive,
+                                    student.aktif === "Aktif"
+                                        ? styles.statusActive
+                                        : styles.statusPassive,
                                 ]}
                             >
                                 <Text
@@ -391,9 +402,10 @@ export default function StudentDetailScreen() {
                             </View>
 
                             <View style={styles.metaLine}>
-                                <Calendar size={14} color="#94a3b8" />
+                                <Calendar size={14} color={theme.colors.text.muted} />
                                 <Text style={styles.metaText}>
-                                    {t("studentDetail.student.assessmentDate")} {formatDateTR(student.assessmentDate)}
+                                    {t("studentDetail.student.assessmentDate")}{" "}
+                                    {formatDateTR(student.assessmentDate)}
                                 </Text>
                             </View>
                         </View>
@@ -407,32 +419,39 @@ export default function StudentDetailScreen() {
                     ListHeaderComponent={
                         <View>
                             <View style={styles.card}>
-                                <Text style={styles.cardTitle}>{t("studentDetail.section.personalInfo")}</Text>
+                                <Text style={styles.cardTitle}>
+                                    {t("studentDetail.section.personalInfo")}
+                                </Text>
 
                                 <InfoRow
+                                    styles={styles}
                                     label={t("studentDetail.label.email")}
                                     value={student.email || "-"}
-                                    icon={<Mail size={16} color="#60a5fa" />}
+                                    icon={<Mail size={16} color={theme.colors.primary} />}
                                 />
                                 <InfoRow
+                                    styles={styles}
                                     label={t("studentDetail.label.phone")}
                                     value={student.number || "-"}
-                                    icon={<Phone size={16} color="#60a5fa" />}
+                                    icon={<Phone size={16} color={theme.colors.primary} />}
                                 />
                                 <InfoRow
+                                    styles={styles}
                                     label={t("studentDetail.label.gender")}
                                     value={student.gender || "-"}
-                                    icon={<User size={16} color="#60a5fa" />}
+                                    icon={<User size={16} color={theme.colors.primary} />}
                                 />
                                 <InfoRow
+                                    styles={styles}
                                     label={t("studentDetail.label.birthDate")}
                                     value={formatDateTR(student.dateOfBirth)}
-                                    icon={<Calendar size={16} color="#60a5fa" />}
+                                    icon={<Calendar size={16} color={theme.colors.primary} />}
                                 />
                                 <InfoRow
+                                    styles={styles}
                                     label={t("studentDetail.label.height")}
                                     value={student.boy || "-"}
-                                    icon={<User size={16} color="#60a5fa" />}
+                                    icon={<User size={16} color={theme.colors.primary} />}
                                 />
                             </View>
 
@@ -441,10 +460,13 @@ export default function StudentDetailScreen() {
 
                                 {parqQuestions.map((q, idx) => {
                                     const answer = (student as any)[q.key] as Bool;
-                                    const note = q.noteKey ? ((student as any)[q.noteKey] as string) : "";
+                                    const note = q.noteKey
+                                        ? ((student as any)[q.noteKey] as string)
+                                        : "";
                                     return (
                                         <QAItem
                                             key={q.key}
+                                            styles={styles}
                                             index={idx + 1}
                                             question={t(q.labelKey)}
                                             answer={answer}
@@ -455,14 +477,19 @@ export default function StudentDetailScreen() {
                             </View>
 
                             <View style={styles.card}>
-                                <Text style={styles.cardTitle}>{t("studentDetail.section.personalDetails")}</Text>
+                                <Text style={styles.cardTitle}>
+                                    {t("studentDetail.section.personalDetails")}
+                                </Text>
 
                                 {personalQuestions.map((q, idx) => {
                                     const answer = (student as any)[q.key] as Bool;
-                                    const note = (q as any).noteKey ? ((student as any)[(q as any).noteKey] as string) : "";
+                                    const note = (q as any).noteKey
+                                        ? ((student as any)[(q as any).noteKey] as string)
+                                        : "";
                                     return (
                                         <QAItem
                                             key={q.key}
+                                            styles={styles}
                                             index={idx + 1}
                                             question={t((q as any).labelKey)}
                                             answer={answer}
@@ -472,25 +499,29 @@ export default function StudentDetailScreen() {
                                 })}
 
                                 <InfoRow
+                                    styles={styles}
                                     label={t("studentDetail.label.plannedDaysPerWeek")}
-                                    value={student.plannedDaysPerWeek ? String(student.plannedDaysPerWeek) : "-"}
-                                    icon={<Calendar size={16} color="#60a5fa" />}
+                                    value={
+                                        student.plannedDaysPerWeek ? String(student.plannedDaysPerWeek) : "-"
+                                    }
+                                    icon={<Calendar size={16} color={theme.colors.primary} />}
                                 />
 
                                 <InfoRow
+                                    styles={styles}
                                     label={t("studentDetail.label.job")}
                                     value={student.jobDescription || "-"}
-                                    icon={<User size={16} color="#60a5fa" />}
+                                    icon={<User size={16} color={theme.colors.primary} />}
                                 />
 
                                 <View style={{ marginTop: 12 }}>
-                                    <Text style={styles.subTitle}>{t("studentDetail.label.trainingGoals")}</Text>
+                                    <Text style={styles.subTitle}>
+                                        {t("studentDetail.label.trainingGoals")}
+                                    </Text>
 
                                     <View style={styles.chipWrap}>
                                         {student.trainingGoals && student.trainingGoals.length ? (
-                                            student.trainingGoals.map((g) => (
-                                                <Chip key={g} label={g} />
-                                            ))
+                                            student.trainingGoals.map((g) => <Chip key={g} styles={styles} label={g} />)
                                         ) : (
                                             <Text style={styles.mutedText}>-</Text>
                                         )}
@@ -517,15 +548,12 @@ export default function StudentDetailScreen() {
                                 : "-";
 
                         return (
-                            <TouchableOpacity
-                                style={styles.recordCard}
-                                onPress={() => viewRecord(item.id)}
-                            >
+                            <TouchableOpacity style={styles.recordCard} onPress={() => viewRecord(item.id)}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.recordDate}>{dateStr}</Text>
                                     <Text style={styles.recordNote}>{item.note || "Not yok"}</Text>
                                 </View>
-                                <Eye size={18} color="#f1f5f9" />
+                                <Eye size={18} color={theme.colors.text.primary} />
                             </TouchableOpacity>
                         );
                     }}
@@ -547,10 +575,12 @@ export default function StudentDetailScreen() {
 /* ----------------- UI PIECES ----------------- */
 
 function InfoRow({
+    styles,
     icon,
     label,
     value,
 }: {
+    styles: ReturnType<typeof makeStyles>;
     icon?: React.ReactNode;
     label: string;
     value: string;
@@ -567,11 +597,13 @@ function InfoRow({
 }
 
 function QAItem({
+    styles,
     index,
     question,
     answer,
     note,
 }: {
+    styles: ReturnType<typeof makeStyles>;
     index: number;
     question: string;
     answer: Bool;
@@ -618,7 +650,7 @@ function QAItem({
     );
 }
 
-function Chip({ label }: { label: string }) {
+function Chip({ styles, label }: { styles: ReturnType<typeof makeStyles>; label: string }) {
     return (
         <View style={styles.chip}>
             <Text style={styles.chipText}>{label}</Text>
@@ -627,204 +659,219 @@ function Chip({ label }: { label: string }) {
 }
 
 /* ----------------- STYLES ----------------- */
-const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: themeui.colors.background },
-    container: { flex: 1, backgroundColor: themeui.colors.background },
+function makeStyles(theme: ThemeUI) {
+    return StyleSheet.create({
+        safeArea: { flex: 1, backgroundColor: theme.colors.background },
+        container: { flex: 1, backgroundColor: theme.colors.background },
 
-    center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    loadingText: { color: themeui.colors.text.secondary, marginTop: themeui.spacing.xs },
-    errorText: { color: themeui.colors.danger, marginBottom: themeui.spacing.xs },
+        center: { flex: 1, justifyContent: "center", alignItems: "center" },
+        loadingText: { color: theme.colors.text.secondary, marginTop: theme.spacing.xs },
+        errorText: { color: theme.colors.danger, marginBottom: theme.spacing.xs },
 
-    /* HEADER */
-    header: { paddingHorizontal: themeui.spacing.md, paddingTop: themeui.spacing.sm + 4, paddingBottom: themeui.spacing.xs },
-    headerTopRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: themeui.spacing.sm - 2,
-    },
+        /* HEADER */
+        header: {
+            paddingHorizontal: theme.spacing.md,
+            paddingTop: theme.spacing.sm + 4,
+            paddingBottom: theme.spacing.xs,
+        },
+        headerTopRow: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: theme.spacing.sm - 2,
+        },
 
-    backButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.sm,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-        backgroundColor: themeui.colors.surface,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-    },
-    backButtonText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm },
+        backButton: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: theme.spacing.sm,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        backButtonText: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
 
-    headerActions: { flexDirection: "row", gap: themeui.spacing.xs },
+        headerActions: { flexDirection: "row", marginLeft: theme.spacing.xs },
 
-    toggleButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.md,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-    },
-    toggleButtonActive: {
-        backgroundColor: themeui.colors.success,
-        borderColor: themeui.colors.success,
-        borderWidth: 1,
-        opacity: 0.9,
-    },
-    toggleButtonPassive: {
-        backgroundColor: themeui.colors.danger,
-        borderColor: themeui.colors.danger,
-        borderWidth: 1,
-        opacity: 0.9,
-    },
+        toggleButton: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: theme.spacing.md,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+        },
+        toggleButtonActive: {
+            backgroundColor: theme.colors.success,
+            borderColor: theme.colors.success,
+            borderWidth: 1,
+            opacity: 0.9,
+        },
+        toggleButtonPassive: {
+            backgroundColor: theme.colors.danger,
+            borderColor: theme.colors.danger,
+            borderWidth: 1,
+            opacity: 0.9,
+        },
 
-    toggleButtonText: {
-        fontSize: themeui.fontSize.sm,
-        fontWeight: "600",
-    },
-    editButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.sm - 2,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-        backgroundColor: themeui.colors.editButtonbackground,
-        opacity: 0.9,
-    },
-    editButtonText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.xs, fontWeight: "700" },
+        toggleButtonText: {
+            fontSize: theme.fontSize.sm,
+            fontWeight: "600",
+            color: theme.colors.text.onAccent,
+        },
 
-    /* STUDENT HEADER CARD */
-    studentRow: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.md },
-    avatar: {
-        width: 58,
-        height: 58,
-        borderRadius: themeui.radius.pill,
-        backgroundColor: themeui.colors.primary,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    avatarText: { color: themeui.colors.surface, fontSize: 23, fontWeight: "800" },
-    studentName: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.lg + 3, fontWeight: "700" },
+        editButton: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: theme.spacing.sm - 2,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.editButtonbackground,
+            opacity: 0.9,
+            marginLeft: theme.spacing.xs,
+        },
+        editButtonText: {
+            color: theme.colors.text.onAccent,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "700",
+            marginLeft: theme.spacing.xs,
+        },
 
-    statusBadge: {
-        marginTop: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.sm - 4,
-        paddingVertical: themeui.spacing.xs - 2,
-        borderRadius: themeui.radius.pill,
-        alignSelf: "flex-start",
-    },
-    statusActive: { backgroundColor: themeui.colors.successSoft },
-    statusPassive: { backgroundColor: themeui.colors.dangerSoft },
-    statusActiveText: { color: themeui.colors.success, fontSize: themeui.fontSize.xs, fontWeight: "700" },
-    statusPassiveText: { color: themeui.colors.danger, fontSize: themeui.fontSize.xs, fontWeight: "700" },
+        /* STUDENT HEADER CARD */
+        studentRow: { flexDirection: "row", alignItems: "center", marginTop: theme.spacing.sm },
+        avatar: {
+            width: 58,
+            height: 58,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.primary,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: theme.spacing.md,
+        },
+        avatarText: { color: theme.colors.text.onAccent, fontSize: 23, fontWeight: "800" },
+        studentName: { color: theme.colors.text.primary, fontSize: theme.fontSize.lg + 3, fontWeight: "700" },
 
-    metaLine: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.xs, marginTop: themeui.spacing.xs },
-    metaText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm },
+        statusBadge: {
+            marginTop: theme.spacing.xs,
+            paddingHorizontal: theme.spacing.sm - 4,
+            paddingVertical: theme.spacing.xs - 2,
+            borderRadius: theme.radius.pill,
+            alignSelf: "flex-start",
+        },
+        statusActive: { backgroundColor: theme.colors.successSoft },
+        statusPassive: { backgroundColor: theme.colors.dangerSoft },
+        statusActiveText: { color: theme.colors.success, fontSize: theme.fontSize.xs, fontWeight: "700" },
+        statusPassiveText: { color: theme.colors.danger, fontSize: theme.fontSize.xs, fontWeight: "700" },
 
-    /* CARDS */
-    card: {
-        marginHorizontal: themeui.spacing.md,
-        marginTop: themeui.spacing.sm,
-        backgroundColor: themeui.colors.surface,
-        borderRadius: themeui.radius.lg,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        padding: themeui.spacing.md,
-        ...themeui.shadow.soft,
-    },
-    cardTitle: {
-        color: themeui.colors.text.primary,
-        fontSize: themeui.fontSize.lg - 1,
-        fontWeight: "700",
-        marginBottom: themeui.spacing.sm - 4,
-    },
-    subTitle: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md, fontWeight: "700" },
-    mutedText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.md, marginTop: themeui.spacing.xs },
+        metaLine: { flexDirection: "row", alignItems: "center", marginTop: theme.spacing.xs },
+        metaText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
 
-    /* INFO ROW */
-    infoRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingVertical: themeui.spacing.sm - 2,
-        borderBottomWidth: 1,
-        borderBottomColor: themeui.colors.border,
-    },
-    infoLabelRow: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.xs },
-    infoLabel: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm },
-    infoValue: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md - 1, maxWidth: "55%", textAlign: "right" },
+        /* CARDS */
+        card: {
+            marginHorizontal: theme.spacing.md,
+            marginTop: theme.spacing.sm,
+            backgroundColor: theme.colors.surface,
+            borderRadius: theme.radius.lg,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            padding: theme.spacing.md,
+            ...(theme.shadow?.soft ?? {}),
+        },
+        cardTitle: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.lg - 1,
+            fontWeight: "700",
+            marginBottom: theme.spacing.sm - 4,
+        },
+        subTitle: { color: theme.colors.text.primary, fontSize: theme.fontSize.md, fontWeight: "700" },
+        mutedText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.md, marginTop: theme.spacing.xs },
 
-    /* QA */
-    qaItem: {
-        paddingVertical: themeui.spacing.sm - 2,
-        borderBottomWidth: 1,
-        borderBottomColor: themeui.colors.border,
-    },
-    qaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: themeui.spacing.md - 4 },
-    qaQuestion: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md - 1, fontWeight: "600", flex: 1, lineHeight: 18 },
+        /* INFO ROW */
+        infoRow: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingVertical: theme.spacing.sm - 2,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        infoLabelRow: { flexDirection: "row", alignItems: "center" },
+        infoLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
+        infoValue: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, maxWidth: "55%", textAlign: "right" },
 
-    badge: {
-        paddingHorizontal: themeui.spacing.sm - 2,
-        paddingVertical: themeui.spacing.xs - 2,
-        borderRadius: themeui.radius.pill,
-        borderWidth: 1,
-        alignSelf: "flex-start",
-    },
-    badgeYes: { backgroundColor: themeui.colors.successSoft, borderColor: "rgba(34,197,94,0.35)" },
-    badgeNo: { backgroundColor: themeui.colors.dangerSoft, borderColor: "rgba(248,113,113,0.35)" },
-    badgeNA: { backgroundColor: "rgba(148,163,184,0.12)", borderColor: "rgba(148,163,184,0.25)" },
-    badgeText: { fontSize: themeui.fontSize.xs, fontWeight: "800" },
-    badgeTextYes: { color: themeui.colors.success },
-    badgeTextNo: { color: themeui.colors.danger },
-    badgeTextNA: { color: themeui.colors.text.secondary },
+        /* QA */
+        qaItem: {
+            paddingVertical: theme.spacing.sm - 2,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        qaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
+        qaQuestion: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, fontWeight: "600", flex: 1, lineHeight: 18 },
 
-    noteBox: {
-        marginTop: themeui.spacing.sm,
-        padding: themeui.spacing.sm,
-        borderRadius: themeui.radius.md,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        backgroundColor: themeui.colors.surfaceSoft,
-    },
-    miniLabel: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.xs, marginBottom: 4 },
-    noteText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm, lineHeight: 17 },
+        badge: {
+            paddingHorizontal: theme.spacing.sm - 2,
+            paddingVertical: theme.spacing.xs - 2,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            alignSelf: "flex-start",
+            marginLeft: theme.spacing.md - 4,
+        },
+        badgeYes: { backgroundColor: theme.colors.successSoft, borderColor: "rgba(34,197,94,0.35)" },
+        badgeNo: { backgroundColor: theme.colors.dangerSoft, borderColor: "rgba(248,113,113,0.35)" },
+        badgeNA: { backgroundColor: "rgba(148,163,184,0.12)", borderColor: "rgba(148,163,184,0.25)" },
+        badgeText: { fontSize: theme.fontSize.xs, fontWeight: "800" },
+        badgeTextYes: { color: theme.colors.success },
+        badgeTextNo: { color: theme.colors.danger },
+        badgeTextNA: { color: theme.colors.text.secondary },
 
-    chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: themeui.spacing.xs + 2, marginTop: themeui.spacing.sm - 2 },
-    chip: {
-        paddingHorizontal: themeui.spacing.sm - 2,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        backgroundColor: "rgba(96,165,250,0.12)",
-    },
-    chipText: { color: "#bfdbfe", fontSize: themeui.fontSize.xs, fontWeight: "600" },
+        noteBox: {
+            marginTop: theme.spacing.sm,
+            padding: theme.spacing.sm,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+        },
+        miniLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, marginBottom: 4 },
+        noteText: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm, lineHeight: 17 },
 
-    /* RECORDS */
-    recordsTitle: {
-        marginHorizontal: themeui.spacing.md,
-        marginTop: themeui.spacing.md,
-        marginBottom: themeui.spacing.xs + 2,
-        color: themeui.colors.primary,
-        fontSize: themeui.fontSize.lg,
-        fontWeight: "700",
-    },
-    recordCard: {
-        marginHorizontal: themeui.spacing.md,
-        marginBottom: themeui.spacing.sm - 2,
-        backgroundColor: themeui.colors.surface,
-        borderRadius: themeui.radius.md,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        paddingVertical: themeui.spacing.sm,
-        paddingHorizontal: themeui.spacing.sm,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        gap: themeui.spacing.sm - 2,
-    },
-    recordDate: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md - 1, fontWeight: "600" },
-    recordNote: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm, marginTop: 2 },
-    emptyText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.md - 1 },
-});
+        chipWrap: { flexDirection: "row", flexWrap: "wrap", marginTop: theme.spacing.sm - 2 },
+        chip: {
+            paddingHorizontal: theme.spacing.sm - 2,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+            marginRight: theme.spacing.xs + 2,
+            marginBottom: theme.spacing.xs + 2,
+        },
+        chipText: { color: theme.colors.text.primary, fontSize: theme.fontSize.xs, fontWeight: "600" },
+
+        /* RECORDS */
+        recordsTitle: {
+            marginHorizontal: theme.spacing.md,
+            marginTop: theme.spacing.md,
+            marginBottom: theme.spacing.xs + 2,
+            color: theme.colors.primary,
+            fontSize: theme.fontSize.lg,
+            fontWeight: "700",
+        },
+        recordCard: {
+            marginHorizontal: theme.spacing.md,
+            marginBottom: theme.spacing.sm - 2,
+            backgroundColor: theme.colors.surface,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            paddingVertical: theme.spacing.sm,
+            paddingHorizontal: theme.spacing.sm,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+        },
+        recordDate: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, fontWeight: "600" },
+        recordNote: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginTop: 2 },
+        emptyText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.md - 1 },
+    });
+}

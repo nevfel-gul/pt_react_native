@@ -1,7 +1,6 @@
-import { themeui } from "@/constants/themeui";
 import { auth } from "@/services/firebase";
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
-import { ResizeMode, Video } from 'expo-av';
+import { ResizeMode, Video } from "expo-av";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { addDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import {
@@ -17,9 +16,9 @@ import {
     Phone,
     Ruler,
     SquareActivity,
-    User
+    User,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -33,9 +32,13 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// ✅ NEW
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
 
 type Student = {
     id: string;
@@ -139,6 +142,7 @@ type FormData = {
     ohsLowBackArch: string;
     ohsArmsFallForward: string;
     note: string;
+
     // Tarih
     assessmentDate: string;
 };
@@ -153,6 +157,10 @@ const STEPS = [
 export default function NewRecordScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
+
+    // ✅ theme
+    const { theme } = useTheme();
+    const styles = useMemo(() => makeStyles(theme), [theme]);
 
     const [student, setStudent] = useState<Student | null>(null);
     const [showTips, setShowTips] = useState(true);
@@ -267,7 +275,6 @@ export default function NewRecordScreen() {
         setStep((prev) => prev - 1);
     };
 
-
     useEffect(() => {
         const fetchStudent = async () => {
             if (!id) return;
@@ -298,20 +305,16 @@ export default function NewRecordScreen() {
         fetchStudent();
     }, [id]);
 
-    // component üstüne bir yere ekle
-    const InfoNote = ({ children }: { children: React.ReactNode }) => (
-        showTips && (
+    const InfoNote = ({ children }: { children: React.ReactNode }) =>
+        showTips ? (
             <View style={{ marginTop: 4 }}>
                 <Text style={styles.infoNoteLabel}>İpucu:</Text>
                 <Text style={styles.infoNoteText}>{children}</Text>
             </View>
-        )
-    );
+        ) : null;
 
     const Strong = ({ children }: { children: React.ReactNode }) => (
-        <Text style={{ fontWeight: "700", color: "#e5e7eb" }}>
-            {children}
-        </Text>
+        <Text style={[styles.strongText]}>{children}</Text>
     );
 
     const HintImageButton = ({
@@ -325,10 +328,7 @@ export default function NewRecordScreen() {
 
         return (
             <>
-                <TouchableOpacity
-                    style={styles.hintButton}
-                    onPress={() => setVisible(true)}
-                >
+                <TouchableOpacity style={styles.hintButton} onPress={() => setVisible(true)}>
                     <Text style={styles.hintButtonText}>{label}</Text>
                 </TouchableOpacity>
 
@@ -361,9 +361,7 @@ export default function NewRecordScreen() {
         );
     };
 
-
-
-    // Yaş hesaplama (doğum tarihinden, sadece yıl farkı)
+    // Yaş hesaplama
     const getAge = () => {
         if (!student?.dateOfBirth) return 0;
         const dob = new Date(student.dateOfBirth);
@@ -371,9 +369,7 @@ export default function NewRecordScreen() {
         const now = new Date();
         let a = now.getFullYear() - dob.getFullYear();
         const m = now.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
-            a--;
-        }
+        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) a--;
         return a;
     };
 
@@ -481,7 +477,11 @@ export default function NewRecordScreen() {
         return "Geçersiz veri";
     };
 
-    const getLeanBodyMassStatus = (leanBodyMass: number, weight: number, gender?: string) => {
+    const getLeanBodyMassStatus = (
+        leanBodyMass: number,
+        weight: number,
+        gender?: string
+    ) => {
         if (!leanBodyMass || !weight || !gender) return "";
         const bodyMassOran = (leanBodyMass / weight) * 100;
 
@@ -567,7 +567,6 @@ export default function NewRecordScreen() {
 
     const getYMCAResult = (pulse: number, age: number, gender?: string) => {
         if (!pulse || !age || !gender) return "";
-        // Özet tablo – web projendeki mantığın kısaltılmış hali
         if (gender === "Erkek") {
             if (age <= 25) {
                 if (pulse <= 79) return "Mükemmel";
@@ -596,10 +595,7 @@ export default function NewRecordScreen() {
         if (!time || time < 0 || !gender) return "";
         if (gender === "Erkek") {
             const vo2 =
-                14.8 -
-                1.379 * time +
-                0.451 * time * time -
-                0.012 * time * time * time;
+                14.8 - 1.379 * time + 0.451 * time * time - 0.012 * time * time * time;
             return vo2.toFixed(2);
         }
         if (gender === "Kadın") {
@@ -662,7 +658,12 @@ export default function NewRecordScreen() {
         return Math.max(...vals);
     };
 
-    const getPushUpScore = (reps: number, age: number, gender?: string, isModified = false) => {
+    const getPushUpScore = (
+        reps: number,
+        age: number,
+        gender?: string,
+        isModified = false
+    ) => {
         if (!reps || reps < 0 || !gender || !age) return "";
 
         if (gender === "Erkek") {
@@ -773,9 +774,7 @@ export default function NewRecordScreen() {
             const bel = Number(formData.bel || 0);
             const kalca = Number(formData.kalca || 0);
 
-            const restHR = Number(
-                formData.dinlenikNabiz || formData.restingHeartRate || 0
-            );
+            const restHR = Number(formData.dinlenikNabiz || formData.restingHeartRate || 0);
             const carvonenZone = Number(formData.carvonenMultiplier || 0);
             const ymcaPulse = Number(formData.toparlanmaNabzi || 0);
             const bruceTime = Number(formData.testSuresi || 0);
@@ -791,8 +790,7 @@ export default function NewRecordScreen() {
             const plankSec = Number(formData.plank || 0);
             const mekikSec = Number(formData.mekik || 0);
 
-            const bruceVo2Str =
-                bruceTime && gender ? getBruceTestVO2(bruceTime, gender) : "";
+            const bruceVo2Str = bruceTime && gender ? getBruceTestVO2(bruceTime, gender) : "";
             const bruceVo2 = bruceVo2Str ? Number(bruceVo2Str) : 0;
 
             const analysis = {
@@ -800,50 +798,31 @@ export default function NewRecordScreen() {
                 bmi,
                 bmiStatus: bmi ? getBMIStatus(bmi) : "",
                 bodyFat,
-                bodyFatStatus: bodyFat
-                    ? getBodyFatStatus(bodyFat, age, gender)
-                    : "",
+                bodyFatStatus: bodyFat ? getBodyFatStatus(bodyFat, age, gender) : "",
                 basalMetabolism: bmr,
-                basalMetabolismStatus: bmr
-                    ? getBasalMetabolismStatus(bmr, gender)
-                    : "",
+                basalMetabolismStatus: bmr ? getBasalMetabolismStatus(bmr, gender) : "",
                 leanBodyMass,
                 leanBodyMassStatus:
                     leanBodyMass && weight
                         ? getLeanBodyMassStatus(leanBodyMass, weight, gender)
                         : "",
                 bodyWaterMass: bodyWater,
-                bodyWaterMassStatus: bodyWater
-                    ? getBodyWaterMassStatus(bodyWater, gender)
-                    : "",
+                bodyWaterMassStatus: bodyWater ? getBodyWaterMassStatus(bodyWater, gender) : "",
                 impedance,
-                impedanceStatus: impedance
-                    ? getImpedanceStatus(impedance, gender)
-                    : "",
+                impedanceStatus: impedance ? getImpedanceStatus(impedance, gender) : "",
                 metabolicAge,
                 metabolicAgeStatus:
-                    metabolicAge && age
-                        ? getMetabolicAgeStatus(metabolicAge, age)
-                        : "",
+                    metabolicAge && age ? getMetabolicAgeStatus(metabolicAge, age) : "",
                 bellyHipRatioStatus:
-                    bel && kalca && gender
-                        ? getBellyHipRatio(bel, kalca, gender)
-                        : "",
+                    bel && kalca && gender ? getBellyHipRatio(bel, kalca, gender) : "",
 
                 carvonenTargetHR:
-                    restHR && carvonenZone && age
-                        ? getCarvonenTargetHR(restHR, carvonenZone, age)
-                        : "",
+                    restHR && carvonenZone && age ? getCarvonenTargetHR(restHR, carvonenZone, age) : "",
                 ymcaStatus:
-                    ymcaPulse && age && gender
-                        ? getYMCAResult(ymcaPulse, age, gender)
-                        : "",
+                    ymcaPulse && age && gender ? getYMCAResult(ymcaPulse, age, gender) : "",
 
                 bruceVO2Max: bruceVo2Str,
-                vo2Status:
-                    bruceVo2 && age && gender
-                        ? getVO2Status(bruceVo2, age, gender)
-                        : "",
+                vo2Status: bruceVo2 && age && gender ? getVO2Status(bruceVo2, age, gender) : "",
 
                 sitAndReachBest: sitBest,
                 sitAndReachStatus:
@@ -853,21 +832,11 @@ export default function NewRecordScreen() {
 
                 pushupStatus:
                     pushupReps && age && gender
-                        ? getPushUpScore(
-                            pushupReps,
-                            age,
-                            gender,
-                            formData.modifiedpushup === "Evet"
-                        )
+                        ? getPushUpScore(pushupReps, age, gender, formData.modifiedpushup === "Evet")
                         : "",
-                wallSitStatus:
-                    wallSitSec && gender
-                        ? getWallSitScore(wallSitSec, gender)
-                        : "",
-                plankStatus:
-                    plankSec && gender ? getPlankScore(plankSec, gender) : "",
-                mekikStatus:
-                    mekikSec && gender ? getMekikScore(mekikSec, gender) : "",
+                wallSitStatus: wallSitSec && gender ? getWallSitScore(wallSitSec, gender) : "",
+                plankStatus: plankSec && gender ? getPlankScore(plankSec, gender) : "",
+                mekikStatus: mekikSec && gender ? getMekikScore(mekikSec, gender) : "",
             };
 
             await addDoc(recordsColRef(auth.currentUser?.uid!), {
@@ -878,7 +847,6 @@ export default function NewRecordScreen() {
             });
 
             Alert.alert("Tamamdır", "Değerlendirme kaydedildi.");
-
             router.back();
         } catch (err) {
             console.error("Kayıt hata:", err);
@@ -892,7 +860,7 @@ export default function NewRecordScreen() {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#60a5fa" />
+                    <ActivityIndicator size="large" color={theme.colors.primary} />
                     <Text style={styles.loadingText}>Öğrenci yükleniyor...</Text>
                 </View>
             </SafeAreaView>
@@ -905,7 +873,7 @@ export default function NewRecordScreen() {
                 <View style={styles.center}>
                     <Text style={styles.errorText}>Öğrenci bulunamadı.</Text>
                     <TouchableOpacity style={styles.backButton} onPress={router.back}>
-                        <ArrowLeft size={18} color="#e5e7eb" />
+                        <ArrowLeft size={18} color={theme.colors.text.primary} />
                         <Text style={styles.backButtonText}>Geri</Text>
                     </TouchableOpacity>
                 </View>
@@ -918,21 +886,36 @@ export default function NewRecordScreen() {
             {STEPS.map((label, index) => {
                 const active = index === step;
                 const done = index < step;
+
                 return (
                     <View key={index} style={styles.stepItem}>
                         <View
                             style={[
                                 styles.stepCircle,
-                                done && { backgroundColor: "#22c55e", borderColor: "#22c55e" },
-                                active && !done && { backgroundColor: "#38bdf8", borderColor: "#38bdf8" },
+                                done && {
+                                    backgroundColor: theme.colors.success,
+                                    borderColor: theme.colors.success,
+                                },
+                                active &&
+                                !done && {
+                                    backgroundColor: theme.colors.accent,
+                                    borderColor: theme.colors.accent,
+                                },
                             ]}
                         >
-                            <Text style={styles.stepCircleText}>{index + 1}</Text>
+                            <Text
+                                style={[
+                                    styles.stepCircleText,
+                                    (done || active) && { color: "#0f172a" },
+                                ]}
+                            >
+                                {index + 1}
+                            </Text>
                         </View>
                         <Text
                             style={[
                                 styles.stepLabel,
-                                (active || done) && { color: "#e5e7eb" },
+                                (active || done) && { color: theme.colors.text.primary },
                             ]}
                         >
                             {label}
@@ -950,16 +933,19 @@ export default function NewRecordScreen() {
         hint?: boolean
     ) => (
         <View style={styles.field}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4 }}>
+            <View style={styles.labelRow}>
                 <Text style={styles.label}>{label}</Text>
-                {(hint && showTips && <HintImageButton
-                    label="İpucu için tıklayın"
-                    videoSource={require("@/assets/videos/belOlcum.mp4")}
-                />)}
+                {hint && showTips ? (
+                    <HintImageButton
+                        label="İpucu için tıklayın"
+                        videoSource={require("@/assets/videos/belOlcum.mp4")}
+                    />
+                ) : null}
             </View>
+
             <TextInput
                 placeholder={placeholder}
-                placeholderTextColor="#64748b"
+                placeholderTextColor={theme.colors.text.muted}
                 value={formData[field] as string}
                 onChangeText={(t) => handleChange(field, t)}
                 style={styles.input}
@@ -968,16 +954,12 @@ export default function NewRecordScreen() {
         </View>
     );
 
-    const renderTextArea = (
-        field: keyof FormData,
-        label: string,
-        placeholder?: string
-    ) => (
+    const renderTextArea = (field: keyof FormData, label: string, placeholder?: string) => (
         <View style={styles.field}>
             <Text style={styles.label}>{label}</Text>
             <TextInput
                 placeholder={placeholder}
-                placeholderTextColor="#64748b"
+                placeholderTextColor={theme.colors.text.muted}
                 value={formData[field] as string}
                 onChangeText={(t) => handleChange(field, t)}
                 style={[styles.input, styles.inputMultiline]}
@@ -986,11 +968,7 @@ export default function NewRecordScreen() {
         </View>
     );
 
-    const renderRadioRow = (
-        field: keyof FormData,
-        label: string,
-        options: string[]
-    ) => (
+    const renderRadioRow = (field: keyof FormData, label: string, options: string[]) => (
         <View style={styles.field}>
             <Text style={styles.label}>{label}</Text>
             <View style={styles.radioRow}>
@@ -1001,7 +979,10 @@ export default function NewRecordScreen() {
                             key={opt}
                             style={[
                                 styles.radioPill,
-                                selected && { backgroundColor: "#38bdf8", borderColor: "#38bdf8" },
+                                selected && {
+                                    backgroundColor: theme.colors.accent,
+                                    borderColor: theme.colors.accent,
+                                },
                             ]}
                             onPress={() => handleChange(field, opt)}
                         >
@@ -1020,20 +1001,17 @@ export default function NewRecordScreen() {
         </View>
     );
 
-    const renderCheckboxRow = (
-        field: keyof FormData,
-        label: string
-    ) => {
+    const renderCheckboxRow = (field: keyof FormData, label: string) => {
         const value = formData[field] as boolean;
         return (
-            <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => handleChange(field, !value)}
-            >
+            <TouchableOpacity style={styles.checkboxRow} onPress={() => handleChange(field, !value)}>
                 <View
                     style={[
                         styles.checkboxBox,
-                        value && { backgroundColor: "#38bdf8", borderColor: "#38bdf8" },
+                        value && {
+                            backgroundColor: theme.colors.accent,
+                            borderColor: theme.colors.accent,
+                        },
                     ]}
                 >
                     {value && <Text style={styles.checkboxBoxText}>✓</Text>}
@@ -1048,55 +1026,51 @@ export default function NewRecordScreen() {
             case 0:
                 return (
                     <>
-                        {/* FİZİKSEL ÖLÇÜMLER */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
-                                <HandHeart size={18} color="#38bdf8" />
+                                <HandHeart size={18} color={theme.colors.accent} />
                                 <Text style={styles.cardTitle}>Fiziksel Ölçümler (Tanita)</Text>
                             </View>
-                            <InfoNote>
-                                Bu bölümde yer alan tüm değerler Tanita vücut analiz cihazından alınan
-                                objektif ölçümlerdir. Ölçümün doğru olması için danışanın aç karnına,
-                                benzer saatlerde ve mümkünse aynı koşullarda ölçülmesi önerilir.
-                                Değerler zaman içindeki değişimle birlikte değerlendirilmelidir.
-                            </InfoNote>
-                            {renderNumericInput("weight", "Kilo (kg)")}
 
+                            <InfoNote>
+                                Bu bölümde yer alan tüm değerler Tanita vücut analiz cihazından alınan objektif
+                                ölçümlerdir. Ölçümün doğru olması için danışanın aç karnına, benzer saatlerde ve
+                                mümkünse aynı koşullarda ölçülmesi önerilir. Değerler zaman içindeki değişimle
+                                birlikte değerlendirilmelidir.
+                            </InfoNote>
+
+                            {renderNumericInput("weight", "Kilo (kg)")}
                             {renderNumericInput("bodyMassIndex", "Vücut Kitle İndeksi (VKİ)")}
                             <InfoNote>
-                                Bu değer doğrudan Tanita cihazında görünen BMI/VKİ değeridir.
-                                Manuel hesaplama yapmanıza gerek yoktur.
+                                Bu değer doğrudan Tanita cihazında görünen BMI/VKİ değeridir. Manuel hesaplama
+                                yapmanıza gerek yoktur.
                             </InfoNote>
-                            {formData.bodyMassIndex && (
+                            {formData.bodyMassIndex ? (
                                 <Text style={styles.infoText}>
-                                    Durum:{" "}
-                                    {getBMIStatus(Number(formData.bodyMassIndex || 0))}
+                                    Durum: {getBMIStatus(Number(formData.bodyMassIndex || 0))}
                                 </Text>
-                            )}
+                            ) : null}
 
                             {renderNumericInput("basalMetabolism", "Bazal Metabolizma Hızı")}
-                            {formData.basalMetabolism && (
+                            {formData.basalMetabolism ? (
                                 <Text style={styles.infoText}>
                                     Durum:{" "}
                                     {getBasalMetabolismStatus(Number(formData.basalMetabolism || 0), student?.gender)}
                                 </Text>
-                            )}
+                            ) : null}
 
                             {renderNumericInput("bodyFat", "Vücut Yağ Oranı (%)")}
-                            {formData.bodyFat && (
+                            {formData.bodyFat ? (
                                 <Text style={styles.infoText}>
                                     Durum:{" "}
-                                    {getBodyFatStatus(
-                                        Number(formData.bodyFat || 0),
-                                        getAge(),
-                                        student?.gender
-                                    )}
-                                </Text>)}
+                                    {getBodyFatStatus(Number(formData.bodyFat || 0), getAge(), student?.gender)}
+                                </Text>
+                            ) : null}
 
                             {renderNumericInput("totalMuscleMass", "Toplam Kas Kütlesi (kg)")}
 
                             {renderNumericInput("leanBodyMass", "Yağsız Kütle (kg)")}
-                            {formData.leanBodyMass && (
+                            {formData.leanBodyMass ? (
                                 <Text style={styles.infoText}>
                                     Durum:{" "}
                                     {getLeanBodyMassStatus(
@@ -1104,43 +1078,39 @@ export default function NewRecordScreen() {
                                         Number(formData.weight || 0),
                                         student?.gender
                                     )}
-                                </Text>)}
+                                </Text>
+                            ) : null}
 
                             {renderNumericInput("bodyWaterMass", "Vücut Sıvı Oranı (%)")}
-                            {formData.bodyWaterMass && (
+                            {formData.bodyWaterMass ? (
                                 <Text style={styles.infoText}>
                                     Durum:{" "}
-                                    {getBodyWaterMassStatus(
-                                        Number(formData.bodyWaterMass || 0),
-                                        student?.gender
-                                    )}
-                                </Text>)}
+                                    {getBodyWaterMassStatus(Number(formData.bodyWaterMass || 0), student?.gender)}
+                                </Text>
+                            ) : null}
 
                             {renderNumericInput("impedance", "Empedans (Ω - Ohm)")}
-                            {formData.impedance && (
+                            {formData.impedance ? (
                                 <Text style={styles.infoText}>
-                                    Durum:{" "}
-                                    {getImpedanceStatus(Number(formData.impedance || 0), student?.gender)}
-                                </Text>)}
+                                    Durum: {getImpedanceStatus(Number(formData.impedance || 0), student?.gender)}
+                                </Text>
+                            ) : null}
 
                             {renderNumericInput("metabolicAge", "Metabolik Yaş")}
-                            {formData.metabolicAge && (
+                            {formData.metabolicAge ? (
                                 <Text style={styles.infoText}>
                                     Durum:{" "}
-                                    {getMetabolicAgeStatus(
-                                        Number(formData.metabolicAge || 0),
-                                        getAge()
-                                    )}
+                                    {getMetabolicAgeStatus(Number(formData.metabolicAge || 0), getAge())}
                                 </Text>
-                            )}
+                            ) : null}
                         </View>
 
-                        {/* ÇEVRE ÖLÇÜMLERİ */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
-                                <Ruler size={18} color="#22c55e" />
+                                <Ruler size={18} color={theme.colors.success} />
                                 <Text style={styles.cardTitle}>Çevre Ölçümleri (Mezura)</Text>
                             </View>
+
                             {renderNumericInput("boyun", "Boyun", "Boyun Çevresi", true)}
                             {renderNumericInput("omuz", "Omuz", "Omuz Genişliği", true)}
                             {renderNumericInput("gogus", "Göğüs", "Göğüs Çevresi", true)}
@@ -1148,7 +1118,8 @@ export default function NewRecordScreen() {
                             {renderNumericInput("solKol", "Sol Kol", "Kol Çevresi", true)}
                             {renderNumericInput("bel", "Bel", "Bel Çevresi", true)}
                             {renderNumericInput("kalca", "Kalça", "Kalça Çevresi", true)}
-                            {formData.bel && formData.kalca && (
+
+                            {formData.bel && formData.kalca ? (
                                 <Text style={styles.infoText}>
                                     Bel/Kalça:{" "}
                                     {getBellyHipRatio(
@@ -1156,7 +1127,8 @@ export default function NewRecordScreen() {
                                         Number(formData.kalca || 0),
                                         student?.gender
                                     )}
-                                </Text>)}
+                                </Text>
+                            ) : null}
 
                             {renderNumericInput("sagBacak", "Sağ Bacak", "Bacak Çevresi", true)}
                             {renderNumericInput("solBacak", "Sol Bacak", "Bacak Çevresi", true)}
@@ -1166,43 +1138,41 @@ export default function NewRecordScreen() {
                         </View>
                     </>
                 );
+
             case 1:
                 return (
                     <>
-                        {/* AEROBİK UYGUNLUK */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
-                                <SquareActivity size={18} color="#f97316" />
+                                <SquareActivity size={18} color={theme.colors.warning} />
                                 <Text style={styles.cardTitle}>Aerobik Uygunluk / Hedef KAH</Text>
                             </View>
 
-                            {/* Dinlenik nabız */}
                             <InfoNote>
-                                Dinlenik nabız sabah uyanır uyanmaz, yataktan kalkmadan ölçülmelidir.
-                                Düzenli egzersiz yapan bireylerde zamanla düşmesi beklenir ve
-                                kardiyovasküler uygunluğun önemli bir göstergesidir.
+                                Dinlenik nabız sabah uyanır uyanmaz, yataktan kalkmadan ölçülmelidir. Düzenli
+                                egzersiz yapan bireylerde zamanla düşmesi beklenir ve kardiyovasküler uygunluğun
+                                önemli bir göstergesidir.
                             </InfoNote>
                             {renderNumericInput("dinlenikNabiz", "Dinlenik Nabız")}
 
-                            {/* Carvonen zone */}
                             <InfoNote>
-                                Carvonen yöntemi, dinlenik nabız ve yaşa göre hedef egzersiz nabzını
-                                hesaplamak için kullanılır. Seçilen zone, egzersizin şiddetini belirler
-                                (yağ yakımı, dayanıklılık, performans gibi).
+                                Carvonen yöntemi, dinlenik nabız ve yaşa göre hedef egzersiz nabzını hesaplamak
+                                için kullanılır. Seçilen zone, egzersizin şiddetini belirler (yağ yakımı,
+                                dayanıklılık, performans gibi).
                             </InfoNote>
-                            {renderRadioRow(
-                                "carvonenMultiplier",
-                                "Carvonen Egzersiz Şiddeti (Zone)",
-                                ["0.55", "0.65", "0.75", "0.85", "0.95"]
-                            )}
+                            {renderRadioRow("carvonenMultiplier", "Carvonen Egzersiz Şiddeti (Zone)", [
+                                "0.55",
+                                "0.65",
+                                "0.75",
+                                "0.85",
+                                "0.95",
+                            ])}
 
-                            {/* Hedef nabız sonucu */}
-                            {formData.carvonenMultiplier && (
+                            {formData.carvonenMultiplier ? (
                                 <>
                                     <InfoNote>
-                                        Hesaplanan hedef nabız, egzersiz sırasında ulaşılması önerilen kalp atım
-                                        sayısını ifade eder. Egzersiz boyunca bu aralıkta kalmak, antrenmanın
-                                        amacına uygun ilerlemesini sağlar.
+                                        Hesaplanan hedef nabız, egzersiz sırasında ulaşılması önerilen kalp atım sayısını
+                                        ifade eder.
                                     </InfoNote>
                                     <Text style={styles.infoText}>
                                         Hedef Nabız:{" "}
@@ -1213,74 +1183,43 @@ export default function NewRecordScreen() {
                                         )}
                                     </Text>
                                 </>
-                            )}
+                            ) : null}
 
-                            {/* YMCA toparlanma nabzı */}
                             <InfoNote>
-                                YMCA 3 dk basamak testi sonrası ölçülen toparlanma nabzı, bireyin aerobik
-                                kapasitesi ve kalbin egzersiz sonrası normale dönme hızını değerlendirmek
-                                için kullanılır.
+                                YMCA 3 dk basamak testi sonrası ölçülen toparlanma nabzı, bireyin aerobik kapasitesi
+                                ve kalbin egzersiz sonrası normale dönme hızını değerlendirmek için kullanılır.
                                 {"\n"}
-                                <Strong>Basamak bir:</Strong> Kişinin 3 dakika boyunca dakikada 24 basamaklık tempoyla 30 cm bir basamağa çıkıp inmesini sağlayınız.
-                                {"\n"}
-                                <Strong>Basamak iki:</Strong> Egzersizin tamamlanmasından 5 saniye sonra kişinin nabzı dinginken 60 saniye boyunca sayılır ve bu toparlanma nabzı olarak kaydedilir.
-                                {"\n"}
-                                <Strong>Basamak üç:</Strong> toparlanma nabzı, su kategorilerden birine konur.
-                                {"\n"}
-                                <Strong>Basamak dört:</Strong> Uygun kategoriyi kullanarak uygun başlangıç programını tespit edin.
-                                {"\n"}
+                                <Strong>Basamak bir:</Strong> 3 dakika boyunca dakikada 24 basamaklık tempoyla 30 cm
+                                basamağa çık-in.{"\n"}
+                                <Strong>Basamak iki:</Strong> Egzersizden 5 sn sonra 60 sn nabız say.{"\n"}
+                                <Strong>Basamak üç:</Strong> Kategoriye yerleştir.{"\n"}
+                                <Strong>Basamak dört:</Strong> Başlangıç programını seç.{"\n"}
                                 <Strong>Basamak beş:</Strong> Max VO2 bulunur.
                             </InfoNote>
-                            {renderNumericInput(
-                                "toparlanmaNabzi",
-                                "YMCA 3 dk Basamak Testi – Toparlanma Nabzı"
-                            )}
+                            {renderNumericInput("toparlanmaNabzi", "YMCA 3 dk Basamak Testi – Toparlanma Nabzı")}
 
-                            {/* YMCA sonucu */}
-                            {formData.toparlanmaNabzi && (
+                            {formData.toparlanmaNabzi ? (
                                 <>
                                     <InfoNote>
-                                        YMCA testi sonucu, yaş ve cinsiyete göre aerobik uygunluk düzeyini
-                                        gösterir. Daha düşük toparlanma nabzı, daha iyi kardiyovasküler
-                                        kondisyonu ifade eder.
+                                        Daha düşük toparlanma nabzı, daha iyi kardiyovasküler kondisyonu ifade eder.
                                     </InfoNote>
                                     <Text style={styles.infoText}>
                                         YMCA Sonuç:{" "}
-                                        {getYMCAResult(
-                                            Number(formData.toparlanmaNabzi || 0),
-                                            getAge(),
-                                            student?.gender
-                                        )}
+                                        {getYMCAResult(Number(formData.toparlanmaNabzi || 0), getAge(), student?.gender)}
                                     </Text>
                                 </>
-                            )}
+                            ) : null}
 
-                            {/* Bruce testi */}
                             <View style={[styles.field, { marginTop: 16 }]}>
                                 <Text style={styles.label}>Bruce Testi - Süre (dk)</Text>
 
                                 <InfoNote>
-                                    Bruce testi maksimal bir egzersiz testidir. Koşu bandında her 3 dakikada
-                                    bir hız ve eğim artırılır. Bireyin dayanabildiği toplam süre kaydedilir.
-                                    {"\n"}
-                                    {"\n"}
-                                    <Strong>Ölçülen Özellik:</Strong> Aerobik dayanıklılık ve maksimal oksijen kapasitesi
-                                    {"\n"}
-                                    <Strong>Test Malzemeleri:</Strong> Koşu bandı, kronometre, polar saat ve bir yardımcı
-                                    {"\n"}
-                                    <Strong>Test Protokolü:</Strong>
-                                    Sporcu veya üye koşu bandında hafif tempo ile 5 - 10 dakika ısınır.
-                                    Asistan 2.74 km / saat hız ve % 10 eğim olacak şekilde koşu bandını kurar.
-                                    Asistanın komutu ile test ve süre başlatılır.
-                                    Asistan test protokolünde belirtilen sürelerde (her 3 dakikada bir) hız ve eğimi artırır.
-                                    Sporcu veya üyenin teste devam edemediği durumda süre durdurulur ve kaydedilir.
-                                    Test sonunda maksimal kalp atım hızı da kaydedilir.
-                                    {"\n"}
-                                    {"\n"}
+                                    Bruce testi maksimal bir egzersiz testidir. Koşu bandında her 3 dakikada bir hız
+                                    ve eğim artırılır. Dayanabildiği toplam süre kaydedilir.
                                 </InfoNote>
-                                {showTips && (
+
+                                {showTips ? (
                                     <View style={styles.table}>
-                                        {/* Header */}
                                         <View style={[styles.tr, styles.thRow]}>
                                             <Text style={[styles.th, { flex: 1.1 }]}>Aşama</Text>
                                             <Text style={[styles.th, { flex: 1.2 }]}>Süre (dk)</Text>
@@ -1288,7 +1227,6 @@ export default function NewRecordScreen() {
                                             <Text style={[styles.th, { flex: 1.2 }]}>Eğim</Text>
                                         </View>
 
-                                        {/* Rows */}
                                         {[
                                             { stage: 1, min: 0, speed: "2.74", grade: "10%" },
                                             { stage: 2, min: 3, speed: "4.02", grade: "12%" },
@@ -1309,152 +1247,125 @@ export default function NewRecordScreen() {
                                             </View>
                                         ))}
                                     </View>
-                                )}
-                                <InfoNote>
-                                    Not: Koşu bandı “km/sa” ayarında olmalı; eğim % olarak girilir.
-                                    {"\n"}
-                                </InfoNote>
+                                ) : null}
+
+                                <InfoNote>Not: Koşu bandı “km/sa” ayarında olmalı; eğim % olarak girilir.</InfoNote>
 
                                 <TextInput
                                     placeholder="Test süresi (dk)"
-                                    placeholderTextColor="#64748b"
+                                    placeholderTextColor={theme.colors.text.muted}
                                     value={formData.testSuresi}
                                     onChangeText={(t) => handleChange("testSuresi", t)}
                                     style={styles.input}
                                     keyboardType="numeric"
                                 />
+
                                 <Text style={styles.helpText}>
                                     Bruce testi protokolü: Koşu bandında her 3 dakikada bir hız ve eğim artar,
                                     dayanabildiği son süre kaydedilir.
                                 </Text>
-                                {formData.testSuresi && (
+
+                                {formData.testSuresi ? (
                                     <>
                                         <InfoNote>
-                                            VO₂max, vücudun maksimal oksijen kullanma kapasitesini ifade eder ve
-                                            aerobik dayanıklılığın en önemli göstergelerinden biridir. Değer yaş
-                                            ve cinsiyete göre değerlendirilmelidir.
+                                            VO₂max, vücudun maksimal oksijen kullanma kapasitesini ifade eder.
                                         </InfoNote>
 
                                         <Text style={styles.infoText}>
                                             VO₂max:{" "}
-                                            {getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender)}{" "}
-                                            ml/kg/dk —{" "}
+                                            {getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender)} ml/kg/dk —{" "}
                                             {getVO2Status(
-                                                Number(
-                                                    getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender) ||
-                                                    0
-                                                ),
+                                                Number(getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender) || 0),
                                                 getAge(),
                                                 student?.gender
                                             )}
                                         </Text>
                                     </>
-                                )}
+                                ) : null}
                             </View>
                         </View>
                     </>
                 );
+
             case 2:
                 return (
                     <>
-                        {/* HAREKET & ESNEKLİK */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
-                                <PersonStanding size={18} color="#a855f7" />
+                                <PersonStanding size={18} color={theme.colors.premium} />
                                 <Text style={styles.cardTitle}>Statik Postür Analizi</Text>
                             </View>
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Amaç:</Strong> Postür analizi ile kişinin duruşu değerlendirilir; duruş bozuklukları,
-                                    kas dengesizlikleri ve postüral riskler tespit edilir.{"\n\n"}
-                                    <Strong>Uygulama:</Strong> Önden–yandan–arkadan gözlem yap. Baş-boyun, omuz kuşağı,
-                                    omurga, pelvis/kalça ve diz-ayak hizalanmasını not al.{"\n\n"}
-                                    <Strong>İpucu:</Strong> Değerlendirme sırasında mümkünse çıplak ayak ve nötr duruş (rahat,
-                                    doğal duruş) tercih et.
+                                    <Strong>Amaç:</Strong> Postür analizi ile kişinin duruşu değerlendirilir.{"\n\n"}
+                                    <Strong>Uygulama:</Strong> Önden–yandan–arkadan gözlem yap.{"\n\n"}
+                                    <Strong>İpucu:</Strong> Çıplak ayak, nötr duruş.
                                 </Text>
                             </InfoNote>
 
-                            {/* Ayak & Ayak Bileği */}
                             <InfoNote>
                                 <Text>
-                                    <Strong>Ayak & Ayak Bileği:</Strong> Aşırı pronasyon/supinasyon, ayak kavsi çökmesi,
-                                    topuk valgus/varus ve ayak parmaklarının dışa/içe yönelimi gibi kompansasyonları takip et.
+                                    <Strong>Ayak & Ayak Bileği:</Strong> Aşırı pronasyon/supinasyon vb.
                                 </Text>
                             </InfoNote>
                             {renderTextArea("ayakveayakbilegionden", "Ayak & Ayak Bileği (Önden)")}
                             {renderTextArea("ayakveayakbilegiyandan", "Ayak & Ayak Bileği (Yandan)")}
                             {renderTextArea("ayakveayakbilegiarkadan", "Ayak & Ayak Bileği (Arkadan)")}
 
-                            {/* Diz */}
                             <InfoNote>
                                 <Text>
-                                    <Strong>Diz:</Strong> Dizlerin içe kaçması (valgus), dışa açılması (varus), patella hizası ve
-                                    diz-ayak bileği hattını kontrol et. Yandan bakışta dizin kilitlenmesi/hiperekstansiyon da not edilir.
+                                    <Strong>Diz:</Strong> Valgus/varus vb.
                                 </Text>
                             </InfoNote>
                             {renderTextArea("dizonden", "Diz (Önden)")}
                             {renderTextArea("dizyandan", "Diz (Yandan)")}
                             {renderTextArea("dizarkadan", "Diz (Arkadan)")}
 
-                            {/* LPHK */}
                             <InfoNote>
                                 <Text>
-                                    <Strong>Lumbo-Pelvic-Hip Kompleksi (LPHK):</Strong> Pelvis tilt (anterior/posterior),
-                                    bel lordozu artışı/azalışı, kalça rotasyonları ve kalça düşmesi (Trendelenburg) gibi bulgulara bak.
+                                    <Strong>LPHK:</Strong> Pelvis tilt/lordoz vb.
                                 </Text>
                             </InfoNote>
                             {renderTextArea("lphkonden", "Lumbo-Pelvic-Hip Kompleksi (Önden)")}
                             {renderTextArea("lphkyandan", "Lumbo-Pelvic-Hip Kompleksi (Yandan)")}
                             {renderTextArea("lphkarkadan", "Lumbo-Pelvic-Hip Kompleksi (Arkadan)")}
 
-                            {/* Omuzlar */}
                             <InfoNote>
                                 <Text>
-                                    <Strong>Omuzlar:</Strong> Omuz elevasyonu/depresyonu, skapula kanatlanması, omuzların öne
-                                    düşmesi ve sağ-sol asimetriyi değerlendir. Boyun-omuz hattındaki gerginlik işaretlerini not al.
+                                    <Strong>Omuzlar:</Strong> Skapula/öne düşme vb.
                                 </Text>
                             </InfoNote>
                             {renderTextArea("omuzlaronden", "Omuzlar (Önden)")}
                             {renderTextArea("omuzlaryandan", "Omuzlar (Yandan)")}
                             {renderTextArea("omuzlararkadan", "Omuzlar (Arkadan)")}
 
-                            {/* Baş & Boyun */}
                             <InfoNote>
                                 <Text>
-                                    <Strong>Baş & Boyun:</Strong> Başın öne taşınması (forward head), çene pozisyonu, servikal
-                                    lordoz artışı/azalışı ve sağ-sol baş eğimi (tilt) gibi sapmaları kontrol et.
+                                    <Strong>Baş & Boyun:</Strong> Forward head vb.
                                 </Text>
                             </InfoNote>
                             {renderTextArea("basboyunonden", "Baş & Boyun Omurları (Önden)")}
                             {renderTextArea("basboyunyandan", "Baş & Boyun Omurları (Yandan)")}
                             {renderTextArea("basboyunarkadan", "Baş & Boyun Omurları (Arkadan)")}
 
-                            {/* Sendrom seçimleri */}
                             <InfoNote>
                                 <Text>
-                                    <Strong>Hızlı Tarama:</Strong> Aşağıdaki 3 başlık, gözlenen kompansasyon paternlerini hızlı
-                                    sınıflandırmak içindir. Emin değilsen “Hayır” seçebilir veya not alanına açıklama ekleyebilirsin.
-                                </Text>
-                            </InfoNote>
-
-                            <InfoNote>
-                                <Text>
-                                    <Strong>Pronation Distortion Syndrome:</Strong> Ayak kavsi çökmesi, topuğun içe kaçması ve dizlerin içe yönelimi eşlik edebilir.
+                                    <Strong>Pronation Distortion Syndrome:</Strong> vb.
                                 </Text>
                             </InfoNote>
                             {renderRadioRow("pronation", "Pronation Distortion Syndrome", ["Evet", "Hayır"])}
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Lower Crossed Syndrome:</Strong> Pelvisin öne tilt’i, bel lordozu artışı ve kalça fleksörleri/ bel ekstansörlerinde gerginlik bulguları görülebilir.
+                                    <Strong>Lower Crossed Syndrome:</Strong> vb.
                                 </Text>
                             </InfoNote>
                             {renderRadioRow("lower", "Lower Crossed Syndrome", ["Evet", "Hayır"])}
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Upper Crossed Syndrome:</Strong> Başın öne gelmesi, omuzların öne yuvarlanması ve üst trapez/ göğüs bölgesi gerginliği ile ilişkilidir.
+                                    <Strong>Upper Crossed Syndrome:</Strong> vb.
                                 </Text>
                             </InfoNote>
                             {renderRadioRow("upper", "Upper Crossed Syndrome", ["Evet", "Hayır"])}
@@ -1462,23 +1373,18 @@ export default function NewRecordScreen() {
                             {renderTextArea("posturNotes", "Genel Not / Gözlem", "")}
                         </View>
 
-                        {/* OVERHEAD SQUAT */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
-                                <HeartPulse size={18} color="#38bdf8" />
+                                <HeartPulse size={18} color={theme.colors.accent} />
                                 <Text style={styles.cardTitle}>Overhead Squat Testi</Text>
                             </View>
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Amaç:</Strong> Squat sırasında ayak–diz–kalça–gövde–omuz hizalanmasını ve
-                                    kompansasyonları gözlemek.{"\n\n"}
-                                    <Strong>Uygulama:</Strong> Kollar yukarıda, ayaklar kalça genişliğinde. 5 tekrar uygulat;
-                                    önden ve yandan izle. Kompansasyonları aşağıya not et.
+                                    <Strong>Amaç:</Strong> Kompansasyonları gözlemek.
                                 </Text>
                             </InfoNote>
 
-                            {/* Ağrı / ameliyat */}
                             <View style={styles.switchRow}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.label}>Ağrı var mı?</Text>
@@ -1488,20 +1394,11 @@ export default function NewRecordScreen() {
                                     value={formData.hasPain}
                                     onValueChange={(v) => handleChange("hasPain", v)}
                                     trackColor={{
-                                        false: themeui.colors.surfaceSoft,
-                                        true: themeui.colors.primary,
+                                        false: theme.colors.surfaceSoft,
+                                        true: theme.colors.primary,
                                     }}
                                 />
                             </View>
-
-                            {formData.hasPain && (
-                                <InfoNote>
-                                    <Text>
-                                        <Strong>Dikkat:</Strong> Ağrı varsa test zorlanmadan yapılmalı; ağrı artarsa test sonlandırılır.
-                                        Klinik şüphede sağlık profesyoneline yönlendirme yapılır.
-                                    </Text>
-                                </InfoNote>
-                            )}
 
                             <View style={styles.switchRow}>
                                 <View style={{ flex: 1 }}>
@@ -1512,27 +1409,11 @@ export default function NewRecordScreen() {
                                     value={formData.hadSurgery}
                                     onValueChange={(v) => handleChange("hadSurgery", v)}
                                     trackColor={{
-                                        false: themeui.colors.surfaceSoft,
-                                        true: themeui.colors.primary,
+                                        false: theme.colors.surfaceSoft,
+                                        true: theme.colors.primary,
                                     }}
                                 />
                             </View>
-
-                            {formData.hadSurgery && (
-                                <InfoNote>
-                                    <Text>
-                                        <Strong>Not:</Strong> Ameliyat geçmişi olan bireylerde hareket açıklığı ve ağrı takibi kritik.
-                                        Test modifiye edilebilir veya skip edilebilir.
-                                    </Text>
-                                </InfoNote>
-                            )}
-
-                            <InfoNote>
-                                <Text>
-                                    <Strong>Sık görülen kompansasyonlar:</Strong> Ayaklar dışa açılır, dizler içe kaçar, bel
-                                    aşırı kavislenir/yuvarlanır, gövde öne düşer, kollar öne düşer. Gözlediğini aşağıya yaz.
-                                </Text>
-                            </InfoNote>
 
                             {renderTextArea("ohsNotes", "Overhead Squat Notları (Gözlemler)", "")}
                             {renderRadioRow("ohsFeetTurnOut", "Ayaklar dışa döner mi?", ["Evet", "Hayır"])}
@@ -1542,17 +1423,15 @@ export default function NewRecordScreen() {
                             {renderRadioRow("ohsArmsFallForward", "Kollar öne düşer mi?", ["Evet", "Hayır"])}
                         </View>
 
-                        {/* SIT AND REACH */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
-                                <HeartPulse size={18} color="#22c55e" />
+                                <HeartPulse size={18} color={theme.colors.success} />
                                 <Text style={styles.cardTitle}>Sit and Reach Testi</Text>
                             </View>
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Uygulama:</Strong> 3 deneme yapılır; en iyi değer alınır. Dizler bükülmeden, kontrollü
-                                    şekilde öne uzanılır. Ölçümleri <Strong>cm</Strong> cinsinden gir.
+                                    <Strong>Uygulama:</Strong> 3 deneme; en iyi değer alınır (cm).
                                 </Text>
                             </InfoNote>
 
@@ -1560,36 +1439,28 @@ export default function NewRecordScreen() {
                             {renderNumericInput("sitandreach2", "2. Ölçüm (cm)")}
                             {renderNumericInput("sitandreach3", "3. Ölçüm (cm)")}
 
-                            {formData.sitandreach1 && formData.sitandreach2 && formData.sitandreach3 && (
-                                <InfoNote>
-                                    <Text>
-                                        <Strong>Sonuç:</Strong> En iyi değeri baz alıyoruz. Değer yükseldikçe hamstring ve bel/kalça
-                                        çevresi esnekliği genelde daha iyidir.
-                                    </Text>
-                                </InfoNote>
-                            )}
-
-                            {formData.sitandreach1 && formData.sitandreach2 && formData.sitandreach3 && (
+                            {formData.sitandreach1 && formData.sitandreach2 && formData.sitandreach3 ? (
                                 <Text style={styles.infoText}>
-                                    En İyi Değer:{" "}
-                                    {getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3)} | Durum:{" "}
-                                    {getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3) !== null &&
-                                        getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3) !== undefined &&
+                                    En İyi Değer: {getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3)} | Durum:{" "}
+                                    {getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3) != null &&
                                         student?.gender
                                         ? getSitAndReachStatus(
                                             Number(
-                                                getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3) || 0
+                                                getMaxOfThree(
+                                                    formData.sitandreach1,
+                                                    formData.sitandreach2,
+                                                    formData.sitandreach3
+                                                ) || 0
                                             ),
                                             student.gender
                                         )
                                         : ""}
                                 </Text>
-                            )}
+                            ) : null}
 
                             {renderTextArea("sitandreachnotes", "Hangi bölgelerde gerginlik hissedildi?", "")}
                         </View>
                     </>
-
                 );
             case 3:
                 return (
@@ -1597,8 +1468,8 @@ export default function NewRecordScreen() {
                         {/* KUVVET TESTLERİ */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
-                                <BicepsFlexed size={18} color="#f97316" />
-                                <Text style={styles.cardTitle}>Kuvvet Testleri</Text>
+                                <BicepsFlexed size={18} color={theme.colors.warning} />
+                                <Text style={[styles.cardTitle, { color: theme.colors.warning }]}>Kuvvet Testleri</Text>
                             </View>
 
                             {renderNumericInput("pushup", "1 dk'da yapılan push up sayısı")}
@@ -1789,424 +1660,446 @@ export default function NewRecordScreen() {
 }
 
 /* ------------------- STYLES ------------------- */
-const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: themeui.colors.background,
-    },
-    container: {
-        flex: 1,
-        backgroundColor: themeui.colors.background,
-    },
-    center: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: themeui.spacing.lg,
-    },
-    loadingText: {
-        color: themeui.colors.text.secondary,
-        marginTop: themeui.spacing.xs + 4,
-    },
-    errorText: {
-        color: themeui.colors.danger,
-        marginBottom: themeui.spacing.xs + 4,
-    },
+// ✅ put this near bottom (instead of const styles = StyleSheet.create)
+const makeStyles = (theme: ThemeUI) =>
+    StyleSheet.create({
+        safeArea: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        container: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        center: {
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: theme.spacing.lg,
+        },
+        loadingText: {
+            color: theme.colors.text.secondary,
+            marginTop: theme.spacing.xs + 4,
+        },
+        errorText: {
+            color: theme.colors.danger,
+            marginBottom: theme.spacing.xs + 4,
+        },
 
-    header: {
-        paddingHorizontal: themeui.spacing.md,
-        paddingTop: themeui.spacing.sm + 4,
-        paddingBottom: themeui.spacing.xs,
-    },
-    headerTopRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: themeui.spacing.md - 2,
-    },
-    backButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.sm,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-        backgroundColor: themeui.colors.surface,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-    },
-    backButtonText: {
-        color: themeui.colors.text.primary,
-        fontSize: themeui.fontSize.sm,
-    },
-    dateRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs,
-    },
-    dateText: {
-        color: themeui.colors.text.secondary,
-        fontSize: themeui.fontSize.xs,
-    },
+        header: {
+            paddingHorizontal: theme.spacing.md,
+            paddingTop: theme.spacing.sm + 4,
+            paddingBottom: theme.spacing.xs,
+        },
+        headerTopRow: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: theme.spacing.md - 2,
+        },
+        backButton: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: theme.spacing.xs,
+            paddingHorizontal: theme.spacing.sm,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        backButtonText: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.sm,
+        },
+        dateRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: theme.spacing.xs,
+        },
+        dateText: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.xs,
+        },
 
-    studentRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.md,
-        marginTop: themeui.spacing.md,
-        marginBottom: themeui.spacing.md,
-        paddingLeft: themeui.spacing.xl
-    },
-    avatar: {
-        width: 52,
-        height: 52,
-        borderRadius: themeui.radius.pill,
-        backgroundColor: themeui.colors.primary,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    avatarText: {
-        color: themeui.colors.surface,
-        fontSize: 20,
-        fontWeight: "700",
-    },
-    studentName: {
-        color: themeui.colors.text.accent,
-        fontSize: themeui.fontSize.lg + 2,
-        fontWeight: "700",
-    },
-    studentMetaRow: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: themeui.spacing.sm,
-        marginTop: themeui.spacing.xs,
-    },
-    metaItem: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs - 2,
-    },
-    metaText: {
-        color: themeui.colors.text.secondary,
-        fontSize: themeui.fontSize.sm,
-    },
+        studentRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: theme.spacing.md,
+            marginTop: theme.spacing.md,
+            marginBottom: theme.spacing.md,
+            paddingLeft: theme.spacing.xl,
+        },
+        avatar: {
+            width: 52,
+            height: 52,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.primary,
+            justifyContent: "center",
+            alignItems: "center",
+        },
+        avatarText: {
+            color: "#0f172a",
+            fontSize: 20,
+            fontWeight: "700",
+        },
+        studentName: {
+            color: theme.colors.text.accent,
+            fontSize: theme.fontSize.lg + 2,
+            fontWeight: "700",
+        },
+        studentMetaRow: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: theme.spacing.sm,
+            marginTop: theme.spacing.xs,
+        },
+        metaItem: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: theme.spacing.xs - 2,
+        },
+        metaText: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.sm,
+        },
 
-    /* FORM CARD */
-    formWrapper: { flex: 1 },
+        formWrapper: { flex: 1 },
 
-    card: {
-        marginHorizontal: themeui.spacing.md,
-        marginBottom: themeui.spacing.sm,
-        backgroundColor: themeui.colors.surface,
-        borderRadius: themeui.radius.lg,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        padding: themeui.spacing.md,
-        ...themeui.shadow.soft,
-    },
-    cardTitleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs + 2,
-        marginBottom: themeui.spacing.md - 4,
-    },
-    cardTitle: {
-        color: themeui.colors.accent,
-        fontSize: themeui.fontSize.lg + 1,
-        fontWeight: "600",
-    },
+        card: {
+            marginHorizontal: theme.spacing.md,
+            marginBottom: theme.spacing.sm,
+            backgroundColor: theme.colors.surface,
+            borderRadius: theme.radius.lg,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            padding: theme.spacing.md,
+            ...(theme.shadow?.soft ?? {}),
+        },
+        cardTitleRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: theme.spacing.xs + 2,
+            marginBottom: theme.spacing.md - 4,
+        },
+        cardTitle: {
+            color: theme.colors.accent,
+            fontSize: theme.fontSize.lg + 1,
+            fontWeight: "600",
+        },
 
-    /* INPUTS */
-    field: { marginTop: themeui.spacing.sm - 2 },
-    label: {
-        color: themeui.colors.text.primary,
-        fontSize: themeui.fontSize.lg,
-        marginBottom: themeui.spacing.xs,
-        fontWeight: "800",
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        borderRadius: themeui.radius.md,
-        paddingHorizontal: themeui.spacing.sm,
-        paddingVertical: themeui.spacing.xs + 4,
-        fontSize: themeui.fontSize.md - 1,
-        backgroundColor: themeui.colors.surface,
-        color: themeui.colors.text.primary,
-    },
-    inputMultiline: {
-        minHeight: 80,
-        textAlignVertical: "top",
-    },
-    helpText: {
-        color: themeui.colors.text.muted,
-        fontSize: themeui.fontSize.xs,
-        marginTop: themeui.spacing.xs - 2,
-    },
+        field: { marginTop: theme.spacing.sm - 2 },
 
-    /* SWITCH ROW */
-    switchRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginTop: themeui.spacing.sm,
-        paddingVertical: themeui.spacing.xs - 2,
-    },
+        labelRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: theme.spacing.sm,
+        },
 
-    submitWrapper: {
-        paddingHorizontal: themeui.spacing.md + 2,
-        paddingVertical: themeui.spacing.sm,
-        backgroundColor: themeui.colors.background,
-    },
-    saveButton: {
-        backgroundColor: themeui.colors.accent,
-        borderRadius: themeui.radius.pill,
-        paddingVertical: themeui.spacing.sm,
-        paddingHorizontal: themeui.spacing.md - 2,
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: themeui.spacing.xs + 2,
-        opacity: 0.9,
-        marginLeft: "auto",
-    },
-    saveButtonText: {
-        color: themeui.colors.surface,
-        fontSize: themeui.fontSize.md,
-        fontWeight: "700",
-    },
+        label: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.lg,
+            marginBottom: theme.spacing.xs,
+            fontWeight: "800",
+        },
+        input: {
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radius.md,
+            paddingHorizontal: theme.spacing.sm,
+            paddingVertical: theme.spacing.xs + 4,
+            fontSize: theme.fontSize.md - 1,
+            backgroundColor: theme.colors.surface,
+            color: theme.colors.text.primary,
+        },
+        inputMultiline: {
+            minHeight: 80,
+            textAlignVertical: "top",
+        },
+        helpText: {
+            color: theme.colors.text.muted,
+            fontSize: theme.fontSize.xs,
+            marginTop: theme.spacing.xs - 2,
+        },
 
-    stepIndicatorWrapper: {
-        flexDirection: "row",
-        justifyContent: "space-around",
-        alignItems: "flex-start",
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: "#1e293b",
-    },
-    stepItem: {
-        alignItems: "center",
-        width: 80,
-    },
-    stepCircle: {
-        width: 26,
-        height: 26,
-        borderRadius: 13,
-        borderWidth: 1,
-        borderColor: "#334155",
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "#020617",
-    },
-    stepCircleText: {
-        color: "#e5e7eb",
-        fontSize: 12,
-        fontWeight: "600",
-    },
-    stepLabel: {
-        marginTop: 4,
-        fontSize: 10,
-        color: "#64748b",
-        textAlign: "center",
-    },
+        strongText: {
+            fontWeight: "800",
+            color: theme.colors.text.primary,
+        },
 
-    radioRow: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 8,
-        marginTop: 4,
-    },
-    radioPill: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: "#334155",
-    },
-    radioPillText: {
-        color: "#e5e7eb",
-        fontSize: 12,
-    },
+        switchRow: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: theme.spacing.sm,
+            paddingVertical: theme.spacing.xs - 2,
+            gap: theme.spacing.sm,
+        },
 
-    checkboxRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        marginTop: 8,
-    },
-    checkboxBox: {
-        width: 18,
-        height: 18,
-        borderRadius: 4,
-        borderWidth: 1,
-        borderColor: "#334155",
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    checkboxBoxText: {
-        color: "#0f172a",
-        fontSize: 12,
-        fontWeight: "700",
-    },
-    checkboxLabel: {
-        color: "#e5e7eb",
-        fontSize: 12,
-    },
+        submitWrapper: {
+            paddingHorizontal: theme.spacing.md + 2,
+            paddingVertical: theme.spacing.sm,
+            backgroundColor: theme.colors.background,
+        },
+        saveButton: {
+            backgroundColor: theme.colors.accent,
+            borderRadius: theme.radius.pill,
+            paddingVertical: theme.spacing.sm,
+            paddingHorizontal: theme.spacing.md - 2,
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: theme.spacing.xs + 2,
+            opacity: 0.95,
+            marginLeft: "auto",
+        },
+        saveButtonText: {
+            color: "#0f172a",
+            fontSize: theme.fontSize.md,
+            fontWeight: "700",
+        },
 
-    stepButtonsRow: {
-        flexDirection: "row",
-        gap: 8,
-        alignItems: "center",
-    },
-    navButton: {
-        borderRadius: 999,
-        paddingVertical: 12,
-        paddingHorizontal: 18,
-        borderWidth: 1,
-        borderColor: "#1e293b",
-    },
-    navButtonText: {
-        color: "#e5e7eb",
-        fontSize: 13,
-        fontWeight: "500",
-    },
-    navButtonPrimary: {
-        borderRadius: 999,
-        paddingVertical: 12,
-        paddingHorizontal: 18,
-        backgroundColor: "#22c55e",
-        marginLeft: "auto",
-    },
-    navButtonPrimaryText: {
-        color: "#0f172a",
-        fontSize: 13,
-        fontWeight: "600",
-    },
-    infoText: {
-        marginTop: 4,
-        fontSize: 12,
-        color: "#9ca3af",
-    },
-    infoLine: {
-        flexDirection: "row",
-        alignItems: "center",
-        textAlign: "center",
-        columnGap: 6,
-        justifyContent: "flex-start",
-    },
-    infoNoteLabel: {
-        fontSize: 11,
-        color: themeui.colors.text.lightAccent,
-        marginBottom: 2,
-    },
-    infoNoteText: {
-        fontSize: 11,
-        color: "#9ca3af",
-    },
-    hintButton: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: "#1e293b",
-        backgroundColor: "#020617",
-    },
-    hintButtonText: {
-        fontSize: 11,
-        color: "#e5e7eb",
-    },
 
-    modalBackdrop: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.7)",
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    modalContent: {
-        width: "88%",
-        maxHeight: "80%",
-        backgroundColor: "#020617",
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: "#1e293b",
-        padding: 16,
-        alignItems: "center",
-    },
-    hintVideo: {
-        width: "100%",
-        height: 260,
-        marginBottom: 12,
-    },
-    modalCloseButton: {
-        marginTop: 4,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 999,
-        backgroundColor: "#38bdf8",
-    },
-    modalCloseText: {
-        color: "#0f172a",
-        fontSize: 13,
-        fontWeight: "600",
-    },
-    tipChip: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 999,
-        borderWidth: 1,
-    },
-    tipChipOn: {
-        backgroundColor: "rgba(56,189,248,0.08)",
-        borderColor: "rgba(56,189,248,0.35)",
-    },
-    tipChipOff: {
-        backgroundColor: "rgba(148,163,184,0.06)",
-        borderColor: "rgba(148,163,184,0.18)",
-    },
-    tipChipText: {
-        fontSize: 12,
-        fontWeight: "700",
-    },
+        stepIndicatorWrapper: {
+            flexDirection: "row",
+            justifyContent: "space-around",
+            alignItems: "flex-start",
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        stepItem: {
+            alignItems: "center",
+            width: 80,
+        },
+        stepCircle: {
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: theme.colors.background,
+        },
+        stepCircleText: {
+            color: theme.colors.text.primary,
+            fontSize: 12,
+            fontWeight: "600",
+        },
+        stepLabel: {
+            marginTop: 4,
+            fontSize: 10,
+            color: theme.colors.text.muted,
+            textAlign: "center",
+        },
 
-    noteFoot: {
-        color: "#94a3b8",
-        fontSize: 11,
-        marginTop: 10,
-        lineHeight: 15,
-    },
+        radioRow: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 8,
+            marginTop: 4,
+        },
+        radioPill: {
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+        },
+        radioPillText: {
+            color: theme.colors.text.primary,
+            fontSize: 12,
+            fontWeight: "700",
+        },
 
-    table: {
-        borderWidth: 1,
-        borderColor: "#1e293b",
-        borderRadius: 12,
-        overflow: "hidden",
-        backgroundColor: "rgba(2,6,23,0.35)",
-        marginBottom: 10,
-    },
-    tr: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 10,
-        paddingHorizontal: 10,
-        borderTopWidth: 1,
-        borderTopColor: "#0f172a",
-    },
-    thRow: {
-        backgroundColor: "rgba(15,23,42,0.65)",
-        borderTopWidth: 0,
-    },
-    th: {
-        color: "#cbd5e1",
-        fontSize: 12,
-        fontWeight: "800",
-    },
-    td: {
-        color: "#e2e8f0",
-        fontSize: 12,
-        fontWeight: "600",
-    },
-});
+        checkboxRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 8,
+        },
+        checkboxBox: {
+            width: 18,
+            height: 18,
+            borderRadius: 4,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: theme.colors.surface,
+        },
+        checkboxBoxText: {
+            color: "#0f172a",
+            fontSize: 12,
+            fontWeight: "900",
+        },
+        checkboxLabel: {
+            color: theme.colors.text.primary,
+            fontSize: 12,
+            fontWeight: "700",
+        },
+
+        stepButtonsRow: {
+            flexDirection: "row",
+            gap: 8,
+            alignItems: "center",
+        },
+        navButton: {
+            borderRadius: 999,
+            paddingVertical: 12,
+            paddingHorizontal: 18,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+        },
+        navButtonText: {
+            color: theme.colors.text.primary,
+            fontSize: 13,
+            fontWeight: "700",
+        },
+        navButtonPrimary: {
+            borderRadius: 999,
+            paddingVertical: 12,
+            paddingHorizontal: 18,
+            backgroundColor: theme.colors.success,
+            marginLeft: "auto",
+        },
+        navButtonPrimaryText: {
+            color: "#0f172a",
+            fontSize: 13,
+            fontWeight: "800",
+        },
+
+        infoText: {
+            marginTop: 4,
+            fontSize: 12,
+            color: theme.colors.text.secondary,
+        },
+        infoLine: {
+            flexDirection: "row",
+            alignItems: "center",
+            columnGap: 6,
+            justifyContent: "flex-start",
+        },
+        infoNoteLabel: {
+            fontSize: 11,
+            color: theme.colors.text.accent,
+            marginBottom: 2,
+            fontWeight: "800",
+        },
+        infoNoteText: {
+            fontSize: 11,
+            color: theme.colors.text.secondary,
+            lineHeight: 15,
+        },
+
+        hintButton: {
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surface,
+        },
+        hintButtonText: {
+            fontSize: 11,
+            color: theme.colors.text.accent,
+            fontWeight: "800",
+        },
+
+        modalBackdrop: {
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            justifyContent: "center",
+            alignItems: "center",
+        },
+        modalContent: {
+            width: "88%",
+            maxHeight: "80%",
+            backgroundColor: theme.colors.surface,
+            borderRadius: 18,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            padding: 16,
+            alignItems: "center",
+        },
+        hintVideo: {
+            width: "100%",
+            height: 260,
+            marginBottom: 12,
+        },
+        modalCloseButton: {
+            marginTop: 4,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 999,
+            backgroundColor: theme.colors.accent,
+        },
+        modalCloseText: {
+            color: "#0f172a",
+            fontSize: 13,
+            fontWeight: "800",
+        },
+
+        tipChip: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 999,
+            borderWidth: 1,
+        },
+        tipChipOn: {
+            backgroundColor: "rgba(56,189,248,0.08)",
+            borderColor: "rgba(56,189,248,0.35)",
+        },
+        tipChipOff: {
+            backgroundColor: "rgba(148,163,184,0.06)",
+            borderColor: "rgba(148,163,184,0.18)",
+        },
+        tipChipText: {
+            fontSize: 12,
+            fontWeight: "800",
+        },
+
+        noteFoot: {
+            color: theme.colors.text.secondary,
+            fontSize: 11,
+            marginTop: 10,
+            lineHeight: 15,
+        },
+
+        table: {
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            borderRadius: 12,
+            overflow: "hidden",
+            backgroundColor: "rgba(2,6,23,0.35)",
+            marginBottom: 10,
+        },
+        tr: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: 10,
+            paddingHorizontal: 10,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.surfaceSoft,
+        },
+        thRow: {
+            backgroundColor: "rgba(15,23,42,0.65)",
+            borderTopWidth: 0,
+        },
+        th: {
+            color: theme.colors.text.primary,
+            fontSize: 12,
+            fontWeight: "800",
+        },
+        td: {
+            color: theme.colors.text.primary,
+        },
+    });

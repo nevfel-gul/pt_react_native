@@ -1,297 +1,336 @@
-import { themeui } from "@/constants/themeui";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    updateProfile
-} from "firebase/auth";
-import { ArrowRight, Dna, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
-import { useState } from "react";
+    Activity,
+    ArrowRight,
+    BarChart3,
+    ChevronDown,
+    ShieldCheck,
+    Sparkles,
+    Users,
+    Zap,
+} from "lucide-react-native";
+import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
+    Animated,
+    Dimensions,
+    StatusBar,
     StyleSheet,
-    Switch,
     Text,
-    TextInput,
     TouchableOpacity,
-    View
+    View,
 } from "react-native";
-import { auth } from "../services/firebase";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function Login() {
+import type { ThemeMode, ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
+
+const { width, height } = Dimensions.get("window");
+
+export default function LandingScreen() {
+    const router = useRouter();
     const { t } = useTranslation();
 
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-    const [isLoginMode, setIsLoginMode] = useState(true);
-    const [rememberMe, setRememberMe] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
+    const { theme, mode } = useTheme();
 
-    const handleSubmit = async () => {
-        if (!email || !password || (!isLoginMode && !name)) {
-            alert(t("login.validation.fill_all"));
-            return;
-        }
+    const scrollY = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(30)).current;
 
-        try {
-            setLoading(true);
-            if (isLoginMode) {
-                await signInWithEmailAndPassword(auth, email, password);
-            } else {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                // Kayıt olurken ismi profil verisine ekliyoruz
-                await updateProfile(userCredential.user, { displayName: name });
-            }
-            router.replace("/(tabs)");
-        } catch (error: any) {
-            console.error("Auth hatası:", error.message);
-            alert(`${t("login.error.prefix")} ${error.message}`);
-        } finally {
-            setLoading(false);
-        }
-    };
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 1000,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [fadeAnim, slideAnim]);
+
+    const handleStart = () => router.push("/(tabs)");
+
+    const heroOpacity = scrollY.interpolate({
+        inputRange: [0, height * 0.4],
+        outputRange: [1, 0],
+        extrapolate: "clamp",
+    });
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.container}
-        >
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Üst Kısım / Logo */}
-                <View style={styles.headerArea}>
-                    <View style={styles.logoCircle}>
-                        <Dna size={40} color={themeui.colors.primary} />
-                    </View>
-                    <Text style={styles.welcomeText}>
-                        {isLoginMode ? t("login.header.welcome_back") : t("login.header.join_us")}
-                    </Text>
-                    <Text style={styles.subText}>
-                        {isLoginMode ? t("login.header.sub_continue") : t("login.header.sub_start")}
-                    </Text>
-                </View>
+        <View style={[styles.container, { backgroundColor: theme.colors.surfaceDark }]}>
+            <StatusBar barStyle={mode === "dark" ? "light-content" : "dark-content"} />
 
-                {/* Form Kartı */}
-                <View style={styles.formCard}>
-                    {!isLoginMode && (
-                        <View style={styles.inputWrapper}>
-                            <User size={20} color="#64748b" style={styles.inputIcon} />
-                            <TextInput
-                                placeholder={t("login.placeholder.full_name")}
-                                value={name}
-                                onChangeText={setName}
-                                style={styles.input}
-                                placeholderTextColor="#64748b"
-                            />
-                        </View>
-                    )}
+            <Animated.ScrollView
+                onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+                    useNativeDriver: true,
+                })}
+                scrollEventThrottle={16}
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={{ height }}>
+                    <Animated.Image
+                        source={{
+                            uri: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070",
+                        }}
+                        style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
+                    />
 
-                    <View style={styles.inputWrapper}>
-                        <Mail size={20} color="#64748b" style={styles.inputIcon} />
-                        <TextInput
-                            placeholder={t("login.placeholder.email")}
-                            value={email}
-                            onChangeText={setEmail}
-                            style={styles.input}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            placeholderTextColor="#64748b"
-                        />
-                    </View>
+                    <LinearGradient
+                        colors={
+                            mode === "dark"
+                                ? ["rgba(10,15,26,0.2)", "rgba(10,15,26,0.8)", theme.colors.surfaceDark]
+                                : ["rgba(248,250,252,0.15)", "rgba(248,250,252,0.75)", theme.colors.background]
+                        }
+                        style={StyleSheet.absoluteFill}
+                    />
 
-                    <View style={styles.inputWrapper}>
-                        <Lock size={20} color="#64748b" style={styles.inputIcon} />
-                        <TextInput
-                            placeholder={t("login.placeholder.password")}
-                            placeholderTextColor="#64748b"
-                            secureTextEntry={!isPasswordVisible}
-                            value={password}
-                            onChangeText={setPassword}
-                            style={[styles.input, { flex: 1 }]}
-                        />
-                        <TouchableOpacity
-                            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-                            style={styles.eyeIcon}
+                    <SafeAreaView style={styles.heroContent}>
+                        <Animated.View
+                            style={{
+                                opacity: heroOpacity,
+                                transform: [
+                                    {
+                                        translateY: scrollY.interpolate({
+                                            inputRange: [0, 500],
+                                            outputRange: [0, 100],
+                                            extrapolate: "clamp",
+                                        }),
+                                    },
+                                ],
+                            }}
                         >
-                            {isPasswordVisible ? <EyeOff size={20} color="#94a3b8" /> : <Eye size={20} color="#94a3b8" />}
-                        </TouchableOpacity>
-                    </View>
+                            <Animated.View
+                                style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
+                            >
+                                <View
+                                    style={[
+                                        styles.logoBadge,
+                                        {
+                                            backgroundColor:
+                                                mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.04)",
+                                            borderColor:
+                                                mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.08)",
+                                        },
+                                    ]}
+                                >
+                                    <Activity size={18} color={theme.colors.primary} />
+                                    <Text style={[styles.logoBadgeText, { color: theme.colors.text.secondary }]}>
+                                        {t("app.version_badge")}
+                                    </Text>
+                                </View>
 
-                    <View style={styles.row}>
-                        <View style={styles.rememberMe}>
-                            <Switch
-                                value={rememberMe}
-                                onValueChange={setRememberMe}
-                                trackColor={{ false: "#1e293b", true: themeui.colors.primary }}
-                                thumbColor="#f8fafc"
-                            />
-                            <Text style={styles.rememberText}>{t("login.remember_me")}</Text>
-                        </View>
-                        {isLoginMode && (
-                            <TouchableOpacity>
-                                <Text style={styles.forgotText}>{t("login.forgot_password")}</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                                <Text style={[styles.brandName, { color: theme.colors.text.primary }]}>
+                                    ATHLE<Text style={{ color: theme.colors.primary }}>TRACK</Text>
+                                </Text>
+                            </Animated.View>
 
-                    <TouchableOpacity
-                        style={[styles.button, loading && { opacity: 0.7 }]}
-                        onPress={handleSubmit}
-                        disabled={loading}
-                    >
-                        <LinearGradient
-                            colors={[themeui.colors.primary, "#3b82f6"]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.buttonGradient}
-                        >
-                            <Text style={styles.buttonText}>
-                                {loading ? t("login.button.loading") : (isLoginMode ? t("login.button.sign_in") : t("login.button.sign_up"))}
+                            <View style={styles.middleSection}>
+                                <Animated.Text style={[styles.mainTitle, { opacity: fadeAnim, color: theme.colors.text.primary }]}>
+                                    {t("landing.hero.title.line1")}
+                                    {"\n"}
+                                    <Text style={[styles.highlightText, { color: theme.colors.primary }]}>
+                                        {t("landing.hero.title.highlight")}
+                                    </Text>
+                                </Animated.Text>
+
+                                <Animated.Text
+                                    style={[
+                                        styles.description,
+                                        { opacity: fadeAnim, color: theme.colors.text.secondary },
+                                    ]}
+                                >
+                                    {t("landing.hero.description")}
+                                </Animated.Text>
+                            </View>
+                        </Animated.View>
+
+                        <Animated.View style={[styles.scrollHint, { opacity: heroOpacity }]}>
+                            <Text style={[styles.scrollHintText, { color: theme.colors.text.muted }]}>
+                                {t("landing.scroll_hint")}
                             </Text>
-                            <ArrowRight size={20} color="#0f172a" strokeWidth={3} />
-                        </LinearGradient>
-                    </TouchableOpacity>
+                            <ChevronDown size={24} color={theme.colors.primary} />
+                        </Animated.View>
+                    </SafeAreaView>
                 </View>
 
-                {/* Alt Mod Değiştirme */}
-                <TouchableOpacity
-                    onPress={() => setIsLoginMode(!isLoginMode)}
-                    style={styles.toggleMode}
-                >
-                    <Text style={styles.toggleText}>
-                        {isLoginMode
-                            ? t("login.toggle.no_account")
-                            : t("login.toggle.already_here")}
-                        <Text style={styles.toggleTextHighlight}>
-                            {isLoginMode ? t("login.toggle.sign_up") : t("login.toggle.sign_in")}
-                        </Text>
+                <View style={[styles.infoSection, { backgroundColor: theme.colors.surfaceDark }]}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTag, { color: theme.colors.primary }]}>{t("landing.mission.tag")}</Text>
+                        <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>{t("landing.mission.title")}</Text>
+                        <View style={[styles.divider, { backgroundColor: theme.colors.primary }]} />
+                    </View>
+
+                    <Text style={[styles.infoText, { color: theme.colors.text.secondary }]}>
+                        {t("landing.mission.description")}
                     </Text>
-                </TouchableOpacity>
-            </ScrollView>
-        </KeyboardAvoidingView>
+
+                    <View style={styles.featureGrid}>
+                        <InfoCard
+                            theme={theme}
+                            mode={mode}
+                            icon={<BarChart3 size={24} color={theme.colors.primary} />}
+                            title={t("landing.feature.analysis.title")}
+                            desc={t("landing.feature.analysis.desc")}
+                        />
+                        <InfoCard
+                            theme={theme}
+                            mode={mode}
+                            icon={<ShieldCheck size={24} color={theme.colors.success} />}
+                            title={t("landing.feature.posture.title")}
+                            desc={t("landing.feature.posture.desc")}
+                        />
+                        <InfoCard
+                            theme={theme}
+                            mode={mode}
+                            icon={<Zap size={24} color={theme.colors.warning} />}
+                            title={t("landing.feature.performance.title")}
+                            desc={t("landing.feature.performance.desc")}
+                        />
+                        <InfoCard
+                            theme={theme}
+                            mode={mode}
+                            icon={<Users size={24} color={theme.colors.premium} />}
+                            title={t("landing.feature.students.title")}
+                            desc={t("landing.feature.students.desc")}
+                        />
+                    </View>
+                </View>
+
+                <View style={styles.finalSection}>
+                    <LinearGradient colors={[theme.colors.surfaceSoft, theme.colors.surfaceDark]} style={styles.ctaCard}>
+                        <Sparkles size={40} color={theme.colors.primary} style={{ marginBottom: 16 }} />
+
+                        <Text style={[styles.ctaTitle, { color: theme.colors.text.primary }]}>{t("landing.cta.title")}</Text>
+
+                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8} onPress={handleStart}>
+                            <LinearGradient
+                                colors={[theme.colors.primary, theme.colors.info]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.buttonGradient}
+                            >
+                                <Text style={[styles.buttonText, { color: theme.colors.surfaceDark }]}>{t("landing.cta.button")}</Text>
+                                <ArrowRight size={20} color={theme.colors.surfaceDark} strokeWidth={3} />
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </LinearGradient>
+                </View>
+            </Animated.ScrollView>
+        </View>
+    );
+}
+
+function InfoCard({
+    icon,
+    title,
+    desc,
+    theme,
+    mode,
+}: {
+    icon: React.ReactNode;
+    title: string;
+    desc: string;
+    theme: ThemeUI;
+    mode: ThemeMode;
+}) {
+    return (
+        <View
+            style={[
+                styles.infoCard,
+                {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radius.xl,
+                    ...(theme.shadow?.soft ?? {}),
+                },
+            ]}
+        >
+            <View
+                style={[
+                    styles.iconCircle,
+                    {
+                        backgroundColor: mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.04)",
+                        borderRadius: theme.radius.lg,
+                    },
+                ]}
+            >
+                {icon}
+            </View>
+            <Text style={[styles.infoCardTitle, { color: theme.colors.text.primary }]}>{title}</Text>
+            <Text style={[styles.infoCardDesc, { color: theme.colors.text.muted }]}>{desc}</Text>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    container: { flex: 1 },
+
+    heroContent: {
         flex: 1,
-        backgroundColor: "#0A0F1A", // Uygulamanın ana karanlık teması
-    },
-    scrollContent: {
-        flexGrow: 1,
-        justifyContent: "center",
-        padding: 24,
-    },
-    headerArea: {
-        alignItems: "center",
-        marginBottom: 40,
-    },
-    logoCircle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: "rgba(56, 189, 248, 0.1)",
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: "rgba(56, 189, 248, 0.2)",
-    },
-    welcomeText: {
-        fontSize: 32,
-        fontWeight: "900",
-        color: "#fff",
-        letterSpacing: -1,
-    },
-    subText: {
-        fontSize: 16,
-        color: "#94a3b8",
-        marginTop: 8,
-    },
-    formCard: {
-        backgroundColor: "#111827",
-        borderRadius: 24,
-        padding: 24,
-        borderWidth: 1,
-        borderColor: "#1f2937",
-        ...themeui.shadow.soft,
-    },
-    inputWrapper: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "#0A0F1A",
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: "#1e293b",
-        marginBottom: 16,
-        paddingHorizontal: 12,
-    },
-    inputIcon: {
-        marginRight: 10,
-    },
-    input: {
-        flex: 1,
-        paddingVertical: 14,
-        color: "#fff",
-        fontSize: 16,
-    },
-    eyeIcon: {
-        padding: 8,
-    },
-    row: {
-        flexDirection: "row",
+        paddingHorizontal: 24,
         justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 24,
-        marginTop: 4,
+        paddingVertical: 40,
     },
-    rememberMe: {
+    header: { alignItems: "flex-start" },
+
+    logoBadge: {
         flexDirection: "row",
         alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginBottom: 12,
     },
-    rememberText: {
-        color: "#94a3b8",
-        marginLeft: 8,
-        fontSize: 14,
+    logoBadgeText: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5, marginLeft: 6 },
+
+    brandName: { fontSize: 32, fontWeight: "900", letterSpacing: -1 },
+
+    middleSection: { marginTop: 20 },
+    mainTitle: { fontSize: 52, fontWeight: "900", lineHeight: 58, letterSpacing: -2 },
+    highlightText: {},
+
+    description: { fontSize: 17, marginTop: 20, lineHeight: 26, maxWidth: "90%" },
+
+    scrollHint: { alignItems: "center", marginBottom: 20 },
+    scrollHintText: { fontSize: 12, fontWeight: "700", marginBottom: 8, letterSpacing: 1 },
+
+    /* Bilgi Bölümü */
+    infoSection: { padding: 24, paddingTop: 60 },
+    sectionHeader: { marginBottom: 30 },
+    sectionTag: { fontSize: 12, fontWeight: "800", letterSpacing: 2, marginBottom: 8 },
+    sectionTitle: { fontSize: 32, fontWeight: "800" },
+    divider: { width: 60, height: 4, marginTop: 15, borderRadius: 2 },
+    infoText: { fontSize: 16, lineHeight: 26, marginBottom: 40 },
+
+    featureGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+    infoCard: { width: "48%", padding: 20, marginBottom: 16, borderWidth: 1 },
+    iconCircle: {
+        width: 48,
+        height: 48,
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 16,
     },
-    forgotText: {
-        color: themeui.colors.primary,
-        fontSize: 14,
-        fontWeight: "600",
-    },
-    button: {
-        height: 56,
-        borderRadius: 16,
-        overflow: "hidden",
-    },
+    infoCardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
+    infoCardDesc: { fontSize: 12, lineHeight: 18 },
+
+    /* Final Bölümü */
+    finalSection: { padding: 24, paddingBottom: 100 },
+    ctaCard: { padding: 40, borderRadius: 40, alignItems: "center", overflow: "hidden" },
+    ctaTitle: { fontSize: 28, fontWeight: "800", textAlign: "center", marginBottom: 32, lineHeight: 36 },
+
+    primaryButton: { height: 64, borderRadius: 20, overflow: "hidden", width: "100%" },
     buttonGradient: {
         flex: 1,
         flexDirection: "row",
+        alignItems: "center",
         justifyContent: "center",
-        alignItems: "center",
-        gap: 8,
     },
-    buttonText: {
-        color: "#0f172a",
-        fontWeight: "800",
-        fontSize: 18,
-    },
-    toggleMode: {
-        marginTop: 32,
-        alignItems: "center",
-    },
-    toggleText: {
-        color: "#94a3b8",
-        fontSize: 15,
-    },
-    toggleTextHighlight: {
-        color: themeui.colors.primary,
-        fontWeight: "700",
-    },
+    buttonText: { fontSize: 18, fontWeight: "800", marginRight: 10 },
 });

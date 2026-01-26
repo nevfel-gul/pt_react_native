@@ -1,15 +1,13 @@
-import AnimatedStar from "@/components/AnimatedStar";
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Tabs } from "expo-router";
-import React from "react";
-import { View } from "react-native";
-import { useTranslation } from "react-i18next";
 import { auth } from "@/services/firebase";
-import { useRouter } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -140,7 +138,6 @@ export default function TabLayout() {
         name="premium"
         options={{
           title: t("tabs.premium"),
-          tabBarIcon: ({ focused }) => <AnimatedStar focused={focused} />,
           href: premiumHref,
         }}
       />

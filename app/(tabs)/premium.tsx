@@ -1,216 +1,637 @@
-import { themeui } from "@/constants/themeui";
-import { useRouter } from "expo-router";
-import { Check, Crown, Sparkles } from "lucide-react-native";
-import React from "react";
-import { useTranslation } from "react-i18next";
+import { LinearGradient } from "expo-linear-gradient";
+import { Cpu } from "lucide-react-native";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function PremiumScreen() {
-  const router = useRouter();
-  const { t } = useTranslation();
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
-  const features = [
-    t("premium.feature.unlimited"),
-    t("premium.feature.advancedStats"),
-    t("premium.feature.calendarSync"),
-    t("premium.feature.notifications"),
-    t("premium.feature.support"),
-  ];
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
+
+import type { BillingCycle, PlanDoc } from "./paywall";
+import { calcDisplayedPrice, calcPerClientText } from "./paywall";
+
+function SmoothGradientBg({
+  billing,
+  theme,
+  mode,
+  accent,
+  accentSoft,
+}: {
+  billing: BillingCycle;
+  theme: ThemeUI;
+  mode: "dark" | "light";
+  accent: string;
+  accentSoft: string;
+}) {
+  const t = useSharedValue(billing === "annual" ? 1 : 0);
+
+  useEffect(() => {
+    t.value = withTiming(billing === "annual" ? 1 : 0, { duration: 420 });
+  }, [billing, t]);
+
+  const monthlyStyle = useAnimatedStyle(() => ({ opacity: 1 - t.value }));
+  const annualStyle = useAnimatedStyle(() => ({ opacity: t.value }));
+
+  const base = theme.colors.background;
+  const surface = theme.colors.surfaceDark;
+
+  // Light modda “beyaz üstüne beyaz” olmasın diye accentSoft kullanıyoruz
+  const monthlyColors =
+    mode === "light"
+      ? [base, accentSoft, "rgba(59,130,246,0.18)", base]
+      : [surface, accentSoft, accent, surface];
+
+  const annualColors =
+    mode === "light"
+      ? [base, accentSoft, "rgba(124,58,237,0.16)", base]
+      : [surface, accentSoft, accent, surface];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-          {/* HERO */}
-          <View style={styles.hero}>
-            <View style={styles.crownWrapper}>
-              <Crown size={34} color="#facc15" />
-            </View>
+    <>
+      <Animated.View style={[StyleSheet.absoluteFill, monthlyStyle]} pointerEvents="none">
+        <LinearGradient
+          style={StyleSheet.absoluteFill}
+          colors={monthlyColors as any}
+          locations={[0, 0.35, 0.7, 1]}
+        />
+      </Animated.View>
 
-            <Text style={styles.heroTitle}>{t("premium.hero.title")}</Text>
-            <Text style={styles.heroSubtitle}>{t("premium.hero.subtitle")}</Text>
-          </View>
-
-          {/* PLAN CARD */}
-          <View style={styles.planCard}>
-            <View style={styles.planHeader}>
-              <Sparkles size={18} color="#a78bfa" />
-              <Text style={styles.planTitle}>{t("premium.plan.title")}</Text>
-            </View>
-
-            <View style={styles.priceRow}>
-              <Text style={styles.price}>₺249</Text>
-              <Text style={styles.period}> {t("premium.plan.period")}</Text>
-            </View>
-
-            <View style={styles.featureList}>
-              {features.map((item, index) => (
-                <View key={index} style={styles.featureRow}>
-                  <View style={styles.checkWrapper}>
-                    <Check size={14} color="#22c55e" />
-                  </View>
-                  <Text style={styles.featureText}>{item}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* CTA */}
-          <TouchableOpacity
-            style={styles.buyButton}
-            activeOpacity={0.85}
-            onPress={() => {
-              // BURASI ŞİMDİLİK DUMMY
-              alert(t("premium.alert.purchaseDummy"));
-            }}
-          >
-            <Text style={styles.buyButtonText}>{t("premium.cta.buy")}</Text>
-          </TouchableOpacity>
-
-          {/* FOOTER NOTE */}
-          <Text style={styles.footerNote}>{t("premium.footer.note")}</Text>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+      <Animated.View style={[StyleSheet.absoluteFill, annualStyle]} pointerEvents="none">
+        <LinearGradient
+          style={StyleSheet.absoluteFill}
+          colors={annualColors as any}
+          locations={[0, 0.35, 0.7, 1]}
+        />
+      </Animated.View>
+    </>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: themeui.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: themeui.colors.background,
-  },
+type Props = {
+  onContinue?: (args: { plan: PlanDoc; billing: BillingCycle; intentId: string }) => Promise<void> | void;
+};
 
-  header: {
-    paddingHorizontal: themeui.spacing.md,
-    paddingTop: themeui.spacing.sm + 4,
-    paddingBottom: themeui.spacing.sm - 4,
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.xs,
-  },
-  backText: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.sm,
-  },
+export default function PaywallMonthlyScreen({ onContinue }: Props) {
+  const insets = useSafeAreaInsets();
 
-  hero: {
-    alignItems: "center",
-    marginTop: themeui.spacing.lg,
-    marginBottom: themeui.spacing.lg,
-    paddingHorizontal: themeui.spacing.lg,
-  },
-  crownWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.goldSoft,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: themeui.spacing.sm,
-  },
-  heroTitle: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.xl + 2,
-    fontWeight: "800",
-  },
-  heroSubtitle: {
-    color: themeui.colors.text.secondary,
-    fontSize: themeui.fontSize.md - 1,
-    textAlign: "center",
-    marginTop: themeui.spacing.xs,
-  },
+  const { theme, mode, toggleTheme } = useTheme();
 
-  planCard: {
-    marginHorizontal: themeui.spacing.md,
-    backgroundColor: themeui.colors.surface,
-    borderRadius: themeui.radius.xl,
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.5)",
-    padding: themeui.spacing.lg,
-    ...themeui.shadow.soft,
-  },
-  planHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.xs + 2,
-    marginBottom: themeui.spacing.sm,
-  },
-  planTitle: {
-    color: "#e9d5ff", // özel premium text rengi - sabit bırakıyoruz
-    fontSize: themeui.fontSize.lg,
-    fontWeight: "700",
-  },
+  const [loading, setLoading] = useState(true);
+  const [plans, setPlans] = useState<PlanDoc[]>([]);
+  const [billing, setBilling] = useState<BillingCycle>("monthly");
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginBottom: themeui.spacing.lg - 4,
-  },
-  price: {
-    color: themeui.colors.text.primary,
-    fontSize: 32,
-    fontWeight: "800",
-  },
-  period: {
-    color: themeui.colors.text.secondary,
-    fontSize: themeui.fontSize.md,
-    marginBottom: 4,
-    marginLeft: themeui.spacing.xs - 2,
-  },
+  const dummyPlans = useMemo<PlanDoc[]>(
+    () => [
+      {
+        id: "core_dummy",
+        active: true,
+        sortOrder: 1,
+        tier: "core",
+        title: "Core",
+        subtitle: "Up to 15 Students",
+        studentLimit: 15,
+        isUnlimited: false,
+        topPick: false,
+        currency: "USD",
+        monthlyPrice: 29.9,
+        annualDiscountPercent: 25,
+        perClientNoteMode: "auto",
+        footnote: null,
+        features: [],
+      },
+      {
+        id: "pro_dummy",
+        active: true,
+        sortOrder: 2,
+        tier: "pro",
+        title: "Pro",
+        subtitle: "Up to 50 Students",
+        studentLimit: 50,
+        isUnlimited: false,
+        topPick: true,
+        currency: "USD",
+        monthlyPrice: 79.9,
+        annualDiscountPercent: 25,
+        perClientNoteMode: "auto",
+        footnote: null,
+        features: [],
+      },
+      {
+        id: "studio_dummy",
+        active: true,
+        sortOrder: 3,
+        tier: "studio",
+        title: "Studio",
+        subtitle: "Unlimited Students",
+        studentLimit: null,
+        isUnlimited: true,
+        topPick: false,
+        currency: "USD",
+        monthlyPrice: 149.9,
+        annualDiscountPercent: 25,
+        perClientNoteMode: "auto",
+        footnote: "* decreases as you add",
+        features: [],
+      },
+    ],
+    []
+  );
 
-  featureList: {
-    gap: themeui.spacing.sm,
-  },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: themeui.spacing.sm,
-  },
-  checkWrapper: {
-    width: 22,
-    height: 22,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.successSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  featureText: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.md - 1,
-  },
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setError(null);
+        if (!mounted) return;
 
-  buyButton: {
-    marginHorizontal: themeui.spacing.md,
-    marginTop: themeui.spacing.lg,
-    paddingVertical: themeui.spacing.md - 2,
-    borderRadius: themeui.radius.pill,
-    backgroundColor: themeui.colors.premium,
-    alignItems: "center",
-  },
-  buyButtonText: {
-    color: themeui.colors.text.primary,
-    fontSize: themeui.fontSize.lg - 1,
-    fontWeight: "800",
-  },
+        setPlans(dummyPlans);
+        const top = dummyPlans.find((p) => p.topPick) || dummyPlans[0];
+        setSelectedPlanId(top?.id ?? null);
+      } catch (e: any) {
+        if (!mounted) return;
+        setPlans([]);
+        setSelectedPlanId(null);
+        setError(e?.message ?? "Failed to load plans");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
 
-  footerNote: {
-    color: themeui.colors.text.muted,
-    fontSize: themeui.fontSize.xs,
-    textAlign: "center",
-    marginTop: themeui.spacing.sm,
-  },
+    return () => {
+      mounted = false;
+    };
+  }, [dummyPlans]);
+
+  const selectedPlan = useMemo(
+    () => plans.find((p) => p.id === selectedPlanId) ?? null,
+    [plans, selectedPlanId]
+  );
+
+  const saveText = useMemo(() => {
+    const d = plans[0]?.annualDiscountPercent ?? 0;
+    return d ? `Save %${d}` : null;
+  }, [plans]);
+
+  // ✅ Accent’i theme’den bağladık
+  // Monthly -> theme.primary, Annual -> theme.premium
+  const accent = billing === "annual" ? theme.colors.premium : theme.colors.primary;
+  const accentSoft = billing === "annual" ? theme.colors.premiumSoft : "rgba(96,165,250,0.20)";
+
+  const onToggleBilling = useCallback((v: boolean) => {
+    setBilling(v ? "annual" : "monthly");
+  }, []);
+
+  const onSelectPlan = useCallback((id: string) => {
+    setSelectedPlanId(id);
+  }, []);
+
+  const handleContinue = useCallback(async () => {
+    if (!selectedPlan || busy) return;
+    setBusy(true);
+    try {
+      const intentId = "dummy_intent_id";
+      await onContinue?.({ plan: selectedPlan, billing, intentId });
+    } finally {
+      setBusy(false);
+    }
+  }, [billing, busy, onContinue, selectedPlan]);
+
+  const continueDisabled = !selectedPlan || busy;
+
+  const styles = useMemo(() => makeStyles(theme, mode), [theme, mode]);
+
+  return (
+    <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
+      <SmoothGradientBg billing={billing} theme={theme} mode={mode} accent={accent} accentSoft={accentSoft} />
+
+      {/* BG PHOTO */}
+      <View pointerEvents="none" style={styles.bgPhotoWrap}>
+        <Image source={require("@/assets/images/paywall/gym-couple.png")} style={styles.bgPhoto} resizeMode="cover" />
+
+        {/* overlay: tamamen theme’e bağlı */}
+        <LinearGradient
+          colors={[
+            mode === "light" ? "rgba(248,250,252,0.92)" : theme.colors.overlay,
+            mode === "light" ? "rgba(248,250,252,0.55)" : "rgba(2,6,23,0.70)",
+            mode === "light" ? "rgba(248,250,252,0.86)" : "rgba(2,6,23,0.94)",
+          ]}
+          locations={[0, 0.55, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <LinearGradient
+          colors={[
+            theme.colors.background,
+            mode === "light" ? "rgba(248,250,252,0.88)" : "rgba(2,6,23,0.92)",
+            "rgba(0,0,0,0)",
+          ]}
+          locations={[0, 0.55, 1]}
+          style={styles.bgFadeLeft}
+        />
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.content, { paddingBottom: 16 + 72 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.hero}>
+          <Text style={[styles.h1, { color: accent }]}>Become{"\n"}Premium</Text>
+
+          <Text style={styles.desc}>
+            Unleash all features of app{"\n"}and grow your personal{"\n"}training business
+          </Text>
+
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Annual</Text>
+
+            <Switch
+              value={billing === "annual"}
+              onValueChange={onToggleBilling}
+              thumbColor={theme.colors.surface}
+              trackColor={{
+                false: mode === "light" ? "rgba(15,23,42,0.15)" : "rgba(255,255,255,0.18)",
+                true: accent,
+              }}
+              ios_backgroundColor={mode === "light" ? "rgba(15,23,42,0.15)" : "rgba(255,255,255,0.18)"}
+            />
+
+            {saveText ? <Text style={[styles.saveText, { color: accent }]}>{saveText}</Text> : null}
+          </View>
+        </View>
+
+        {/* TEST BUTONU */}
+        <View style={styles.midTestWrap}>
+          <TouchableOpacity activeOpacity={0.9} onPress={toggleTheme} style={[styles.midTestBtn, { borderColor: accent }]}>
+            <Text style={[styles.midTestBtnText, { color: theme.colors.text.primary }]}>
+              {mode === "dark" ? "Light Temayı Dene" : "Dark Temayı Dene"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <View style={styles.centerBox}>
+            <ActivityIndicator color={theme.colors.text.muted} />
+          </View>
+        ) : plans.length === 0 ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.emptyText}>{error ? `Error: ${error}` : "No plans available."}</Text>
+          </View>
+        ) : (
+          <View style={styles.planList}>
+            {plans.map((p) => (
+              <PlanCard
+                key={p.id}
+                plan={p}
+                billing={billing}
+                selected={p.id === selectedPlanId}
+                onPress={() => onSelectPlan(p.id)}
+                accent={accent}
+                theme={theme}
+                mode={mode}
+              />
+            ))}
+          </View>
+        )}
+
+        <View style={styles.featuresRow}>
+          <FeatureMini title="AI Detection" theme={theme} mode={mode} muted={false} />
+          <FeatureMini title="AI Detection" theme={theme} mode={mode} muted />
+          <FeatureMini title="AI Detection" theme={theme} mode={mode} muted />
+        </View>
+
+        <Text style={styles.cancelText}>Change plans or cancel anytime.</Text>
+      </ScrollView>
+
+      {/* FIXED CTA */}
+      <View style={[styles.fixedBottom, { paddingBottom: theme.spacing.md + insets.bottom }]}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={handleContinue}
+          disabled={continueDisabled}
+          style={[
+            styles.cta,
+            { backgroundColor: accent },
+            continueDisabled && styles.ctaDisabled,
+          ]}
+        >
+          <LinearGradient
+            colors={[
+              "rgba(255,255,255,0.05)",
+              "rgba(255,255,255,0.32)",
+              "rgba(255,255,255,0.02)",
+            ]}
+            locations={[0, 0.55, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.ctaShine}
+          />
+          <Text style={[styles.ctaText, { color: theme.colors.surfaceDark }]}>
+            {busy ? "Processing..." : "Continue"}
+          </Text>
+          <Text style={[styles.ctaArrow, { color: theme.colors.surfaceDark }]}>→</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const PlanCard = memo(function PlanCard({
+  plan,
+  billing,
+  selected,
+  onPress,
+  accent,
+  theme,
+  mode,
+}: {
+  plan: PlanDoc;
+  billing: BillingCycle;
+  selected: boolean;
+  onPress: () => void;
+  accent: string;
+  theme: ThemeUI;
+  mode: "dark" | "light";
+}) {
+  const priceInfo = useMemo(() => calcDisplayedPrice(plan, billing), [plan, billing]);
+
+  const perClient = useMemo(() => {
+    const m = plan.perClientNoteMode ?? "auto";
+    if (plan.isUnlimited) return null;
+    if (m === "custom") return plan.footnote ?? null;
+    return calcPerClientText(plan);
+  }, [plan]);
+
+  // ✅ kart arkaplanı theme’e bağlı
+  const cardBg = mode === "light" ? theme.colors.surface : "rgba(255,255,255,0.03)";
+  const border = mode === "light" ? "rgba(15,23,42,0.10)" : "rgba(255,255,255,0.06)";
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.92}
+      onPress={onPress}
+      style={[
+        {
+          backgroundColor: cardBg,
+          borderRadius: theme.radius.xl,
+          paddingVertical: 18,
+          paddingHorizontal: 18,
+          borderWidth: 1,
+          borderColor: border,
+        },
+        plan.topPick && {
+          borderColor: mode === "light" ? "rgba(15,23,42,0.16)" : "rgba(255,255,255,0.12)",
+        },
+        selected && {
+          borderWidth: 2,
+          borderColor: accent,
+          shadowColor: accent,
+          shadowOpacity: 0.20,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 10 },
+          elevation: 10,
+        },
+      ]}
+    >
+      {plan.topPick ? (
+        <View
+          style={{
+            position: "absolute",
+            left: 12,
+            top: -12,
+            backgroundColor: theme.colors.gold,
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            borderRadius: theme.radius.pill,
+            zIndex: 10,
+          }}
+        >
+          <Text style={{ color: theme.colors.surfaceDark, fontWeight: "900", fontSize: 13 }}>
+            Top Pick
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flex: 1, paddingRight: 12 }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "900",
+              marginBottom: 6,
+              letterSpacing: -0.45,
+              color: accent,
+            }}
+          >
+            {plan.title}
+          </Text>
+          <Text style={{ color: theme.colors.text.secondary, fontSize: 14, fontWeight: "800", lineHeight: 18 }}>
+            {plan.subtitle}
+          </Text>
+        </View>
+
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ color: theme.colors.text.primary, fontSize: 28, fontWeight: "900", letterSpacing: -0.5 }}>
+            ${Number(priceInfo.price).toFixed(1)}{" "}
+            <Text style={{ color: theme.colors.text.muted, fontSize: 12, fontWeight: "900" }}>
+              {priceInfo.suffix}
+            </Text>
+          </Text>
+
+          {perClient ? (
+            <Text style={{ marginTop: 6, color: theme.colors.text.muted, fontSize: 12, fontWeight: "900" }}>
+              {perClient}
+            </Text>
+          ) : null}
+
+          {plan.isUnlimited ? (
+            <Text style={{ marginTop: 6, color: theme.colors.text.muted, fontSize: 12, fontStyle: "italic", fontWeight: "700" }}>
+              * decreases as you add
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 });
+
+function FeatureMini({
+  title,
+  muted,
+  theme,
+  mode,
+}: {
+  title: string;
+  muted?: boolean;
+  theme: ThemeUI;
+  mode: "dark" | "light";
+}) {
+  const chipBg = mode === "dark" ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.04)";
+  const chipBorder = mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.10)";
+
+  return (
+    <View style={{ width: "31%", alignItems: "center", opacity: muted ? 0.28 : 1 }}>
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: theme.radius.pill,
+          backgroundColor: chipBg,
+          borderWidth: 1,
+          borderColor: chipBorder,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 8,
+        }}
+      >
+        <Cpu size={20} color={theme.colors.text.muted} />
+      </View>
+
+      <Text style={{ color: theme.colors.text.secondary, fontWeight: "900", fontSize: 12, textAlign: "center", marginBottom: 4 }}>
+        {title}
+      </Text>
+
+      <Text style={{ color: theme.colors.text.muted, fontSize: 10, lineHeight: 12, textAlign: "center" }}>
+        Uses advanced{"\n"}algorithms to analyze{"\n"}patterns and detect{"\n"}whether content is AI{"\n"}generated.
+      </Text>
+    </View>
+  );
+}
+
+function makeStyles(theme: ThemeUI, mode: "dark" | "light") {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+
+    bgPhotoWrap: {
+      position: "absolute",
+      top: 30,
+      right: 0,
+      width: 260,
+      height: 260,
+      overflow: "hidden",
+      opacity: 0.95,
+    },
+    bgPhoto: {
+      width: "100%",
+      height: "100%",
+      transform: [{ scale: 1.12 }],
+    },
+    bgFadeLeft: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 175,
+    },
+
+    content: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.lg + 8,
+    },
+
+    hero: { paddingBottom: theme.spacing.md },
+
+    h1: {
+      fontSize: 44,
+      fontWeight: "900",
+      letterSpacing: -1.0,
+      lineHeight: 46,
+      marginBottom: 10,
+    },
+
+    desc: {
+      color: theme.colors.text.secondary,
+      fontSize: 13,
+      lineHeight: 17,
+      marginBottom: 12,
+      fontWeight: "700",
+    },
+
+    toggleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    toggleLabel: { color: theme.colors.text.primary, fontWeight: "900", fontSize: 15 },
+    saveText: { fontWeight: "900", fontSize: 15 },
+
+    midTestWrap: { alignItems: "center", paddingVertical: 14 },
+    midTestBtn: {
+      width: "70%",
+      borderWidth: 2,
+      borderRadius: theme.radius.lg,
+      paddingVertical: 12,
+      backgroundColor: theme.colors.surfaceElevated,
+    },
+    midTestBtnText: { textAlign: "center", fontWeight: "900", fontSize: 14 },
+
+    centerBox: { paddingVertical: 22, alignItems: "center", justifyContent: "center" },
+    emptyText: { color: theme.colors.text.secondary, fontWeight: "800", fontSize: 16 },
+
+    planList: { gap: 14, paddingTop: 10 },
+
+    featuresRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: 18,
+      paddingTop: 6,
+      opacity: mode === "dark" ? 0.33 : 0.7,
+    },
+
+    cancelText: {
+      marginTop: 14,
+      textAlign: "center",
+      color: theme.colors.text.secondary,
+      fontWeight: "900",
+      fontSize: 13,
+    },
+
+    fixedBottom: {
+      paddingHorizontal: theme.spacing.lg,
+      backgroundColor: theme.colors.background,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+
+    cta: {
+      borderRadius: theme.radius.lg,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      top: 20,
+      overflow: "hidden",
+      ...theme.shadow.soft,
+    },
+
+    ctaShine: {
+      position: "absolute",
+      left: -40,
+      top: 0,
+      bottom: 0,
+      width: 220,
+      transform: [{ skewX: "-18deg" }],
+      opacity: 0.35,
+    },
+
+    ctaDisabled: { opacity: 0.55 },
+    ctaText: { fontSize: 17, fontWeight: "900" },
+    ctaArrow: { fontSize: 20, fontWeight: "900", marginLeft: 2 },
+  });
+}
+
