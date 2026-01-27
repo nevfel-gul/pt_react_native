@@ -11,28 +11,27 @@ import {
     onSnapshot,
     orderBy,
     query,
+    serverTimestamp,
     updateDoc,
     where,
 } from "firebase/firestore";
-import {
-    ArrowLeft,
-    Calendar,
-    Edit,
-    Eye,
-    Mail,
-    Phone,
-    User,
-} from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+
+import { ArrowLeft, Calendar, Edit, Eye, Mail, Phone, User } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
+    KeyboardAvoidingView,
+    Platform,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Bool = boolean | null;
@@ -40,7 +39,6 @@ type Bool = boolean | null;
 type Student = {
     id: string;
 
-    // Kişisel
     name: string;
     email?: string;
     number?: string;
@@ -49,8 +47,9 @@ type Student = {
     gender?: string;
     aktif?: "Aktif" | "Pasif";
     assessmentDate?: string; // YYYY-MM-DD
+    ptNote?: string;
+    ptNoteUpdatedAt?: any;
 
-    // PAR-Q (7)
     doctorSaidHeartOrHypertension?: Bool;
     doctorSaidHeartOrHypertensionNote?: string;
 
@@ -72,7 +71,6 @@ type Student = {
     doctorSaidOnlyUnderMedicalSupervision?: Bool;
     doctorSaidOnlyUnderMedicalSupervisionNote?: string;
 
-    // Kişisel Detaylar
     hadPainOrInjury?: Bool;
     hadPainOrInjuryNote?: string;
 
@@ -134,85 +132,39 @@ export default function StudentDetailScreen() {
     const { theme } = useTheme();
     const styles = useMemo(() => makeStyles(theme), [theme]);
 
+    const listRef = useRef<FlatList<RecordItem>>(null);
+
     const [student, setStudent] = useState<Student | null>(null);
     const [records, setRecords] = useState<RecordItem[]>([]);
     const [loadingStudent, setLoadingStudent] = useState(true);
     const [loadingRecords, setLoadingRecords] = useState(true);
     const [toggling, setToggling] = useState(false);
 
+    const [ptNote, setPtNote] = useState("");
+    const [savingPtNote, setSavingPtNote] = useState(false);
+    const [ptNoteOpen, setPtNoteOpen] = useState(false);
+
     const parqQuestions = useMemo(
         () => [
-            {
-                key: "doctorSaidHeartOrHypertension" as const,
-                noteKey: "doctorSaidHeartOrHypertensionNote" as const,
-                labelKey: "parq.q1",
-            },
-            {
-                key: "chestPainDuringActivityOrDaily" as const,
-                noteKey: "chestPainDuringActivityOrDailyNote" as const,
-                labelKey: "parq.q2",
-            },
-            {
-                key: "dizzinessOrLostConsciousnessLast12Months" as const,
-                noteKey: "dizzinessOrLostConsciousnessLast12MonthsNote" as const,
-                labelKey: "parq.q3",
-            },
-            {
-                key: "diagnosedOtherChronicDisease" as const,
-                noteKey: "diagnosedOtherChronicDiseaseNote" as const,
-                labelKey: "parq.q4",
-            },
-            {
-                key: "usesMedicationForChronicDisease" as const,
-                noteKey: "usesMedicationForChronicDiseaseNote" as const,
-                labelKey: "parq.q5",
-            },
-            {
-                key: "boneJointSoftTissueProblemWorseWithActivity" as const,
-                noteKey: "boneJointSoftTissueProblemWorseWithActivityNote" as const,
-                labelKey: "parq.q6",
-            },
-            {
-                key: "doctorSaidOnlyUnderMedicalSupervision" as const,
-                noteKey: "doctorSaidOnlyUnderMedicalSupervisionNote" as const,
-                labelKey: "parq.q7",
-            },
+            { key: "doctorSaidHeartOrHypertension" as const, noteKey: "doctorSaidHeartOrHypertensionNote" as const, labelKey: "parq.q1" },
+            { key: "chestPainDuringActivityOrDaily" as const, noteKey: "chestPainDuringActivityOrDailyNote" as const, labelKey: "parq.q2" },
+            { key: "dizzinessOrLostConsciousnessLast12Months" as const, noteKey: "dizzinessOrLostConsciousnessLast12MonthsNote" as const, labelKey: "parq.q3" },
+            { key: "diagnosedOtherChronicDisease" as const, noteKey: "diagnosedOtherChronicDiseaseNote" as const, labelKey: "parq.q4" },
+            { key: "usesMedicationForChronicDisease" as const, noteKey: "usesMedicationForChronicDiseaseNote" as const, labelKey: "parq.q5" },
+            { key: "boneJointSoftTissueProblemWorseWithActivity" as const, noteKey: "boneJointSoftTissueProblemWorseWithActivityNote" as const, labelKey: "parq.q6" },
+            { key: "doctorSaidOnlyUnderMedicalSupervision" as const, noteKey: "doctorSaidOnlyUnderMedicalSupervisionNote" as const, labelKey: "parq.q7" },
         ],
         []
     );
 
     const personalQuestions = useMemo(
         () => [
-            {
-                key: "hadPainOrInjury" as const,
-                noteKey: "hadPainOrInjuryNote" as const,
-                labelKey: "personal.q1",
-            },
-            {
-                key: "hadSurgery" as const,
-                noteKey: "hadSurgeryNote" as const,
-                labelKey: "personal.q2",
-            },
-            {
-                key: "diagnosedChronicDiseaseByDoctor" as const,
-                noteKey: "diagnosedChronicDiseaseByDoctorNote" as const,
-                labelKey: "personal.q3",
-            },
-            {
-                key: "currentlyUsesMedications" as const,
-                noteKey: "currentlyUsesMedicationsNote" as const,
-                labelKey: "personal.q4",
-            },
-            {
-                key: "weeklyPhysicalActivity30MinOrLess" as const,
-                noteKey: "weeklyPhysicalActivity30MinOrLessNote" as const,
-                labelKey: "personal.q5",
-            },
-            {
-                key: "hasSportsHistoryOrCurrentlyDoingSport" as const,
-                noteKey: "hasSportsHistoryOrCurrentlyDoingSportNote" as const,
-                labelKey: "personal.q6",
-            },
+            { key: "hadPainOrInjury" as const, noteKey: "hadPainOrInjuryNote" as const, labelKey: "personal.q1" },
+            { key: "hadSurgery" as const, noteKey: "hadSurgeryNote" as const, labelKey: "personal.q2" },
+            { key: "diagnosedChronicDiseaseByDoctor" as const, noteKey: "diagnosedChronicDiseaseByDoctorNote" as const, labelKey: "personal.q3" },
+            { key: "currentlyUsesMedications" as const, noteKey: "currentlyUsesMedicationsNote" as const, labelKey: "personal.q4" },
+            { key: "weeklyPhysicalActivity30MinOrLess" as const, noteKey: "weeklyPhysicalActivity30MinOrLessNote" as const, labelKey: "personal.q5" },
+            { key: "hasSportsHistoryOrCurrentlyDoingSport" as const, noteKey: "hasSportsHistoryOrCurrentlyDoingSportNote" as const, labelKey: "personal.q6" },
             { key: "jobRequiresLongSitting" as const, labelKey: "personal.q7" },
             { key: "jobRequiresRepetitiveMovement" as const, labelKey: "personal.q8" },
             { key: "jobRequiresHighHeels" as const, labelKey: "personal.q9" },
@@ -241,6 +193,7 @@ export default function StudentDetailScreen() {
                     aktif: d.aktif ?? "Aktif",
                     trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
                 });
+                setPtNote((d.ptNote as string) ?? "");
             } catch (err) {
                 console.error(err);
                 setStudent(null);
@@ -254,6 +207,7 @@ export default function StudentDetailScreen() {
 
     useEffect(() => {
         if (!id) return;
+
         const qy = query(
             recordsColRef(auth.currentUser?.uid!),
             where("studentId", "==", id),
@@ -288,14 +242,32 @@ export default function StudentDetailScreen() {
         try {
             setToggling(true);
             const newStatus = student.aktif === "Aktif" ? "Pasif" : "Aktif";
-            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), {
-                aktif: newStatus,
-            });
+            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), { aktif: newStatus });
             setStudent({ ...student, aktif: newStatus });
         } catch (err) {
             console.error(err);
         } finally {
             setToggling(false);
+        }
+    };
+
+    const savePtNote = async () => {
+        if (!student) return;
+
+        try {
+            setSavingPtNote(true);
+
+            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), {
+                ptNote: ptNote.trim(),
+                ptNoteUpdatedAt: serverTimestamp(),
+            });
+
+            Alert.alert(t("common.success"), t("studentDetail.ptNote.saved"));
+        } catch (err) {
+            console.error("ptNote save error:", err);
+            Alert.alert(t("common.error"), t("studentDetail.ptNote.saveError"));
+        } finally {
+            setSavingPtNote(false);
         }
     };
 
@@ -306,6 +278,32 @@ export default function StudentDetailScreen() {
 
     const viewRecord = (recordId: string) =>
         router.push({ pathname: "/record/[id]", params: { id: recordId } });
+
+    const firstLetter = student?.name?.[0]?.toUpperCase() ?? "?";
+
+    const onTogglePtNote = useCallback(() => {
+        setPtNoteOpen((prev) => {
+            const next = !prev;
+
+            // ✅ sadece AÇILIRKEN en sona kaydır (input görünsün)
+            if (next) {
+                setTimeout(() => {
+                    listRef.current?.scrollToEnd({ animated: true });
+                }, 50);
+            }
+
+            return next;
+        });
+    }, []);
+
+
+    const onFocusPtNote = useCallback(() => {
+        setPtNoteOpen(true);
+        setTimeout(() => {
+            // input ekranda kalsın diye sona doğru kaydır
+            listRef.current?.scrollToEnd({ animated: true });
+        }, 250);
+    }, []);
 
     if (loadingStudent) {
         return (
@@ -333,95 +331,89 @@ export default function StudentDetailScreen() {
         );
     }
 
-    const firstLetter = student.name?.[0]?.toUpperCase() ?? "?";
-
     return (
         <SafeAreaView style={styles.safeArea}>
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <View style={styles.headerTopRow}>
-                        <TouchableOpacity style={styles.backButton} onPress={goBack}>
-                            <ArrowLeft size={18} color={theme.colors.text.primary} />
-                            <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
-                        </TouchableOpacity>
-
-                        <View style={styles.headerActions}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.toggleButton,
-                                    student.aktif === "Aktif"
-                                        ? styles.toggleButtonPassive
-                                        : styles.toggleButtonActive,
-                                ]}
-                                onPress={toggleAktif}
-                                disabled={toggling}
-                            >
-                                <Text style={styles.toggleButtonText}>
-                                    {student.aktif === "Aktif"
-                                        ? t("studentDetail.toggle.makePassive")
-                                        : t("studentDetail.toggle.makeActive")}
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity style={styles.editButton} onPress={addRecord}>
-                                <Edit size={14} color={theme.colors.text.onAccent} />
-                                <Text style={styles.editButtonText}>
-                                    {t("studentDetail.addRecord")}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    <View style={styles.studentRow}>
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>{firstLetter}</Text>
-                        </View>
-
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.studentName}>{student.name}</Text>
-
-                            <View
-                                style={[
-                                    styles.statusBadge,
-                                    student.aktif === "Aktif"
-                                        ? styles.statusActive
-                                        : styles.statusPassive,
-                                ]}
-                            >
-                                <Text
-                                    style={
-                                        student.aktif === "Aktif"
-                                            ? styles.statusActiveText
-                                            : styles.statusPassiveText
-                                    }
-                                >
-                                    {student.aktif === "Aktif"
-                                        ? t("studentDetail.student.active")
-                                        : t("studentDetail.student.passive")}
-                                </Text>
-                            </View>
-
-                            <View style={styles.metaLine}>
-                                <Calendar size={14} color={theme.colors.text.muted} />
-                                <Text style={styles.metaText}>
-                                    {t("studentDetail.student.assessmentDate")}{" "}
-                                    {formatDateTR(student.assessmentDate)}
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
+            <KeyboardAvoidingView
+                style={styles.container}
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+            >
                 <FlatList
+                    ref={listRef}
                     data={records}
                     keyExtractor={(i) => i.id}
-                    contentContainerStyle={{ paddingBottom: 40 }}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                    contentContainerStyle={styles.listContent} // klavye açılınca yazı kaybolmasın diye ekstra boşluk
                     ListHeaderComponent={
                         <View>
+                            {/* ✅ HEADER artık liste içinde: scroll ile yukarı gider (sabit kalmaz) */}
+                            <View style={styles.header}>
+                                <View style={styles.headerTopRow}>
+                                    <TouchableOpacity style={styles.backButton} onPress={goBack}>
+                                        <ArrowLeft size={18} color={theme.colors.text.primary} />
+                                        <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
+                                    </TouchableOpacity>
+
+                                    <View style={styles.headerActions}>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.toggleButton,
+                                                student.aktif === "Aktif" ? styles.toggleButtonPassive : styles.toggleButtonActive,
+                                            ]}
+                                            onPress={toggleAktif}
+                                            disabled={toggling}
+                                        >
+                                            <Text style={styles.toggleButtonText}>
+                                                {student.aktif === "Aktif"
+                                                    ? t("studentDetail.toggle.makePassive")
+                                                    : t("studentDetail.toggle.makeActive")}
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity style={styles.editButton} onPress={addRecord}>
+                                            <Edit size={14} color={theme.colors.text.onAccent} />
+                                            <Text style={styles.editButtonText}>{t("studentDetail.addRecord")}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+
+                                <View style={styles.studentRow}>
+                                    <View style={styles.avatar}>
+                                        <Text style={styles.avatarText}>{firstLetter}</Text>
+                                    </View>
+
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.studentName}>{student.name}</Text>
+
+                                        <View
+                                            style={[
+                                                styles.statusBadge,
+                                                student.aktif === "Aktif" ? styles.statusActive : styles.statusPassive,
+                                            ]}
+                                        >
+                                            <Text
+                                                style={student.aktif === "Aktif" ? styles.statusActiveText : styles.statusPassiveText}
+                                            >
+                                                {student.aktif === "Aktif"
+                                                    ? t("studentDetail.student.active")
+                                                    : t("studentDetail.student.passive")}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.metaLine}>
+                                            <Calendar size={14} color={theme.colors.text.muted} />
+                                            <Text style={styles.metaText}>
+                                                {t("studentDetail.student.assessmentDate")} {formatDateTR(student.assessmentDate)}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Personal info */}
                             <View style={styles.card}>
-                                <Text style={styles.cardTitle}>
-                                    {t("studentDetail.section.personalInfo")}
-                                </Text>
+                                <Text style={styles.cardTitle}>{t("studentDetail.section.personalInfo")}</Text>
 
                                 <InfoRow
                                     styles={styles}
@@ -455,14 +447,13 @@ export default function StudentDetailScreen() {
                                 />
                             </View>
 
+                            {/* PAR-Q */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.parq")}</Text>
 
                                 {parqQuestions.map((q, idx) => {
                                     const answer = (student as any)[q.key] as Bool;
-                                    const note = q.noteKey
-                                        ? ((student as any)[q.noteKey] as string)
-                                        : "";
+                                    const note = q.noteKey ? ((student as any)[q.noteKey] as string) : "";
                                     return (
                                         <QAItem
                                             key={q.key}
@@ -476,16 +467,13 @@ export default function StudentDetailScreen() {
                                 })}
                             </View>
 
+                            {/* Personal details */}
                             <View style={styles.card}>
-                                <Text style={styles.cardTitle}>
-                                    {t("studentDetail.section.personalDetails")}
-                                </Text>
+                                <Text style={styles.cardTitle}>{t("studentDetail.section.personalDetails")}</Text>
 
                                 {personalQuestions.map((q, idx) => {
                                     const answer = (student as any)[q.key] as Bool;
-                                    const note = (q as any).noteKey
-                                        ? ((student as any)[(q as any).noteKey] as string)
-                                        : "";
+                                    const note = (q as any).noteKey ? ((student as any)[(q as any).noteKey] as string) : "";
                                     return (
                                         <QAItem
                                             key={q.key}
@@ -501,9 +489,7 @@ export default function StudentDetailScreen() {
                                 <InfoRow
                                     styles={styles}
                                     label={t("studentDetail.label.plannedDaysPerWeek")}
-                                    value={
-                                        student.plannedDaysPerWeek ? String(student.plannedDaysPerWeek) : "-"
-                                    }
+                                    value={student.plannedDaysPerWeek ? String(student.plannedDaysPerWeek) : "-"}
                                     icon={<Calendar size={16} color={theme.colors.primary} />}
                                 />
 
@@ -515,9 +501,7 @@ export default function StudentDetailScreen() {
                                 />
 
                                 <View style={{ marginTop: 12 }}>
-                                    <Text style={styles.subTitle}>
-                                        {t("studentDetail.label.trainingGoals")}
-                                    </Text>
+                                    <Text style={styles.subTitle}>{t("studentDetail.label.trainingGoals")}</Text>
 
                                     <View style={styles.chipWrap}>
                                         {student.trainingGoals && student.trainingGoals.length ? (
@@ -534,6 +518,50 @@ export default function StudentDetailScreen() {
                                         </View>
                                     )}
                                 </View>
+                            </View>
+
+                            {/* ✅ PT NOTE artık kayıtların ÜSTÜNDE ve kapalı/açık */}
+                            <View style={styles.card}>
+                                <TouchableOpacity activeOpacity={0.85} onPress={onTogglePtNote}>
+                                    <Text style={styles.cardTitle}>{t("studentDetail.section.ptNote")}</Text>
+
+                                    {/* kapalıyken kısa preview */}
+                                    {!ptNoteOpen ? (
+                                        <Text style={styles.ptNoteHint}>
+                                            {ptNote?.trim()
+                                                ? ptNote.trim().slice(0, 80) + (ptNote.trim().length > 80 ? "…" : "")
+                                                : t("studentDetail.ptNote.hint")}
+                                        </Text>
+                                    ) : (
+                                        <Text style={styles.ptNoteHint}>{t("studentDetail.ptNote.hint")}</Text>
+                                    )}
+                                </TouchableOpacity>
+
+                                {ptNoteOpen && (
+                                    <View style={{ marginTop: 10 }}>
+                                        <TextInput
+                                            value={ptNote}
+                                            onChangeText={setPtNote}
+                                            placeholder={t("studentDetail.ptNote.placeholder")}
+                                            placeholderTextColor={theme.colors.text.muted}
+                                            multiline
+                                            textAlignVertical="top"
+                                            style={styles.ptNoteInput}
+                                            onFocus={onFocusPtNote}
+                                        />
+
+                                        <TouchableOpacity
+                                            style={[styles.ptNoteSaveBtn, savingPtNote && { opacity: 0.6 }]}
+                                            onPress={savePtNote}
+                                            disabled={savingPtNote}
+                                            activeOpacity={0.85}
+                                        >
+                                            <Text style={styles.ptNoteSaveText}>
+                                                {savingPtNote ? t("common.saving") : t("common.save")}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </View>
 
                             <Text style={styles.recordsTitle}>{t("studentDetail.section.records")}</Text>
@@ -566,8 +594,10 @@ export default function StudentDetailScreen() {
                             </View>
                         ) : null
                     }
+                    // footer sadece boşluk (pt note artık üstte)
+                    ListFooterComponent={<View style={{ height: 40 }} />}
                 />
-            </View>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -628,11 +658,7 @@ function QAItem({
                     <Text
                         style={[
                             styles.badgeText,
-                            isYes
-                                ? styles.badgeTextYes
-                                : answer === false
-                                    ? styles.badgeTextNo
-                                    : styles.badgeTextNA,
+                            isYes ? styles.badgeTextYes : answer === false ? styles.badgeTextNo : styles.badgeTextNA,
                         ]}
                     >
                         {val}
@@ -657,7 +683,6 @@ function Chip({ styles, label }: { styles: ReturnType<typeof makeStyles>; label:
         </View>
     );
 }
-
 /* ----------------- STYLES ----------------- */
 function makeStyles(theme: ThemeUI) {
     return StyleSheet.create({
@@ -691,7 +716,11 @@ function makeStyles(theme: ThemeUI) {
             borderWidth: 1,
             borderColor: theme.colors.border,
         },
-        backButtonText: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
+        backButtonText: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.sm,
+            marginLeft: theme.spacing.xs,
+        },
 
         headerActions: { flexDirection: "row", marginLeft: theme.spacing.xs },
 
@@ -797,7 +826,12 @@ function makeStyles(theme: ThemeUI) {
         },
         infoLabelRow: { flexDirection: "row", alignItems: "center" },
         infoLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
-        infoValue: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, maxWidth: "55%", textAlign: "right" },
+        infoValue: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.md - 1,
+            maxWidth: "55%",
+            textAlign: "right",
+        },
 
         /* QA */
         qaItem: {
@@ -806,7 +840,13 @@ function makeStyles(theme: ThemeUI) {
             borderBottomColor: theme.colors.border,
         },
         qaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
-        qaQuestion: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, fontWeight: "600", flex: 1, lineHeight: 18 },
+        qaQuestion: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.md - 1,
+            fontWeight: "600",
+            flex: 1,
+            lineHeight: 18,
+        },
 
         badge: {
             paddingHorizontal: theme.spacing.sm - 2,
@@ -870,8 +910,65 @@ function makeStyles(theme: ThemeUI) {
             justifyContent: "space-between",
             alignItems: "center",
         },
+        ptNoteHint: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.sm,
+            marginBottom: theme.spacing.sm,
+            lineHeight: 18,
+        },
+
+        ptNoteInput: {
+            minHeight: 140,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+            padding: theme.spacing.sm,
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.sm,
+            lineHeight: 18,
+        },
+
+        ptNoteSaveBtn: {
+            marginTop: theme.spacing.sm,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.accent,
+            paddingVertical: theme.spacing.sm,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+
+        ptNoteSaveText: {
+            color: theme.colors.text.onAccent,
+            fontSize: theme.fontSize.md,
+            fontWeight: "800",
+        },
+
         recordDate: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, fontWeight: "600" },
         recordNote: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginTop: 2 },
         emptyText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.md - 1 },
+
+        /* ✅ ADDED (sadece yeni eklenenler) */
+        listContent: {
+            paddingBottom: 180,
+        },
+        ptNoteHeaderPress: {
+            paddingVertical: 2,
+        },
+        ptNotePreview: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.sm,
+            lineHeight: 18,
+            marginTop: 2,
+        },
+        recordNotePress: {
+            marginTop: 2,
+        },
+        listFooterSpace: {
+            height: 40,
+        },
     });
 }
+
