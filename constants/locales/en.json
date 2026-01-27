@@ -3,7 +3,7 @@
   "tabs.kolpa": "Mock",
   "tabs.settings": "Settings",
   "tabs.premium": "Go Premium",
-  "students.loading": "Loading students...",
+  "tabs.calendar": "Calendar",
   "search.student.placeholder": "Search students...",
   "language.label": "Language",
   "language.turkish": "Turkish",
@@ -26,13 +26,11 @@
   "summary.stat.activeStudents.sub": "Measured within the last 60 days",
   "summary.stat.thisWeekMeasurement": "Measurements this week",
   "summary.stat.thisWeekMeasurement.sub": "Tanita or performance test",
-
   "summary.card.goalProgress": "Goal-Based Progress",
   "summary.card.goalProgress.hint": "Placeholder percentages. Real values will come from the backend.",
   "summary.goal.fatLoss": "Fat loss focused",
   "summary.goal.muscleGain": "Muscle gain focused",
   "summary.goal.generalHealth": "General health / mobility",
-
   "summary.card.studentSegments": "Student Segments",
   "summary.segment.twiceWeek": "Attends twice a week",
   "summary.segment.threeTimesWeek": "Attends three times a week",
@@ -56,16 +54,12 @@
   "premium.feature.calendarSync": "Online booking & calendar sync",
   "premium.feature.notifications": "Automated notifications",
   "premium.feature.support": "Premium support",
-
   "premium.alert.purchaseDummy": "Premium purchase (placeholder)",
   "premium.cta.buy": "Buy Premium",
   "premium.footer.note": "Cancel anytime. No hidden fees.",
-
   "settings.title": "Settings",
-
   "settings.tab.preferences": "Preferences",
   "settings.tab.security": "Security",
-
   "settings.section.preferences": "Preferences",
   "settings.preference.darkTheme": "Dark Mode",
   "settings.preference.darkTheme.sub": "Toggle dark mode",
@@ -73,7 +67,6 @@
   "settings.preference.language.sub": "App language",
   "settings.preference.region": "Region",
   "settings.preference.region.sub": "Date & time format",
-
   "settings.section.notifications": "Notifications",
   "settings.notifications.push": "Push Notifications",
   "settings.notifications.push.sub": "Session reminders, new messages",
@@ -81,7 +74,6 @@
   "settings.notifications.email.sub": "Weekly summary reports",
   "settings.notifications.haptic": "Vibration & Haptics",
   "settings.notifications.haptic.sub": "Tactile feedback",
-
   "settings.section.app": "App",
   "settings.app.calendarView": "Calendar View",
   "settings.app.calendarView.sub": "Default view",
@@ -89,7 +81,6 @@
   "settings.app.timeFormat.sub": "12/24-hour",
   "settings.app.clearCache": "Clear Cache",
   "settings.app.clearCache.sub": "Delete temporary data",
-
   "settings.section.security": "Security",
   "settings.security.rememberSession": "Remember Session",
   "settings.security.rememberSession.sub": "Stay signed in on this device",
@@ -98,7 +89,6 @@
   "settings.security.changePassword": "Change Password",
   "settings.security.changePassword.sub": "Update your login password",
   "settings.security.change": "Change",
-
   "settings.section.account": "Account",
   "settings.account.loggedInDevices": "Signed-in Devices",
   "settings.account.loggedInDevices.sub": "Active sessions",
@@ -107,49 +97,38 @@
   "settings.account.deleteAccount": "Delete Account",
   "settings.account.deleteAccount.sub": "This action cannot be undone",
   "settings.action.delete": "Delete",
-
   "settings.section.about": "About",
   "settings.about.version": "Version",
   "settings.about.license": "License",
   "settings.about.privacyPolicy": "Privacy Policy",
   "settings.action.open": "Open",
-
   "settings.logout": "Sign Out",
-
   "settings.value.turkish": "Turkish",
   "settings.value.turkey": "Turkey",
   "settings.value.weekly": "Weekly",
   "settings.value.24h": "24-hour",
-
   "recordNew.loadingStudent": "Loading student...",
   "recordNew.studentNotFound": "Student not found.",
   "recordNew.back": "Back",
-
   "recordNew.tips.on": "Tips On",
   "recordNew.tips.off": "Tips Off",
-
   "recordNew.steps.physical": "Physical Measurements",
   "recordNew.steps.aerobic": "Aerobic Fitness",
   "recordNew.steps.mobility": "Movement & Flexibility",
   "recordNew.steps.strength": "Strength Tests",
-
   "recordNew.nav.next": "Next",
   "recordNew.nav.prev": "Back",
   "recordNew.save": "Save Assessment",
-
   "recordNew.alert.okTitle": "All set",
   "recordNew.alert.saved": "Assessment saved.",
   "recordNew.alert.errorTitle": "Error",
   "recordNew.alert.noStudentId": "Student ID not found.",
   "recordNew.alert.saveError": "An error occurred while saving.",
-
   "recordNew.hint.tap": "Tap for a tip",
   "recordNew.modal.close": "Close",
-
   "recordNew.card.tanita.title": "Physical Measurements (Tanita)",
   "recordNew.card.tanita.tip": "All values in this section are objective measurements from the Tanita body composition analyzer. For best accuracy, the client should be measured on an empty stomach, at similar times, and preferably under the same conditions. Values should be interpreted over time and evaluated based on trends.",
   "recordNew.card.tanita.bmi.tip": "This is the BMI value shown directly on the Tanita device. No manual calculation is needed.",
-
   "recordNew.field.weight": "Weight (kg)",
   "recordNew.field.bmi": "Body Mass Index (BMI)",
   "recordNew.field.bmr": "Basal Metabolic Rate",
@@ -159,7 +138,6 @@
   "recordNew.field.bodyWater": "Body Water Percentage (%)",
   "recordNew.field.impedance": "Impedance (Ω - Ohm)",
   "recordNew.field.metabolicAge": "Metabolic Age",
-
   "recordNew.card.tape.title": "Circumference Measurements (Tape)",
   "recordNew.field.neck": "Neck",
   "recordNew.placeholder.neck": "Neck circumference",
@@ -184,48 +162,38 @@
   "recordNew.field.leftCalf": "Left calf",
   "recordNew.placeholder.leftCalf": "Calf circumference",
   "recordNew.field.tapeNote": "Tape note",
-
   "recordNew.card.aerobic.title": "Aerobic Fitness / Target HR",
   "recordNew.tip.restingHr": "Resting heart rate should be measured immediately after waking up, before getting out of bed. In individuals who exercise regularly, it tends to decrease over time and is an important indicator of cardiovascular fitness.",
   "recordNew.field.restingHr": "Resting heart rate",
-
   "recordNew.tip.carvonen": "The Carvonen method uses resting heart rate and age to calculate target exercise heart rate. The selected zone determines training intensity (fat loss, endurance, performance, etc.).",
   "recordNew.field.carvonenZone": "Carvonen Training Intensity (Zone)",
   "recordNew.tip.targetHr": "The calculated target heart rate indicates the recommended beats per minute to reach during exercise. Staying within this range supports progress aligned with the workout goal.",
   "recordNew.label.targetHr": "Target heart rate",
-
   "recordNew.tip.ymca": "The post-exercise recovery heart rate measured after the YMCA 3-minute step test is used to evaluate aerobic capacity and how quickly the heart returns to normal after exercise.",
   "recordNew.field.ymcaPulse": "YMCA 3-min Step Test — Recovery Heart Rate",
   "recordNew.tip.ymcaResult": "YMCA test results indicate aerobic fitness level by age and sex. A lower recovery heart rate generally reflects better cardiovascular conditioning.",
   "recordNew.label.ymcaResult": "YMCA result",
-
   "recordNew.field.bruceTime": "Bruce Test — Time (min)",
   "recordNew.placeholder.bruceTime": "Test time (min)",
   "recordNew.help.bruce": "Bruce test protocol: Treadmill speed and incline increase every 3 minutes; record the final time the client can sustain.",
   "recordNew.tip.bruceNote": "Note: The treadmill should be set to km/h; incline is entered as a percentage.",
   "recordNew.label.vo2max": "VO₂max",
-
   "recordNew.card.posture.title": "Static Posture Analysis",
   "recordNew.field.ankle.front": "Foot & ankle (front)",
   "recordNew.field.ankle.side": "Foot & ankle (side)",
   "recordNew.field.ankle.back": "Foot & ankle (back)",
-
   "recordNew.field.knee.front": "Knee (front)",
   "recordNew.field.knee.side": "Knee (side)",
   "recordNew.field.knee.back": "Knee (back)",
-
   "recordNew.field.lphk.front": "Lumbo-Pelvic-Hip Complex (front)",
   "recordNew.field.lphk.side": "Lumbo-Pelvic-Hip Complex (side)",
   "recordNew.field.lphk.back": "Lumbo-Pelvic-Hip Complex (back)",
-
   "recordNew.field.shoulders.front": "Shoulders (front)",
   "recordNew.field.shoulders.side": "Shoulders (side)",
   "recordNew.field.shoulders.back": "Shoulders (back)",
-
   "recordNew.field.headNeck.front": "Head & neck (front)",
   "recordNew.field.headNeck.side": "Head & neck (side)",
   "recordNew.field.headNeck.back": "Head & neck (back)",
-
   "recordNew.tip.quickScan": "Quick Scan: The three items below help quickly classify observed compensation patterns. If you’re unsure, you can select “No” or add details in the notes field.",
   "recordNew.field.pronation": "Pronation Distortion Syndrome",
   "recordNew.field.lowerCrossed": "Lower Crossed Syndrome",
@@ -233,7 +201,6 @@
   "recordNew.option.yes": "Yes",
   "recordNew.option.no": "No",
   "recordNew.field.postureNotes": "General notes / observations",
-
   "recordNew.card.ohs.title": "Overhead Squat Test",
   "recordNew.field.ohsNotes": "Overhead Squat Notes (Observations)",
   "recordNew.field.ohsFeetTurnOut": "Do the feet turn out?",
@@ -245,14 +212,12 @@
   "recordNew.help.hasPain": "Ongoing pain in areas such as low back, knee, shoulder?",
   "recordNew.field.hadSurgery": "History of surgery?",
   "recordNew.help.hadSurgery": "Orthopedic or other surgery in recent years.",
-
   "recordNew.card.sitReach.title": "Sit and Reach Test",
   "recordNew.field.sitReach1": "Measurement 1 (cm)",
   "recordNew.field.sitReach2": "Measurement 2 (cm)",
   "recordNew.field.sitReach3": "Measurement 3 (cm)",
   "recordNew.label.bestValue": "Best value",
   "recordNew.field.sitReachNotes": "Where was tightness felt?",
-
   "recordNew.card.strength.title": "Strength Tests",
   "recordNew.field.pushup": "Push-ups completed in 1 minute",
   "recordNew.field.modifiedPushup": "Modified push-up (on knees)?",
@@ -266,21 +231,17 @@
   "recordNew.field.strengthNotes": "Strength notes",
   "recordNew.field.recordNotes": "Record notes",
   "recordNew.tip.recordNotes": "Shown on the student info screen.",
-
   "recordNew.status.weak": "Weak",
   "recordNew.status.healthy": "Healthy",
   "recordNew.status.overweightLight": "Overweight",
   "recordNew.status.obese": "Obese",
-
   "recordNew.status.low": "Low",
   "recordNew.status.normal": "Normal",
   "recordNew.status.high": "High",
-
   "recordNew.status.veryLow": "Very low",
   "recordNew.status.medium": "Medium",
   "recordNew.status.veryHigh": "Very high",
   "recordNew.status.invalid": "Invalid data",
-
   "recordNew.status.excellent": "Excellent",
   "recordNew.status.good": "Good",
   "recordNew.status.aboveAvg": "Above average",
@@ -288,15 +249,12 @@
   "recordNew.status.belowAvg": "Below average",
   "recordNew.status.bad": "Poor",
   "recordNew.status.veryBad": "Very poor",
-
   "recordDetail.loading": "Loading record...",
   "recordDetail.notFound": "Record not found.",
   "recordDetail.fetchError": "Error fetching data",
   "recordDetail.back": "Back",
-
   "recordDetail.student.active": "Active student",
   "recordDetail.student.passive": "Inactive student",
-
   "recordDetail.section.personal": "Personal Information",
   "recordDetail.section.tanita": "Physical Measurements (Tanita)",
   "recordDetail.section.tape": "Circumference Measurements",
@@ -305,12 +263,10 @@
   "recordDetail.section.ohs": "Overhead Squat Test",
   "recordDetail.section.sitReach": "Sit and Reach Test",
   "recordDetail.section.strength": "Strength Tests",
-
   "recordDetail.label.email": "Email",
   "recordDetail.label.phone": "Phone",
   "recordDetail.label.dob": "Date of birth",
   "recordDetail.label.gender": "Gender",
-
   "recordDetail.label.weight": "Weight",
   "recordDetail.label.bodyFat": "Body fat percentage",
   "recordDetail.label.bmi": "Body Mass Index (BMI)",
@@ -321,7 +277,6 @@
   "recordDetail.label.metabolicAge": "Metabolic age",
   "recordDetail.label.impedance": "Impedance",
   "recordDetail.label.waistHipRaw": "Waist-to-hip ratio (raw values)",
-
   "recordDetail.analysis.status": "Status:",
   "recordDetail.analysis.comment": "Comment:",
   "recordDetail.analysis.targetHr": "Target heart rate:",
@@ -333,7 +288,6 @@
   "recordDetail.analysis.plankScore": "Plank score:",
   "recordDetail.analysis.situpScore": "Sit-up score:",
   "recordDetail.analysis.rmSquatScore": "1RM Squat score:",
-
   "recordDetail.tape.neck": "Neck",
   "recordDetail.tape.shoulder": "Shoulders",
   "recordDetail.tape.chest": "Chest",
@@ -368,7 +322,6 @@
   "recordDetail.posture.pronation": "Pronation Distortion Syndrome",
   "recordDetail.posture.lower": "Lower Crossed Syndrome",
   "recordDetail.posture.upper": "Upper Crossed Syndrome",
-
   "recordDetail.ohs.footTurnsOut": "Feet turn out",
   "recordDetail.ohs.kneeMovesInward": "Knees move inward",
   "recordDetail.ohs.kneeMovesOutward": "Knees move outward",

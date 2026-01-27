@@ -8,6 +8,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
+
 export default function TabLayout() {
   const { theme, mode } = useTheme();
   const hasPremium = false;
@@ -16,7 +17,6 @@ export default function TabLayout() {
   const [authReady, setAuthReady] = React.useState(false);
   const [isAuthed, setIsAuthed] = React.useState<boolean>(!!auth.currentUser);
   const { t } = useTranslation();
-
   React.useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setIsAuthed(!!u);
@@ -31,157 +31,102 @@ export default function TabLayout() {
 
   const premiumHref = hasPremium ? undefined : "/premium";
 
+  const glow = {
+    backgroundColor:
+      mode === "light" ? "rgba(56,189,248,0.12)" : "rgba(56,189,248,0.10)",
+    shadowColor: theme.colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 10,
+  } as const;
+
+  const iconWrap = {
+    padding: 8,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  } as const;
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-
-        // ✅ theme’den gelsin
         tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.text.muted,
-
         tabBarStyle: {
           backgroundColor: theme.colors.background,
           borderTopColor: theme.colors.border,
           paddingTop: 10,
         },
-
         tabBarButton: HapticTab,
       }}
       initialRouteName="index"
     >
+      {/* 1) DASHBOARD */}
       <Tabs.Screen
         name="index"
         options={{
           title: t("tabs.dashboard"),
           tabBarIcon: ({ color, focused }) => (
-            <View
-              style={[
-                {
-                  padding: 8,
-                  borderRadius: 14,
-                  alignItems: "center",
-                  justifyContent: "center",
-                },
-                focused && {
-                  backgroundColor:
-                    mode === "light"
-                      ? "rgba(56,189,248,0.12)"
-                      : "rgba(56,189,248,0.10)",
-                  shadowColor: theme.colors.accent,
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.6,
-                  shadowRadius: 4,
-                  elevation: 6,
-                },
-              ]}
-            >
+            <View style={[iconWrap, focused && glow]}>
               <IconSymbol size={28} name="house.fill" color={color} />
             </View>
           ),
         }}
       />
 
+      {/* 2) TAKVİM  (dosya adın takvim.tsx olmalı) */}
       <Tabs.Screen
-        name="kolpa"
+        name="calendar"
         options={{
-          title: t("tabs.kolpa"),
+          title: t("tabs.calendar"),
           tabBarIcon: ({ color, focused }) => (
-            <View
-              style={[
-                {
-                  padding: 8,
-                  borderRadius: 14,
-                  alignItems: "center",
-                  justifyContent: "center",
-                },
-                focused && {
-                  backgroundColor:
-                    mode === "light"
-                      ? "rgba(56,189,248,0.12)"
-                      : "rgba(56,189,248,0.10)",
-                  shadowColor: theme.colors.accent,
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.6,
-                  shadowRadius: 6,
-                  elevation: 6,
-                },
-              ]}
-            >
-              <IconSymbol size={26} name="paperplane.fill" color={color} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="takvim"
-        options={{
-          title: t("tabs.colendar"),
-          tabBarIcon: ({ color, focused }) => (
-            <View
-              style={[
-                {
-                  padding: 8,
-                  borderRadius: 14,
-                  alignItems: "center",
-                  justifyContent: "center",
-                },
-                focused && {
-                  backgroundColor:
-                    mode === "light"
-                      ? "rgba(56,189,248,0.12)"
-                      : "rgba(56,189,248,0.10)",
-                  shadowColor: theme.colors.accent,
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.6,
-                  shadowRadius: 6,
-                  elevation: 10,
-                },
-              ]}
-            >
-              <IconSymbol size={28} name="gearshape.fill" color={color} />
+            <View style={[iconWrap, focused && glow]}>
+              <IconSymbol size={26} name={focused ? "calendar" : "calendar"} color={color} />
             </View>
           ),
         }}
       />
 
+
+      {/* 3) ANALİZ */}
+      <Tabs.Screen
+        name="analiz"
+        options={{
+          title: t("tabs.analiz"),
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[iconWrap, focused && glow]}>
+              <IconSymbol size={28} name="chart.bar.fill" color={color} />
+            </View>
+          ),
+        }}
+      />
+
+      {/* 4) AYARLAR */}
       <Tabs.Screen
         name="settings"
         options={{
           title: t("tabs.settings"),
           tabBarIcon: ({ color, focused }) => (
-            <View
-              style={[
-                {
-                  padding: 8,
-                  borderRadius: 14,
-                  alignItems: "center",
-                  justifyContent: "center",
-                },
-                focused && {
-                  backgroundColor:
-                    mode === "light"
-                      ? "rgba(56,189,248,0.12)"
-                      : "rgba(56,189,248,0.10)",
-                  shadowColor: theme.colors.accent,
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.6,
-                  shadowRadius: 6,
-                  elevation: 10,
-                },
-              ]}
-            >
+            <View style={[iconWrap, focused && glow]}>
               <IconSymbol size={28} name="gearshape.fill" color={color} />
             </View>
           ),
         }}
       />
 
+      {/* 5) PREMIUM */}
       <Tabs.Screen
         name="premium"
         options={{
           title: t("tabs.premium"),
           href: premiumHref,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[iconWrap, focused && glow]}>
+              <IconSymbol size={28} name="crown.fill" color={color} />
+            </View>
+          ),
         }}
       />
     </Tabs>
