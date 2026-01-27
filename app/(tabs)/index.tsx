@@ -1,7 +1,6 @@
 // ❌ kaldır: import { themeui } from "@/constants/themeui";
 import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
-import { setAppLanguage } from "@/services/i18n";
 import { useRouter } from "expo-router";
 import { onSnapshot, orderBy, query } from "firebase/firestore";
 import {
@@ -315,43 +314,6 @@ export default function KayitlarScreen() {
               )}
             </View>
           </View>
-
-          <Text style={{ marginBottom: 12, color: theme.colors.text.primary }}>
-            {t("language.label")}: {i18n.language}
-          </Text>
-
-          <TouchableOpacity
-            onPress={() => setAppLanguage("tr")}
-            style={{
-              padding: 12,
-              borderWidth: 1,
-              borderRadius: 12,
-              marginBottom: 8,
-              borderColor: theme.colors.border,
-              backgroundColor:
-                i18n.language === "tr" ? theme.colors.info : theme.colors.surfaceSoft,
-            }}
-          >
-            <Text style={{ color: theme.colors.text.primary }}>
-              {t("language.turkish")}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setAppLanguage("en")}
-            style={{
-              padding: 12,
-              borderWidth: 1,
-              borderRadius: 12,
-              borderColor: theme.colors.border,
-              backgroundColor:
-                i18n.language === "en" ? theme.colors.info : theme.colors.surfaceSoft,
-            }}
-          >
-            <Text style={{ color: theme.colors.text.primary }}>
-              {t("language.english")}
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.listWrapper}>
@@ -506,7 +468,7 @@ export default function KayitlarScreen() {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  );
+  )
 }
 
 function makeStyles(theme: ThemeUI) {
@@ -686,7 +648,7 @@ function makeStyles(theme: ThemeUI) {
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.18)",
+      borderColor: theme.colors.border,
     },
 
     filterBoxActiveALL: {
@@ -713,23 +675,23 @@ function makeStyles(theme: ThemeUI) {
     filterBoxText: {
       fontSize: theme.fontSize.sm,
       fontWeight: "600",
-      color: "#EDEDED",
+      color: theme.colors.text.primary,
     },
     filterBoxTextActive: {
       fontSize: theme.fontSize.lg - 2,
       fontWeight: "700",
-      color: "#EDEDED",
+      color: theme.colors.text.primary,
     },
     filterBoxNumber: {
       fontSize: 26,
       fontWeight: "800",
-      color: "#EDEDED",
+      color: theme.colors.text.primary,
       marginBottom: 4,
     },
     filterBoxNumberActive: {
       fontSize: 32,
       fontWeight: "700",
-      color: "#FFFFFF",
+      color: theme.colors.text.primary,
       marginBottom: 4,
     },
 

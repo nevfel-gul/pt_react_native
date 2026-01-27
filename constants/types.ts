@@ -17,6 +17,10 @@ export type ThemeUI = {
             lightAccent: string;
             onAccent: string;   // NEW (accent/premium/success üstü yazı)
         };
+        switchThumb: {
+            dark: string;
+            light: string;
+        };
 
         logoText: string;
         primary: string;

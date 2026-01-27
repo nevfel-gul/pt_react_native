@@ -1,7 +1,6 @@
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
 import { Tabs, useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
@@ -10,13 +9,12 @@ import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { theme, mode } = useTheme();
   const hasPremium = false;
 
   const router = useRouter();
   const [authReady, setAuthReady] = React.useState(false);
   const [isAuthed, setIsAuthed] = React.useState<boolean>(!!auth.currentUser);
-
   const { t } = useTranslation();
 
   React.useEffect(() => {
@@ -36,13 +34,18 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         headerShown: false,
+
+        // ✅ theme’den gelsin
+        tabBarActiveTintColor: theme.colors.accent,
+        tabBarInactiveTintColor: theme.colors.text.muted,
+
         tabBarStyle: {
-          backgroundColor: "#020617",
-          borderTopColor: "#1e293b",
+          backgroundColor: theme.colors.background,
+          borderTopColor: theme.colors.border,
           paddingTop: 10,
         },
+
         tabBarButton: HapticTab,
       }}
       initialRouteName="index"
@@ -61,8 +64,11 @@ export default function TabLayout() {
                   justifyContent: "center",
                 },
                 focused && {
-                  backgroundColor: "rgba(56,189,248,0.10)",
-                  shadowColor: "#38bdf8",
+                  backgroundColor:
+                    mode === "light"
+                      ? "rgba(56,189,248,0.12)"
+                      : "rgba(56,189,248,0.10)",
+                  shadowColor: theme.colors.accent,
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.6,
                   shadowRadius: 4,
@@ -90,8 +96,11 @@ export default function TabLayout() {
                   justifyContent: "center",
                 },
                 focused && {
-                  backgroundColor: "rgba(56,189,248,0.10)",
-                  shadowColor: "#38bdf8",
+                  backgroundColor:
+                    mode === "light"
+                      ? "rgba(56,189,248,0.12)"
+                      : "rgba(56,189,248,0.10)",
+                  shadowColor: theme.colors.accent,
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.6,
                   shadowRadius: 6,
@@ -119,8 +128,11 @@ export default function TabLayout() {
                   justifyContent: "center",
                 },
                 focused && {
-                  backgroundColor: "rgba(56,189,248,0.10)",
-                  shadowColor: "#38bdf8",
+                  backgroundColor:
+                    mode === "light"
+                      ? "rgba(56,189,248,0.12)"
+                      : "rgba(56,189,248,0.10)",
+                  shadowColor: theme.colors.accent,
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.6,
                   shadowRadius: 6,

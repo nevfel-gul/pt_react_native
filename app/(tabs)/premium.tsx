@@ -9,11 +9,9 @@ import {
   Switch,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
@@ -21,70 +19,12 @@ import { useTheme } from "@/constants/usetheme";
 import type { BillingCycle, PlanDoc } from "./paywall";
 import { calcDisplayedPrice, calcPerClientText } from "./paywall";
 
-function SmoothGradientBg({
-  billing,
-  theme,
-  mode,
-  accent,
-  accentSoft,
-}: {
-  billing: BillingCycle;
-  theme: ThemeUI;
-  mode: "dark" | "light";
-  accent: string;
-  accentSoft: string;
-}) {
-  const t = useSharedValue(billing === "annual" ? 1 : 0);
-
-  useEffect(() => {
-    t.value = withTiming(billing === "annual" ? 1 : 0, { duration: 420 });
-  }, [billing, t]);
-
-  const monthlyStyle = useAnimatedStyle(() => ({ opacity: 1 - t.value }));
-  const annualStyle = useAnimatedStyle(() => ({ opacity: t.value }));
-
-  const base = theme.colors.background;
-  const surface = theme.colors.surfaceDark;
-
-  // Light modda “beyaz üstüne beyaz” olmasın diye accentSoft kullanıyoruz
-  const monthlyColors =
-    mode === "light"
-      ? [base, accentSoft, "rgba(59,130,246,0.18)", base]
-      : [surface, accentSoft, accent, surface];
-
-  const annualColors =
-    mode === "light"
-      ? [base, accentSoft, "rgba(124,58,237,0.16)", base]
-      : [surface, accentSoft, accent, surface];
-
-  return (
-    <>
-      <Animated.View style={[StyleSheet.absoluteFill, monthlyStyle]} pointerEvents="none">
-        <LinearGradient
-          style={StyleSheet.absoluteFill}
-          colors={monthlyColors as any}
-          locations={[0, 0.35, 0.7, 1]}
-        />
-      </Animated.View>
-
-      <Animated.View style={[StyleSheet.absoluteFill, annualStyle]} pointerEvents="none">
-        <LinearGradient
-          style={StyleSheet.absoluteFill}
-          colors={annualColors as any}
-          locations={[0, 0.35, 0.7, 1]}
-        />
-      </Animated.View>
-    </>
-  );
-}
-
 type Props = {
   onContinue?: (args: { plan: PlanDoc; billing: BillingCycle; intentId: string }) => Promise<void> | void;
 };
 
 export default function PaywallMonthlyScreen({ onContinue }: Props) {
   const insets = useSafeAreaInsets();
-
   const { theme, mode, toggleTheme } = useTheme();
 
   const [loading, setLoading] = useState(true);
@@ -186,10 +126,23 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
     return d ? `Save %${d}` : null;
   }, [plans]);
 
-  // ✅ Accent’i theme’den bağladık
-  // Monthly -> theme.primary, Annual -> theme.premium
   const accent = billing === "annual" ? theme.colors.premium : theme.colors.primary;
-  const accentSoft = billing === "annual" ? theme.colors.premiumSoft : "rgba(96,165,250,0.20)";
+
+  // ✅ Smooth + light'ta da gradient + annual'da mor
+  const ctaGrad = useMemo(() => {
+    const isAnnual = billing === "annual";
+
+    // MONTHLY (mavi)
+    const blueDark = ["#2E78FF", "#6BB8FF", "#6BB8FF", "#1C63FF"];
+    const blueLight = ["#2E78FF", "#6BB8FF", "#6BB8FF", "#2E78FF"];
+
+    // ANNUAL (mor)
+    const purpleDark = ["#621fff", "#906fe2", "#a084e6", "#621fff"];
+    const purpleLight = ["#621fff", "#906fe2", "#a084e6", "#621fff"];
+
+    if (isAnnual) return mode === "dark" ? purpleDark : purpleLight;
+    return mode === "dark" ? blueDark : blueLight;
+  }, [billing, mode]);
 
   const onToggleBilling = useCallback((v: boolean) => {
     setBilling(v ? "annual" : "monthly");
@@ -214,15 +167,18 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
 
   const styles = useMemo(() => makeStyles(theme, mode), [theme, mode]);
 
+  const isAnnual = billing === "annual";
+
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <SmoothGradientBg billing={billing} theme={theme} mode={mode} accent={accent} accentSoft={accentSoft} />
-
       {/* BG PHOTO */}
       <View pointerEvents="none" style={styles.bgPhotoWrap}>
-        <Image source={require("@/assets/images/paywall/gym-couple.png")} style={styles.bgPhoto} resizeMode="cover" />
+        <Image
+          source={require("@/assets/images/paywall/gym-couple.png")}
+          style={styles.bgPhoto}
+          resizeMode="cover"
+        />
 
-        {/* overlay: tamamen theme’e bağlı */}
         <LinearGradient
           colors={[
             mode === "light" ? "rgba(248,250,252,0.92)" : theme.colors.overlay,
@@ -267,20 +223,13 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
                 false: mode === "light" ? "rgba(15,23,42,0.15)" : "rgba(255,255,255,0.18)",
                 true: accent,
               }}
-              ios_backgroundColor={mode === "light" ? "rgba(15,23,42,0.15)" : "rgba(255,255,255,0.18)"}
+              ios_backgroundColor={
+                mode === "light" ? "rgba(15,23,42,0.15)" : "rgba(255,255,255,0.18)"
+              }
             />
 
             {saveText ? <Text style={[styles.saveText, { color: accent }]}>{saveText}</Text> : null}
           </View>
-        </View>
-
-        {/* TEST BUTONU */}
-        <View style={styles.midTestWrap}>
-          <TouchableOpacity activeOpacity={0.9} onPress={toggleTheme} style={[styles.midTestBtn, { borderColor: accent }]}>
-            <Text style={[styles.midTestBtnText, { color: theme.colors.text.primary }]}>
-              {mode === "dark" ? "Light Temayı Dene" : "Dark Temayı Dene"}
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {loading ? (
@@ -323,28 +272,36 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
           activeOpacity={0.9}
           onPress={handleContinue}
           disabled={continueDisabled}
-          style={[
-            styles.cta,
-            { backgroundColor: accent },
-            continueDisabled && styles.ctaDisabled,
-          ]}
+          style={[styles.ctaInner, continueDisabled && styles.ctaDisabled]}
         >
+          {/* ✅ CTA Gradient Background (kalsın) */}
+          <LinearGradient
+            colors={ctaGrad as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            locations={[0, 0.38, 0.72, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+
+          {/* ✅ SADECE üstte mavi flow (beyazlığı kısık) */}
           <LinearGradient
             colors={[
-              "rgba(255,255,255,0.05)",
-              "rgba(255,255,255,0.32)",
-              "rgba(255,255,255,0.02)",
+              "rgba(120,190,255,0.18)", // üstte hafif mavi
+              "rgba(120,190,255,0.08)", // orta daha az
+              "rgba(255,255,255,0.00)", // aşağı doğru sıfır
             ]}
-            locations={[0, 0.55, 1]}
+            locations={[0, 0.45, 1]}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.ctaShine}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
           />
-          <Text style={[styles.ctaText, { color: theme.colors.surfaceDark }]}>
+          <Text style={[styles.ctaText, { color: "#ffffff" }]}>
             {busy ? "Processing..." : "Continue"}
           </Text>
-          <Text style={[styles.ctaArrow, { color: theme.colors.surfaceDark }]}>→</Text>
+          <Text style={[styles.ctaArrow, { color: "#ffffff" }]}>→</Text>
+
         </TouchableOpacity>
+
       </View>
     </View>
   );
@@ -376,7 +333,6 @@ const PlanCard = memo(function PlanCard({
     return calcPerClientText(plan);
   }, [plan]);
 
-  // ✅ kart arkaplanı theme’e bağlı
   const cardBg = mode === "light" ? theme.colors.surface : "rgba(255,255,255,0.03)";
   const border = mode === "light" ? "rgba(15,23,42,0.10)" : "rgba(255,255,255,0.06)";
 
@@ -400,7 +356,7 @@ const PlanCard = memo(function PlanCard({
           borderWidth: 2,
           borderColor: accent,
           shadowColor: accent,
-          shadowOpacity: 0.20,
+          shadowOpacity: 0.2,
           shadowRadius: 14,
           shadowOffset: { width: 0, height: 10 },
           elevation: 10,
@@ -439,7 +395,14 @@ const PlanCard = memo(function PlanCard({
           >
             {plan.title}
           </Text>
-          <Text style={{ color: theme.colors.text.secondary, fontSize: 14, fontWeight: "800", lineHeight: 18 }}>
+          <Text
+            style={{
+              color: theme.colors.text.secondary,
+              fontSize: 14,
+              fontWeight: "800",
+              lineHeight: 18,
+            }}
+          >
             {plan.subtitle}
           </Text>
         </View>
@@ -459,7 +422,15 @@ const PlanCard = memo(function PlanCard({
           ) : null}
 
           {plan.isUnlimited ? (
-            <Text style={{ marginTop: 6, color: theme.colors.text.muted, fontSize: 12, fontStyle: "italic", fontWeight: "700" }}>
+            <Text
+              style={{
+                marginTop: 6,
+                color: theme.colors.text.muted,
+                fontSize: 12,
+                fontStyle: "italic",
+                fontWeight: "700",
+              }}
+            >
               * decreases as you add
             </Text>
           ) : null}
@@ -501,7 +472,15 @@ function FeatureMini({
         <Cpu size={20} color={theme.colors.text.muted} />
       </View>
 
-      <Text style={{ color: theme.colors.text.secondary, fontWeight: "900", fontSize: 12, textAlign: "center", marginBottom: 4 }}>
+      <Text
+        style={{
+          color: theme.colors.text.secondary,
+          fontWeight: "900",
+          fontSize: 12,
+          textAlign: "center",
+          marginBottom: 4,
+        }}
+      >
         {title}
       </Text>
 
@@ -513,11 +492,25 @@ function FeatureMini({
 }
 
 function makeStyles(theme: ThemeUI, mode: "dark" | "light") {
+  const ctaShadow =
+    mode === "dark"
+      ? {
+        shadowColor: "rgba(210,240,255,1)",
+        shadowOpacity: 0.35,
+        shadowRadius: 26,
+        shadowOffset: { width: 0, height: 18 },
+        elevation: 24,
+      }
+      : {
+        shadowColor: "#000",
+        shadowOpacity: 0.12,
+        shadowRadius: 18,
+        shadowOffset: { width: 0, height: 10 },
+        elevation: 8,
+      };
+
   return StyleSheet.create({
-    screen: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
+    screen: { flex: 1, backgroundColor: theme.colors.background },
 
     bgPhotoWrap: {
       position: "absolute",
@@ -528,24 +521,10 @@ function makeStyles(theme: ThemeUI, mode: "dark" | "light") {
       overflow: "hidden",
       opacity: 0.95,
     },
-    bgPhoto: {
-      width: "100%",
-      height: "100%",
-      transform: [{ scale: 1.12 }],
-    },
-    bgFadeLeft: {
-      position: "absolute",
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 175,
-    },
+    bgPhoto: { width: "100%", height: "100%", transform: [{ scale: 1.12 }] },
+    bgFadeLeft: { position: "absolute", left: 0, top: 0, bottom: 0, width: 175 },
 
-    content: {
-      paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.lg + 8,
-    },
-
+    content: { paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.lg + 8 },
     hero: { paddingBottom: theme.spacing.md },
 
     h1: {
@@ -555,7 +534,6 @@ function makeStyles(theme: ThemeUI, mode: "dark" | "light") {
       lineHeight: 46,
       marginBottom: 10,
     },
-
     desc: {
       color: theme.colors.text.secondary,
       fontSize: 13,
@@ -606,17 +584,30 @@ function makeStyles(theme: ThemeUI, mode: "dark" | "light") {
       borderTopColor: theme.colors.border,
     },
 
-    cta: {
+    ctaOuter: {
+      borderRadius: theme.radius.lg,
+      // ✅ arka shadow/holo yok
+      shadowColor: "transparent",
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 0,
+    },
+
+
+
+    ctaInner: {
       borderRadius: theme.radius.lg,
       paddingVertical: 12,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 10,
       top: 20,
       overflow: "hidden",
-      ...theme.shadow.soft,
+      borderWidth: mode === "dark" ? 1 : 0,
+      borderColor: mode === "dark" ? "rgba(255,255,255,0.10)" : "transparent",
     },
 
     ctaShine: {
@@ -634,4 +625,3 @@ function makeStyles(theme: ThemeUI, mode: "dark" | "light") {
     ctaArrow: { fontSize: 20, fontWeight: "900", marginLeft: 2 },
   });
 }
-

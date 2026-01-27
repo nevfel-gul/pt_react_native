@@ -17,6 +17,10 @@ export const darkTheme: ThemeUI = {
       lightAccent: "#79c6e7ff",
       onAccent: "#0f172a"
     },
+    switchThumb: {
+      dark: "#ffffff",
+      light: "#0f172a",
+    },
     logoText: "hsla(198, 93%, 70%, 1.00)",
     primary: "#60a5fa",
     accent: "#38bdf8",
@@ -39,7 +43,7 @@ export const darkTheme: ThemeUI = {
 
     filterAll: "#0A0F1A",
     filterActive: "#3a8b55",
-    filterPassive: "#993131",
+    filterPassive: "hsl(0, 52%, 51%)",
 
     overlay: "rgba(0,0,0,0.55)",
     white: ""
@@ -77,6 +81,10 @@ export const nightTheme: ThemeUI = {
       accent: "#0284c7",
       lightAccent: "#38bdf8",
       onAccent: "#ffffff"
+    },
+    switchThumb: {
+      dark: "#ffffff",
+      light: "#0f172a",
     },
     white: "#ffffff",
     logoText: "#0f172a",
