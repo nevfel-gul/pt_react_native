@@ -113,6 +113,37 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="takvim"
+        options={{
+          title: t("tabs.colendar"),
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={[
+                {
+                  padding: 8,
+                  borderRadius: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
+                focused && {
+                  backgroundColor:
+                    mode === "light"
+                      ? "rgba(56,189,248,0.12)"
+                      : "rgba(56,189,248,0.10)",
+                  shadowColor: theme.colors.accent,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.6,
+                  shadowRadius: 6,
+                  elevation: 10,
+                },
+              ]}
+            >
+              <IconSymbol size={28} name="gearshape.fill" color={color} />
+            </View>
+          ),
+        }}
+      />
 
       <Tabs.Screen
         name="settings"

@@ -1,8 +1,8 @@
 // ❌ kaldır: import { themeui } from "@/constants/themeui";
 import { auth } from "@/services/firebase";
-import { studentsColRef } from "@/services/firestorePaths";
+import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import { useRouter } from "expo-router";
-import { onSnapshot, orderBy, query } from "firebase/firestore";
+import { onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import {
   ArrowLeft,
   Bell,
@@ -33,15 +33,70 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 
+/* -------------------- TYPES -------------------- */
 type Student = {
   id: string;
   name: string;
   email: string;
   number: string;
-  aktif: "Aktif" | "Pasif"; // DB değeri TR kalsın; UI text'i t() ile çevriliyor
+  aktif: "Aktif" | "Pasif";
   assessmentDate: string;
+  followUpDays?: number;
 };
 
+type RecordDoc = {
+  id: string;
+  studentId?: string;
+
+  createdAt?: Timestamp | Date | number | string;
+  date?: Timestamp | Date | number | string;
+  createdAtMs?: number;
+};
+
+/* -------------------- HELPERS (same logic as calendar) -------------------- */
+function toDateSafe(v: any): Date | null {
+  if (!v) return null;
+
+  // Firestore Timestamp
+  if (typeof v === "object" && typeof v.toDate === "function") {
+    try {
+      return v.toDate();
+    } catch { }
+  }
+
+  if (typeof v === "number") {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  if (typeof v === "string") {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+
+  return null;
+}
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function addDays(d: Date, days: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + days);
+  return x;
+}
+
+function daysDiff(a: Date, b: Date): number {
+  // a - b in days
+  const A = startOfDay(a).getTime();
+  const B = startOfDay(b).getTime();
+  return Math.round((A - B) / (1000 * 60 * 60 * 24));
+}
+
+/* -------------------- SCREEN -------------------- */
 export default function KayitlarScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -56,6 +111,7 @@ export default function KayitlarScreen() {
   const searchAnim = useRef(new Animated.Value(0)).current;
 
   const [students, setStudents] = useState<Student[]>([]);
+  const [records, setRecords] = useState<RecordDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filterDurum, setFilterDurum] = useState<"" | "Aktif" | "Pasif">("");
@@ -109,17 +165,18 @@ export default function KayitlarScreen() {
   }, [students, safeSearch, filterDurum]);
 
   useEffect(() => {
-    const q = query(
-      studentsColRef(auth.currentUser?.uid!),
-      orderBy("createdAt", "desc")
-    );
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      setLoading(false);
+      return;
+    }
 
-    const unsubscribe = onSnapshot(
-      q,
+    const qStudents = query(studentsColRef(uid), orderBy("createdAt", "desc"));
+    const unsubStudents = onSnapshot(
+      qStudents,
       (snapshot) => {
         const list: Student[] = snapshot.docs.map((doc) => {
           const data = doc.data() as any;
-
           return {
             id: doc.id,
             name: data.name ?? "",
@@ -127,45 +184,80 @@ export default function KayitlarScreen() {
             number: data.number ?? "",
             aktif: (data.aktif as "Aktif" | "Pasif") ?? "Aktif",
             assessmentDate: data.assessmentDate ?? new Date().toISOString(),
+            followUpDays: typeof data.followUpDays === "number" ? data.followUpDays : 30, // ✅
           };
+
         });
 
         setStudents(list);
-        setLoading(false);
+        // loading burada bitmesin; records da gelsin
       },
       (error) => {
         console.error("students dinlenirken hata:", error);
+      }
+    );
+
+    // ✅ records dinle (takvim mantığı için)
+    const qRecords = query(recordsColRef(uid), orderBy("createdAt", "desc"));
+    const unsubRecords = onSnapshot(
+      qRecords,
+      (snapshot) => {
+        const list: RecordDoc[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as any),
+        }));
+
+        setRecords(list);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("records dinlenirken hata:", error);
         setLoading(false);
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      unsubStudents();
+      unsubRecords();
+    };
   }, []);
+
+  // ✅ studentId -> lastRecordDate
+  const lastRecordByStudent = useMemo(() => {
+    const map = new Map<string, Date>();
+
+    for (const r of records) {
+      const sid = r.studentId;
+      if (!sid) continue;
+
+      const d =
+        toDateSafe(r.createdAt) ??
+        toDateSafe(r.date) ??
+        (typeof r.createdAtMs === "number" ? toDateSafe(r.createdAtMs) : null);
+
+      if (!d) continue;
+
+      const prev = map.get(sid);
+      if (!prev || d.getTime() > prev.getTime()) map.set(sid, d);
+    }
+
+    return map;
+  }, [records]);
 
   const dateLocale = i18n.language?.startsWith("en") ? "en-US" : "tr-TR";
 
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View
-          style={[
-            styles.container,
-            { justifyContent: "center", alignItems: "center" },
-          ]}
-        >
-          <Text style={{ color: theme.colors.text.secondary }}>
-            {t("students.loading")}
-          </Text>
+        <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+          <Text style={{ color: theme.colors.text.secondary }}>{t("students.loading")}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   const handleViewDetails = (studentId: string) => {
-    router.push({
-      pathname: "/student/[id]",
-      params: { id: studentId },
-    });
+    router.push({ pathname: "/student/[id]", params: { id: studentId } });
   };
 
   const handleAddStudent = () => {
@@ -264,10 +356,7 @@ export default function KayitlarScreen() {
                     opacity: searchAnim,
                   }}
                 >
-                  <TouchableOpacity
-                    onPress={closeAnimatedSearch}
-                    style={{ marginRight: 8 }}
-                  >
+                  <TouchableOpacity onPress={closeAnimatedSearch} style={{ marginRight: 8 }}>
                     <ArrowLeft size={20} color={theme.colors.text.primary} />
                   </TouchableOpacity>
 
@@ -286,9 +375,7 @@ export default function KayitlarScreen() {
                   />
 
                   <TouchableOpacity
-                    onPress={() => {
-                      console.log("AI butonu tıklandı");
-                    }}
+                    onPress={() => console.log("AI butonu tıklandı")}
                     style={{
                       width: 36,
                       height: 36,
@@ -303,10 +390,7 @@ export default function KayitlarScreen() {
                   </TouchableOpacity>
 
                   {searchTerm.length > 0 && (
-                    <TouchableOpacity
-                      onPress={() => setSearchTerm("")}
-                      style={{ marginLeft: 8 }}
-                    >
+                    <TouchableOpacity onPress={() => setSearchTerm("")} style={{ marginLeft: 8 }}>
                       <XIcon size={18} color={theme.colors.text.muted} />
                     </TouchableOpacity>
                   )}
@@ -326,20 +410,10 @@ export default function KayitlarScreen() {
                 filterDurum === "" && styles.filterBoxActiveALL,
               ]}
             >
-              <Text
-                style={[
-                  styles.filterBoxNumber,
-                  filterDurum === "" && styles.filterBoxNumberActive,
-                ]}
-              >
+              <Text style={[styles.filterBoxNumber, filterDurum === "" && styles.filterBoxNumberActive]}>
                 {totalCount}
               </Text>
-              <Text
-                style={[
-                  styles.filterBoxText,
-                  filterDurum === "" && styles.filterBoxTextActive,
-                ]}
-              >
+              <Text style={[styles.filterBoxText, filterDurum === "" && styles.filterBoxTextActive]}>
                 {t("filter.all")}
               </Text>
             </TouchableOpacity>
@@ -352,20 +426,10 @@ export default function KayitlarScreen() {
                 filterDurum === "Aktif" && styles.filterBoxActiveA,
               ]}
             >
-              <Text
-                style={[
-                  styles.filterBoxNumber,
-                  filterDurum === "Aktif" && styles.filterBoxNumberActive,
-                ]}
-              >
+              <Text style={[styles.filterBoxNumber, filterDurum === "Aktif" && styles.filterBoxNumberActive]}>
                 {activeCount}
               </Text>
-              <Text
-                style={[
-                  styles.filterBoxText,
-                  filterDurum === "Aktif" && styles.filterBoxTextActive,
-                ]}
-              >
+              <Text style={[styles.filterBoxText, filterDurum === "Aktif" && styles.filterBoxTextActive]}>
                 {t("status.active")}
               </Text>
             </TouchableOpacity>
@@ -378,20 +442,10 @@ export default function KayitlarScreen() {
                 filterDurum === "Pasif" && styles.filterBoxActiveP,
               ]}
             >
-              <Text
-                style={[
-                  styles.filterBoxNumber,
-                  filterDurum === "Pasif" && styles.filterBoxNumberActive,
-                ]}
-              >
+              <Text style={[styles.filterBoxNumber, filterDurum === "Pasif" && styles.filterBoxNumberActive]}>
                 {passiveCount}
               </Text>
-              <Text
-                style={[
-                  styles.filterBoxText,
-                  filterDurum === "Pasif" && styles.filterBoxTextActive,
-                ]}
-              >
+              <Text style={[styles.filterBoxText, filterDurum === "Pasif" && styles.filterBoxTextActive]}>
                 {t("status.passive")}
               </Text>
             </TouchableOpacity>
@@ -402,58 +456,72 @@ export default function KayitlarScreen() {
               data={filteredStudents}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.listContent}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.card}
-                  onPress={() => handleViewDetails(item.id)}
-                >
-                  <View style={styles.cardLeft}>
-                    <Text style={styles.cardName}>{item.name}</Text>
+              renderItem={({ item }) => {
+                const today = startOfDay(new Date());
+                const last = lastRecordByStudent.get(item.id) ?? null;
 
-                    <View style={styles.cardRow}>
-                      <Phone size={16} color={theme.colors.text.muted} />
-                      <Text style={styles.cardRowText}>{item.number}</Text>
+                // ✅ küçük yazı (arkası yok) + renk
+                let recordText = "Kayıt ekle";
+                let recordTextColor = theme.colors.success;
+
+                if (!last) {
+                  recordText = "Kayıt yok";
+                  recordTextColor = theme.colors.text.muted;
+                } else {
+                  const period = typeof item.followUpDays === "number" ? item.followUpDays : 30;
+                  const dueDate = addDays(startOfDay(last), period);
+                  const diff = daysDiff(today, dueDate); // today - dueDate
+                  if (diff > 0) {
+                    recordText = "Kayıt ekle";
+                    recordTextColor = theme.colors.danger;
+                  }
+                }
+
+                return (
+                  <TouchableOpacity style={styles.card} onPress={() => handleViewDetails(item.id)}>
+                    <View style={styles.cardLeft}>
+                      <Text style={styles.cardName}>{item.name}</Text>
+
+                      <View style={styles.cardRow}>
+                        <Phone size={16} color={theme.colors.text.muted} />
+                        <Text style={styles.cardRowText}>{item.number}</Text>
+                      </View>
+
+                      <View style={styles.cardRow}>
+                        <Calendar size={16} color={theme.colors.text.muted} />
+                        <Text style={styles.cardRowText}>
+                          {new Date(item.assessmentDate).toLocaleDateString(dateLocale)}
+                        </Text>
+                      </View>
                     </View>
 
-                    <View style={styles.cardRow}>
-                      <Calendar size={16} color={theme.colors.text.muted} />
-                      <Text style={styles.cardRowText}>
-                        {new Date(item.assessmentDate).toLocaleDateString(
-                          dateLocale
-                        )}
-                      </Text>
-                    </View>
-                  </View>
+                    <View style={styles.cardRight}>
+                      <View style={styles.statusRow}>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            item.aktif === "Aktif" ? styles.statusBadgeActive : styles.statusBadgeInactive,
+                          ]}
+                        >
+                          <Text style={item.aktif === "Aktif" ? styles.statusTextActive : styles.statusTextInactive}>
+                            {item.aktif === "Aktif" ? t("status.active") : t("status.passive")}
+                          </Text>
+                        </View>
 
-                  <View style={styles.cardRight}>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        item.aktif === "Aktif"
-                          ? styles.statusBadgeActive
-                          : styles.statusBadgeInactive,
-                      ]}
-                    >
-                      <Text
-                        style={
-                          item.aktif === "Aktif"
-                            ? styles.statusTextActive
-                            : styles.statusTextInactive
-                        }
-                      >
-                        {item.aktif === "Aktif"
-                          ? t("status.active")
-                          : t("status.passive")}
-                      </Text>
-                    </View>
+                        {/* ✅ küçük, silik, arkası yok (status yanında) */}
+                        <Text style={[styles.recordHint, { color: recordTextColor }]} numberOfLines={1}>
+                          {recordText}
+                        </Text>
+                      </View>
 
-                    <View style={styles.detailPill}>
-                      <Eye size={16} color={theme.colors.text.primary} />
-                      <Text style={styles.detailPillText}>{t("detail")}</Text>
+                      <View style={styles.detailPill}>
+                        <Eye size={16} color={theme.colors.text.primary} />
+                        <Text style={styles.detailPillText}>{t("detail")}</Text>
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              )}
+                  </TouchableOpacity>
+                );
+              }}
             />
           ) : (
             <View style={styles.emptyState}>
@@ -468,7 +536,7 @@ export default function KayitlarScreen() {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  )
+  );
 }
 
 function makeStyles(theme: ThemeUI) {
@@ -580,8 +648,18 @@ function makeStyles(theme: ThemeUI) {
       color: theme.colors.danger,
     },
 
+    // ✅ NEW: status yanında küçük yazı
+    statusRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    recordHint: {
+      fontSize: 11,
+      fontWeight: "700",
+    },
+
     detailPill: {
-      marginTop: theme.spacing.sm,
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.xs,

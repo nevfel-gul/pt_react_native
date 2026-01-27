@@ -99,6 +99,9 @@ type Student = {
 
     trainingGoals?: string[];
     otherGoal?: string;
+    followUpDays?: number; // ✅ takip periyodu (gün)
+    followUpDaysUpdatedAt?: any;
+
 };
 
 type RecordItem = {
@@ -143,6 +146,7 @@ export default function StudentDetailScreen() {
     const [ptNote, setPtNote] = useState("");
     const [savingPtNote, setSavingPtNote] = useState(false);
     const [ptNoteOpen, setPtNoteOpen] = useState(false);
+    const [savingFollowUp, setSavingFollowUp] = useState(false);
 
     const parqQuestions = useMemo(
         () => [
@@ -192,6 +196,8 @@ export default function StudentDetailScreen() {
                     ...d,
                     aktif: d.aktif ?? "Aktif",
                     trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
+                    followUpDays: typeof d.followUpDays === "number" ? d.followUpDays : 30,
+
                 });
                 setPtNote((d.ptNote as string) ?? "");
             } catch (err) {
@@ -268,6 +274,25 @@ export default function StudentDetailScreen() {
             Alert.alert(t("common.error"), t("studentDetail.ptNote.saveError"));
         } finally {
             setSavingPtNote(false);
+        }
+    };
+    const setFollowUpDays = async (days: number) => {
+        if (!student) return;
+
+        try {
+            setSavingFollowUp(true);
+
+            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), {
+                followUpDays: days,
+                followUpDaysUpdatedAt: serverTimestamp(),
+            });
+
+            setStudent({ ...student, followUpDays: days });
+        } catch (err) {
+            console.error("followUpDays save error:", err);
+            Alert.alert(t("common.error"), "Kayıt periyodu kaydedilemedi.");
+        } finally {
+            setSavingFollowUp(false);
         }
     };
 
@@ -407,6 +432,47 @@ export default function StudentDetailScreen() {
                                                 {t("studentDetail.student.assessmentDate")} {formatDateTR(student.assessmentDate)}
                                             </Text>
                                         </View>
+                                        <View style={styles.followUpWrap}>
+                                            <Text style={styles.followUpLabel}>Kayıt periyodu</Text>
+
+                                            <View style={styles.followUpPillsRow}>
+                                                {[7, 20, 30].map((d) => {
+                                                    const active = (student.followUpDays ?? 30) === d;
+
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={d}
+                                                            activeOpacity={0.85}
+                                                            disabled={savingFollowUp}
+                                                            onPress={() => setFollowUpDays(d)}
+                                                            style={[
+                                                                styles.followUpPill,
+                                                                active && styles.followUpPillActive,
+                                                                savingFollowUp && { opacity: 0.7 },
+                                                            ]}
+                                                        >
+                                                            <Text
+                                                                style={[
+                                                                    styles.followUpPillText,
+                                                                    active && styles.followUpPillTextActive,
+                                                                ]}
+                                                            >
+                                                                {d === 7 ? "1 hafta" : `${d} gün`}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+
+                                                {savingFollowUp && (
+                                                    <Text style={styles.followUpSavingText}>Kaydediliyor…</Text>
+                                                )}
+                                            </View>
+
+                                            <Text style={styles.followUpHint}>
+                                                Bu süre; takvim/ana ekranda “yaklaştı-gecikti” hesabında kullanılacak.
+                                            </Text>
+                                        </View>
+
                                     </View>
                                 </View>
                             </View>
@@ -969,6 +1035,62 @@ function makeStyles(theme: ThemeUI) {
         listFooterSpace: {
             height: 40,
         },
+        followUpWrap: {
+            marginTop: theme.spacing.sm,
+        },
+
+        followUpLabel: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.sm,
+            fontWeight: "700",
+        },
+
+        followUpPillsRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 8,
+            marginTop: theme.spacing.xs,
+        },
+
+        followUpPill: {
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+        },
+
+        followUpPillActive: {
+            borderColor: theme.colors.accent,
+            backgroundColor: "rgba(56,189,248,0.12)",
+        },
+
+        followUpPillText: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "800",
+        },
+
+        followUpPillTextActive: {
+            color: theme.colors.accent,
+        },
+
+        followUpSavingText: {
+            color: theme.colors.text.muted,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "700",
+            marginLeft: 4,
+        },
+
+        followUpHint: {
+            marginTop: 6,
+            color: theme.colors.text.muted,
+            fontSize: theme.fontSize.xs,
+            lineHeight: 16,
+        },
+
     });
 }
 
