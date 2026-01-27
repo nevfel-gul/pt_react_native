@@ -15,7 +15,9 @@ export type ThemeUI = {
             muted: string;
             accent: string;
             lightAccent: string;
-            onAccent: string;   // NEW (accent/premium/success üstü yazı)
+            onAccent: string;
+            emphasis: string;
+            weak: string;
         };
         switchThumb: {
             dark: string;

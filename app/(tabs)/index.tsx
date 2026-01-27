@@ -675,23 +675,23 @@ function makeStyles(theme: ThemeUI) {
     filterBoxText: {
       fontSize: theme.fontSize.sm,
       fontWeight: "600",
-      color: theme.colors.text.primary,
+      color: theme.colors.text.emphasis,
     },
     filterBoxTextActive: {
       fontSize: theme.fontSize.lg - 2,
       fontWeight: "700",
-      color: theme.colors.text.primary,
+      color: theme.colors.text.emphasis,
     },
     filterBoxNumber: {
       fontSize: 26,
       fontWeight: "800",
-      color: theme.colors.text.primary,
+      color: theme.colors.text.emphasis,
       marginBottom: 4,
     },
     filterBoxNumberActive: {
       fontSize: 32,
       fontWeight: "700",
-      color: theme.colors.text.primary,
+      color: theme.colors.text.emphasis,
       marginBottom: 4,
     },
 

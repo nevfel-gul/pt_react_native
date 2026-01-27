@@ -10,12 +10,14 @@ export const darkTheme: ThemeUI = {
     surfaceElevated: "rgba(30,41,59,0.65)",
 
     text: {
-      primary: "rgb(241, 245, 249)",
-      secondary: "#94a3b8",
+      primary: "#f1f5f9",
+      secondary: "#718096",
       muted: "#64748b",
       accent: "#38bdf8",
       lightAccent: "#79c6e7ff",
-      onAccent: "#0f172a"
+      onAccent: "#0f172a",
+      emphasis: "#f1f5f9",
+      weak: "#64748B",
     },
     switchThumb: {
       dark: "#ffffff",
@@ -80,7 +82,9 @@ export const nightTheme: ThemeUI = {
       muted: "#64748b",
       accent: "#0284c7",
       lightAccent: "#38bdf8",
-      onAccent: "#ffffff"
+      onAccent: "#ffffff",
+      emphasis: "#111828",
+      weak: "#64748B",
     },
     switchThumb: {
       dark: "#ffffff",
