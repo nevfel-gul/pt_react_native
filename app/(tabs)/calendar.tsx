@@ -3,8 +3,9 @@ import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
 import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
+import { useFocusEffect } from "expo-router";
 import { onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Pressable,
@@ -22,7 +23,6 @@ type Student = {
     name?: string;
     fullName?: string;
     followUpDays?: number;
-
 };
 
 type RecordDoc = {
@@ -128,7 +128,14 @@ function StatCard({
     return (
         <View style={[ui.statCard, { backgroundColor: bg, borderColor: theme.colors.border }]}>
             <Text style={{ color: fg, fontWeight: "900", fontSize: theme.fontSize.title }}>{value}</Text>
-            <Text style={{ color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, fontWeight: "800", marginTop: 2 }}>
+            <Text
+                style={{
+                    color: theme.colors.text.secondary,
+                    fontSize: theme.fontSize.xs,
+                    fontWeight: "800",
+                    marginTop: 2,
+                }}
+            >
                 {label}
             </Text>
         </View>
@@ -144,6 +151,14 @@ export default function CalendarFollowUpScreen() {
     const [students, setStudents] = useState<Student[]>([]);
     const [records, setRecords] = useState<RecordDoc[]>([]);
     const [selectedDay, setSelectedDay] = useState<string>(ymd(new Date()));
+
+    // ✅ FIX: ekran focus olunca Calendar'ı remount et (ilk açılışta beyaz kalma bug'ı)
+    const [calKey, setCalKey] = useState(0);
+    useFocusEffect(
+        useCallback(() => {
+            setCalKey((k) => k + 1);
+        }, [])
+    );
 
     useEffect(() => {
         if (!uid) return;
@@ -239,7 +254,9 @@ export default function CalendarFollowUpScreen() {
 
     const stats = useMemo(() => {
         // ✅ 3 kart: overdue / dueSoon / ok
-        let overdue = 0, dueSoon = 0, ok = 0;
+        let overdue = 0,
+            dueSoon = 0,
+            ok = 0;
         for (const it of dueItems) {
             if (it.status === "overdue") overdue++;
             else if (it.status === "dueSoon") dueSoon++;
@@ -313,9 +330,27 @@ export default function CalendarFollowUpScreen() {
 
                 {/* 3 STAT */}
                 <View style={[ui.statsRow3, { paddingHorizontal: theme.spacing.lg }]}>
-                    <StatCard theme={theme} label="Gecikmiş" value={stats.overdue} bg={theme.colors.dangerSoft} fg={theme.colors.danger} />
-                    <StatCard theme={theme} label="Yaklaşan" value={stats.dueSoon} bg={"rgba(245,158,11,0.15)"} fg={theme.colors.warning} />
-                    <StatCard theme={theme} label="Normal" value={stats.ok} bg={theme.colors.successSoft} fg={theme.colors.success} />
+                    <StatCard
+                        theme={theme}
+                        label="Gecikmiş"
+                        value={stats.overdue}
+                        bg={theme.colors.dangerSoft}
+                        fg={theme.colors.danger}
+                    />
+                    <StatCard
+                        theme={theme}
+                        label="Yaklaşan"
+                        value={stats.dueSoon}
+                        bg={"rgba(245,158,11,0.15)"}
+                        fg={theme.colors.warning}
+                    />
+                    <StatCard
+                        theme={theme}
+                        label="Normal"
+                        value={stats.ok}
+                        bg={theme.colors.successSoft}
+                        fg={theme.colors.success}
+                    />
                 </View>
 
                 {/* CALENDAR (✅ biraz kısaltıldı) */}
@@ -339,6 +374,8 @@ export default function CalendarFollowUpScreen() {
                             </View>
                         ) : (
                             <Calendar
+                                key={calKey} // ✅ focus olunca remount (beyaz kalma bug'ı)
+                                style={{ backgroundColor: theme.colors.surface }} // ✅ dış container beyazını ezer
                                 onDayPress={(day) => setSelectedDay(day.dateString)}
                                 markedDates={markedDates}
                                 theme={{
@@ -388,9 +425,7 @@ export default function CalendarFollowUpScreen() {
                                                 },
                                             ]}
                                         >
-                                            <Text style={{ color: textColor, fontWeight: "900", fontSize: 14 }}>
-                                                {day}
-                                            </Text>
+                                            <Text style={{ color: textColor, fontWeight: "900", fontSize: 14 }}>{day}</Text>
 
                                             {bucket?.total ? (
                                                 <View
@@ -524,9 +559,7 @@ function LegendDot({
     return (
         <View style={base.legendItem}>
             <View style={[base.dot, { backgroundColor: color }]} />
-            <Text style={{ color: theme.colors.text.secondary, fontSize: theme.fontSize.sm }}>
-                {label}
-            </Text>
+            <Text style={{ color: theme.colors.text.secondary, fontSize: theme.fontSize.sm }}>{label}</Text>
         </View>
     );
 }
