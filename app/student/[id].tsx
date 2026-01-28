@@ -1,5 +1,3 @@
-// app/student/[id].tsx
-
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 
@@ -99,9 +97,8 @@ type Student = {
 
     trainingGoals?: string[];
     otherGoal?: string;
-    followUpDays?: number; // ✅ takip periyodu (gün)
+    followUpDays?: number;
     followUpDaysUpdatedAt?: any;
-
 };
 
 type RecordItem = {
@@ -119,12 +116,6 @@ const formatDateTR = (iso?: string) => {
     const [y, m, d] = parts;
     if (!y || !m || !d) return "-";
     return new Date(y, m - 1, d).toLocaleDateString("tr-TR");
-};
-
-const boolText = (v?: Bool) => {
-    if (v === true) return "Evet";
-    if (v === false) return "Hayır";
-    return "-";
 };
 
 export default function StudentDetailScreen() {
@@ -197,7 +188,6 @@ export default function StudentDetailScreen() {
                     aktif: d.aktif ?? "Aktif",
                     trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
                     followUpDays: typeof d.followUpDays === "number" ? d.followUpDays : 30,
-
                 });
                 setPtNote((d.ptNote as string) ?? "");
             } catch (err) {
@@ -276,6 +266,7 @@ export default function StudentDetailScreen() {
             setSavingPtNote(false);
         }
     };
+
     const setFollowUpDays = async (days: number) => {
         if (!student) return;
 
@@ -290,7 +281,7 @@ export default function StudentDetailScreen() {
             setStudent({ ...student, followUpDays: days });
         } catch (err) {
             console.error("followUpDays save error:", err);
-            Alert.alert(t("common.error"), "Kayıt periyodu kaydedilemedi.");
+            Alert.alert(t("common.error"), t("studentDetail.followUp.saveError"));
         } finally {
             setSavingFollowUp(false);
         }
@@ -310,7 +301,6 @@ export default function StudentDetailScreen() {
         setPtNoteOpen((prev) => {
             const next = !prev;
 
-            // ✅ sadece AÇILIRKEN en sona kaydır (input görünsün)
             if (next) {
                 setTimeout(() => {
                     listRef.current?.scrollToEnd({ animated: true });
@@ -321,11 +311,9 @@ export default function StudentDetailScreen() {
         });
     }, []);
 
-
     const onFocusPtNote = useCallback(() => {
         setPtNoteOpen(true);
         setTimeout(() => {
-            // input ekranda kalsın diye sona doğru kaydır
             listRef.current?.scrollToEnd({ animated: true });
         }, 250);
     }, []);
@@ -369,10 +357,9 @@ export default function StudentDetailScreen() {
                     keyExtractor={(i) => i.id}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
-                    contentContainerStyle={styles.listContent} // klavye açılınca yazı kaybolmasın diye ekstra boşluk
+                    contentContainerStyle={styles.listContent}
                     ListHeaderComponent={
                         <View>
-                            {/* ✅ HEADER artık liste içinde: scroll ile yukarı gider (sabit kalmaz) */}
                             <View style={styles.header}>
                                 <View style={styles.headerTopRow}>
                                     <TouchableOpacity style={styles.backButton} onPress={goBack}>
@@ -417,9 +404,7 @@ export default function StudentDetailScreen() {
                                                 student.aktif === "Aktif" ? styles.statusActive : styles.statusPassive,
                                             ]}
                                         >
-                                            <Text
-                                                style={student.aktif === "Aktif" ? styles.statusActiveText : styles.statusPassiveText}
-                                            >
+                                            <Text style={student.aktif === "Aktif" ? styles.statusActiveText : styles.statusPassiveText}>
                                                 {student.aktif === "Aktif"
                                                     ? t("studentDetail.student.active")
                                                     : t("studentDetail.student.passive")}
@@ -432,8 +417,9 @@ export default function StudentDetailScreen() {
                                                 {t("studentDetail.student.assessmentDate")} {formatDateTR(student.assessmentDate)}
                                             </Text>
                                         </View>
+
                                         <View style={styles.followUpWrap}>
-                                            <Text style={styles.followUpLabel}>Kayıt periyodu</Text>
+                                            <Text style={styles.followUpLabel}>{t("studentDetail.followUp.label")}</Text>
 
                                             <View style={styles.followUpPillsRow}>
                                                 {[7, 20, 30].map((d) => {
@@ -451,33 +437,24 @@ export default function StudentDetailScreen() {
                                                                 savingFollowUp && { opacity: 0.7 },
                                                             ]}
                                                         >
-                                                            <Text
-                                                                style={[
-                                                                    styles.followUpPillText,
-                                                                    active && styles.followUpPillTextActive,
-                                                                ]}
-                                                            >
-                                                                {d === 7 ? "1 hafta" : `${d} gün`}
+                                                            <Text style={[styles.followUpPillText, active && styles.followUpPillTextActive]}>
+                                                                {d === 7 ? t("studentDetail.followUp.week1") : t("studentDetail.followUp.days", { count: d })}
                                                             </Text>
                                                         </TouchableOpacity>
                                                     );
                                                 })}
 
                                                 {savingFollowUp && (
-                                                    <Text style={styles.followUpSavingText}>Kaydediliyor…</Text>
+                                                    <Text style={styles.followUpSavingText}>{t("studentDetail.followUp.saving")}</Text>
                                                 )}
                                             </View>
 
-                                            <Text style={styles.followUpHint}>
-                                                Bu süre; takvim/ana ekranda “yaklaştı-gecikti” hesabında kullanılacak.
-                                            </Text>
+                                            <Text style={styles.followUpHint}>{t("studentDetail.followUp.hint")}</Text>
                                         </View>
-
                                     </View>
                                 </View>
                             </View>
 
-                            {/* Personal info */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.personalInfo")}</Text>
 
@@ -513,7 +490,6 @@ export default function StudentDetailScreen() {
                                 />
                             </View>
 
-                            {/* PAR-Q */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.parq")}</Text>
 
@@ -533,7 +509,6 @@ export default function StudentDetailScreen() {
                                 })}
                             </View>
 
-                            {/* Personal details */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.personalDetails")}</Text>
 
@@ -586,12 +561,10 @@ export default function StudentDetailScreen() {
                                 </View>
                             </View>
 
-                            {/* ✅ PT NOTE artık kayıtların ÜSTÜNDE ve kapalı/açık */}
                             <View style={styles.card}>
                                 <TouchableOpacity activeOpacity={0.85} onPress={onTogglePtNote}>
                                     <Text style={styles.cardTitle}>{t("studentDetail.section.ptNote")}</Text>
 
-                                    {/* kapalıyken kısa preview */}
                                     {!ptNoteOpen ? (
                                         <Text style={styles.ptNoteHint}>
                                             {ptNote?.trim()
@@ -645,7 +618,7 @@ export default function StudentDetailScreen() {
                             <TouchableOpacity style={styles.recordCard} onPress={() => viewRecord(item.id)}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.recordDate}>{dateStr}</Text>
-                                    <Text style={styles.recordNote}>{item.note || "Not yok"}</Text>
+                                    <Text style={styles.recordNote}>{item.note || t("studentDetail.records.noNote")}</Text>
                                 </View>
                                 <Eye size={18} color={theme.colors.text.primary} />
                             </TouchableOpacity>
@@ -660,7 +633,6 @@ export default function StudentDetailScreen() {
                             </View>
                         ) : null
                     }
-                    // footer sadece boşluk (pt note artık üstte)
                     ListFooterComponent={<View style={{ height: 40 }} />}
                 />
             </KeyboardAvoidingView>
@@ -705,7 +677,15 @@ function QAItem({
     answer: Bool;
     note?: string;
 }) {
-    const val = boolText(answer);
+    const { t } = useTranslation();
+
+    const val =
+        answer === true
+            ? t("recordNew.option.yes")
+            : answer === false
+                ? t("recordNew.option.no")
+                : "-";
+
     const isYes = answer === true;
 
     return (
@@ -734,7 +714,7 @@ function QAItem({
 
             {isYes && !!note?.trim() && (
                 <View style={styles.noteBox}>
-                    <Text style={styles.miniLabel}>Açıklama</Text>
+                    <Text style={styles.miniLabel}>{t("common.description")}</Text>
                     <Text style={styles.noteText}>{note}</Text>
                 </View>
             )}

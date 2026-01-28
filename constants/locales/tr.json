@@ -535,5 +535,16 @@
   "profile.field.business.label": "İşletme Adı",
   "profile.field.business.subtitle": "Müşterilerin göreceği marka",
   "profile.field.business.placeholder": "Örn: PT Lab",
-  "profile.value.edit": "Düzenle"
+  "profile.value.edit": "Düzenle",
+  "studentDetail.followUp.label": "Kayıt periyodu",
+  "studentDetail.followUp.week1": "1 hafta",
+  "studentDetail.followUp.days": "{{count}} gün",
+  "studentDetail.followUp.saving": "Kaydediliyor…",
+  "studentDetail.followUp.hint": "Bu süre; takvim/ana ekranda “yaklaştı-gecikti” hesabında kullanılacak.",
+  "studentDetail.followUp.saveError": "Kayıt periyodu kaydedilemedi.",
+  "common.na": "-",
+  "common.description": "Açıklama",
+  "students.record.add": "Kayıt ekle",
+  "students.record.none": "Kayıt yok",
+  "students.record.overdue": "Kayıt ekle"
 }

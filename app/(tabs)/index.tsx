@@ -1,4 +1,3 @@
-// ❌ kaldır: import { themeui } from "@/constants/themeui";
 import { auth } from "@/services/firebase";
 import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import { useRouter } from "expo-router";
@@ -7,6 +6,7 @@ import {
   ArrowLeft,
   Bell,
   Calendar,
+  Clipboard,
   Eye,
   Phone,
   Plus,
@@ -186,7 +186,6 @@ export default function KayitlarScreen() {
             assessmentDate: data.assessmentDate ?? new Date().toISOString(),
             followUpDays: typeof data.followUpDays === "number" ? data.followUpDays : 30, // ✅
           };
-
         });
 
         setStudents(list);
@@ -268,15 +267,15 @@ export default function KayitlarScreen() {
     <SafeAreaView style={styles.safeArea}>
       {searchActive && (
         <TouchableWithoutFeedback onPress={closeAnimatedSearch}>
-          <Animated.View
+          <View
             style={{
               position: "absolute",
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: theme.colors.black,
-              opacity: overlayOpacity,
+              // karartma yok
+              backgroundColor: "transparent",
               zIndex: 998,
             }}
           />
@@ -331,74 +330,75 @@ export default function KayitlarScreen() {
                   <Users size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
               </Animated.View>
-
-              {searchActive && (
-                <Animated.View
-                  style={{
-                    position: "absolute",
-                    left: 10,
-                    right: 10,
-                    top: 0,
-                    height: 48,
-                    backgroundColor: theme.colors.surfaceSoft,
-                    borderRadius: theme.radius.pill,
-                    paddingHorizontal: 12,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                    shadowColor: theme.colors.black,
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 8,
-                    zIndex: 999,
-                    opacity: searchAnim,
-                  }}
-                >
-                  <TouchableOpacity onPress={closeAnimatedSearch} style={{ marginRight: 8 }}>
-                    <ArrowLeft size={20} color={theme.colors.text.primary} />
-                  </TouchableOpacity>
-
-                  <TextInput
-                    placeholder={t("search.student.placeholder")}
-                    placeholderTextColor={theme.colors.text.muted}
-                    value={searchTerm}
-                    onChangeText={setSearchTerm}
-                    autoFocus
-                    style={{
-                      flex: 1,
-                      color: theme.colors.text.primary,
-                      fontSize: 15,
-                      fontWeight: "500",
-                    }}
-                  />
-
-                  <TouchableOpacity
-                    onPress={() => console.log("AI butonu tıklandı")}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: theme.radius.pill,
-                      backgroundColor: theme.colors.premium,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginLeft: 8,
-                    }}
-                  >
-                    <Sparkles size={18} color="#fff" />
-                  </TouchableOpacity>
-
-                  {searchTerm.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchTerm("")} style={{ marginLeft: 8 }}>
-                      <XIcon size={18} color={theme.colors.text.muted} />
-                    </TouchableOpacity>
-                  )}
-                </Animated.View>
-              )}
             </View>
           </View>
         </View>
+
+        {searchActive && (
+          <Animated.View
+            style={{
+              position: "absolute",
+              left: 22,
+              right: 22,
+              top: 0,
+              height: 48,
+              backgroundColor: theme.colors.surfaceSoft,
+              borderRadius: theme.radius.pill,
+              paddingHorizontal: 14,
+              flexDirection: "row",
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              shadowColor: theme.colors.black,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+              zIndex: 999,
+              opacity: searchAnim,
+            }}
+          >
+            <TouchableOpacity onPress={closeAnimatedSearch} style={{ marginRight: 8 }}>
+              <ArrowLeft size={22} color={theme.colors.text.primary} />
+            </TouchableOpacity>
+
+            <TextInput
+              placeholder={t("search.student.placeholder")}
+              placeholderTextColor={theme.colors.text.muted}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              autoFocus
+              style={{
+                flex: 1,
+                color: theme.colors.text.primary,
+                fontSize: 16,
+                fontWeight: "600",
+                paddingVertical: 10, // Android’de iyi oturur
+              }}
+            />
+
+            <TouchableOpacity
+              onPress={() => console.log("AI butonu tıklandı")}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: theme.radius.pill,
+                backgroundColor: theme.colors.premium,
+                alignItems: "center",
+                justifyContent: "center",
+                marginLeft: 8,
+              }}
+            >
+              <Sparkles size={18} color="#fff" />
+            </TouchableOpacity>
+
+            {searchTerm.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchTerm("")} style={{ marginLeft: 8 }}>
+                <XIcon size={18} color={theme.colors.text.muted} />
+              </TouchableOpacity>
+            )}
+          </Animated.View>
+        )}
 
         <View style={styles.listWrapper}>
           <View style={styles.filterBoxRow}>
@@ -460,19 +460,16 @@ export default function KayitlarScreen() {
                 const today = startOfDay(new Date());
                 const last = lastRecordByStudent.get(item.id) ?? null;
 
-                // ✅ küçük yazı (arkası yok) + renk
-                let recordText = "Kayıt ekle";
+                // ✅ renk dinamik kalsın (yazı kaldırıldı)
                 let recordTextColor = theme.colors.success;
 
                 if (!last) {
-                  recordText = "Kayıt yok";
                   recordTextColor = theme.colors.text.muted;
                 } else {
                   const period = typeof item.followUpDays === "number" ? item.followUpDays : 30;
                   const dueDate = addDays(startOfDay(last), period);
-                  const diff = daysDiff(today, dueDate); // today - dueDate
+                  const diff = daysDiff(today, dueDate);
                   if (diff > 0) {
-                    recordText = "Kayıt ekle";
                     recordTextColor = theme.colors.danger;
                   }
                 }
@@ -480,7 +477,14 @@ export default function KayitlarScreen() {
                 return (
                   <TouchableOpacity style={styles.card} onPress={() => handleViewDetails(item.id)}>
                     <View style={styles.cardLeft}>
-                      <Text style={styles.cardName}>{item.name}</Text>
+                      <View style={styles.nameRow}>
+                        <Text style={styles.cardName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+
+                        {/* ✅ sadece icon, isimden 5px sonra */}
+                        <Clipboard style={styles.recordIcon} size={14} color={recordTextColor} />
+                      </View>
 
                       <View style={styles.cardRow}>
                         <Phone size={16} color={theme.colors.text.muted} />
@@ -507,11 +511,6 @@ export default function KayitlarScreen() {
                             {item.aktif === "Aktif" ? t("status.active") : t("status.passive")}
                           </Text>
                         </View>
-
-                        {/* ✅ küçük, silik, arkası yok (status yanında) */}
-                        <Text style={[styles.recordHint, { color: recordTextColor }]} numberOfLines={1}>
-                          {recordText}
-                        </Text>
                       </View>
 
                       <View style={styles.detailPill}>
@@ -551,6 +550,7 @@ function makeStyles(theme: ThemeUI) {
     },
 
     headerWrapper: {
+      position: "relative",
       paddingHorizontal: theme.spacing.lg,
       paddingTop: theme.spacing.xs + 2,
       paddingBottom: theme.spacing.sm,
@@ -610,6 +610,7 @@ function makeStyles(theme: ThemeUI) {
       fontWeight: "600",
       color: theme.colors.text.primary,
       marginBottom: theme.spacing.xs,
+      flexShrink: 1, // ✅ isim uzarsa iconu ezmesin
     },
 
     cardRow: {
@@ -648,15 +649,10 @@ function makeStyles(theme: ThemeUI) {
       color: theme.colors.danger,
     },
 
-    // ✅ NEW: status yanında küçük yazı
     statusRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-    },
-    recordHint: {
-      fontSize: 11,
-      fontWeight: "700",
     },
 
     detailPill: {
@@ -791,6 +787,15 @@ function makeStyles(theme: ThemeUI) {
       justifyContent: "flex-end",
       gap: theme.spacing.xs,
       flex: 1,
+    },
+
+    // ✅ name + icon yan yana, ikon isimden 5px sonra
+    nameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    recordIcon: {
+      marginLeft: 5,
     },
   });
 }

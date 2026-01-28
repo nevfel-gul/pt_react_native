@@ -533,5 +533,16 @@
   "profile.field.business.label": "Business Name",
   "profile.field.business.subtitle": "Your brand name shown to clients",
   "profile.field.business.placeholder": "e.g., PT Lab",
-  "profile.value.edit": "Edit"
+  "profile.value.edit": "Edit",
+  "studentDetail.followUp.label": "Record period",
+  "studentDetail.followUp.week1": "1 week",
+  "studentDetail.followUp.days": "{{count}} days",
+  "studentDetail.followUp.saving": "Saving…",
+  "studentDetail.followUp.hint": "This period will be used for the “due/overdue” calculation on the calendar/home screen.",
+  "studentDetail.followUp.saveError": "Record period could not be saved.",
+  "common.na": "-",
+  "common.description": "Description",
+  "students.record.add": "Add record",
+  "students.record.none": "No record",
+  "students.record.overdue": "Add record"
 }
