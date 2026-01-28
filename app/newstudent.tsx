@@ -1,8 +1,8 @@
 import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { addDoc, serverTimestamp } from "firebase/firestore";
+import { addDoc, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ArrowLeft, Calendar, Save, User as UserIcon } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -99,6 +99,8 @@ type FormErrors = {
 const YeniOgrenciScreen = () => {
     const router = useRouter();
     const { t } = useTranslation();
+    const { id, mode } = useLocalSearchParams<{ id?: string; mode?: string }>();
+    const isEdit = mode === "edit" && !!id;
 
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -191,6 +193,34 @@ const YeniOgrenciScreen = () => {
 
         return () => unsubscribe();
     }, []);
+    useEffect(() => {
+        if (!isEdit) return;
+        if (!auth.currentUser?.uid) return;
+
+        (async () => {
+            try {
+                setLoading(true);
+
+                const ref = doc(studentsColRef(auth.currentUser.uid), id!);
+                const snap = await getDoc(ref);
+                if (!snap.exists()) return;
+
+                const d = snap.data() as any;
+
+                setForm((prev) => ({
+                    ...prev,
+                    ...d,
+                    trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
+                    plannedDaysPerWeek: typeof d.plannedDaysPerWeek === "number" ? d.plannedDaysPerWeek : null,
+                    assessmentDate: d.assessmentDate ?? prev.assessmentDate,
+                }));
+            } catch (e) {
+                console.error("edit load error:", e);
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, [isEdit, id]);
 
     const normalizeTRPhone = (input: string) => {
         let p = (input || "").replace(/[^\d+]/g, "");
@@ -244,19 +274,25 @@ const YeniOgrenciScreen = () => {
 
         try {
             setSaving(true);
-            await addDoc(studentsColRef(auth.currentUser?.uid!), {
-                ...form,
-                ownerUid: auth.currentUser?.uid,
-                createdAt: serverTimestamp(),
-            });
+
+            if (isEdit) {
+                await updateDoc(doc(studentsColRef(auth.currentUser?.uid!), id!), {
+                    ...form,
+                    updatedAt: serverTimestamp(),
+                });
+            } else {
+                await addDoc(studentsColRef(auth.currentUser?.uid!), {
+                    ...form,
+                    ownerUid: auth.currentUser?.uid,
+                    createdAt: serverTimestamp(),
+                });
+            }
 
             Alert.alert(t("newstudent.alert.success.title"), t("newstudent.alert.success.message"), [
                 { text: t("newstudent.alert.success.ok"), onPress: () => router.replace("/(tabs)") },
             ]);
-        } catch (error) {
-            console.error(error);
-            Alert.alert(t("newstudent.alert.error.title"), t("newstudent.alert.error.message"));
-        } finally {
+        }
+        finally {
             setSaving(false);
         }
     };

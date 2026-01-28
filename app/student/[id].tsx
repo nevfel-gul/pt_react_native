@@ -99,6 +99,7 @@ type Student = {
     otherGoal?: string;
     followUpDays?: number;
     followUpDaysUpdatedAt?: any;
+
 };
 
 type RecordItem = {
@@ -141,13 +142,41 @@ export default function StudentDetailScreen() {
 
     const parqQuestions = useMemo(
         () => [
-            { key: "doctorSaidHeartOrHypertension" as const, noteKey: "doctorSaidHeartOrHypertensionNote" as const, labelKey: "parq.q1" },
-            { key: "chestPainDuringActivityOrDaily" as const, noteKey: "chestPainDuringActivityOrDailyNote" as const, labelKey: "parq.q2" },
-            { key: "dizzinessOrLostConsciousnessLast12Months" as const, noteKey: "dizzinessOrLostConsciousnessLast12MonthsNote" as const, labelKey: "parq.q3" },
-            { key: "diagnosedOtherChronicDisease" as const, noteKey: "diagnosedOtherChronicDiseaseNote" as const, labelKey: "parq.q4" },
-            { key: "usesMedicationForChronicDisease" as const, noteKey: "usesMedicationForChronicDiseaseNote" as const, labelKey: "parq.q5" },
-            { key: "boneJointSoftTissueProblemWorseWithActivity" as const, noteKey: "boneJointSoftTissueProblemWorseWithActivityNote" as const, labelKey: "parq.q6" },
-            { key: "doctorSaidOnlyUnderMedicalSupervision" as const, noteKey: "doctorSaidOnlyUnderMedicalSupervisionNote" as const, labelKey: "parq.q7" },
+            {
+                key: "doctorSaidHeartOrHypertension" as const,
+                noteKey: "doctorSaidHeartOrHypertensionNote" as const,
+                labelKey: "parq.q1",
+            },
+            {
+                key: "chestPainDuringActivityOrDaily" as const,
+                noteKey: "chestPainDuringActivityOrDailyNote" as const,
+                labelKey: "parq.q2",
+            },
+            {
+                key: "dizzinessOrLostConsciousnessLast12Months" as const,
+                noteKey: "dizzinessOrLostConsciousnessLast12MonthsNote" as const,
+                labelKey: "parq.q3",
+            },
+            {
+                key: "diagnosedOtherChronicDisease" as const,
+                noteKey: "diagnosedOtherChronicDiseaseNote" as const,
+                labelKey: "parq.q4",
+            },
+            {
+                key: "usesMedicationForChronicDisease" as const,
+                noteKey: "usesMedicationForChronicDiseaseNote" as const,
+                labelKey: "parq.q5",
+            },
+            {
+                key: "boneJointSoftTissueProblemWorseWithActivity" as const,
+                noteKey: "boneJointSoftTissueProblemWorseWithActivityNote" as const,
+                labelKey: "parq.q6",
+            },
+            {
+                key: "doctorSaidOnlyUnderMedicalSupervision" as const,
+                noteKey: "doctorSaidOnlyUnderMedicalSupervisionNote" as const,
+                labelKey: "parq.q7",
+            },
         ],
         []
     );
@@ -156,10 +185,22 @@ export default function StudentDetailScreen() {
         () => [
             { key: "hadPainOrInjury" as const, noteKey: "hadPainOrInjuryNote" as const, labelKey: "personal.q1" },
             { key: "hadSurgery" as const, noteKey: "hadSurgeryNote" as const, labelKey: "personal.q2" },
-            { key: "diagnosedChronicDiseaseByDoctor" as const, noteKey: "diagnosedChronicDiseaseByDoctorNote" as const, labelKey: "personal.q3" },
+            {
+                key: "diagnosedChronicDiseaseByDoctor" as const,
+                noteKey: "diagnosedChronicDiseaseByDoctorNote" as const,
+                labelKey: "personal.q3",
+            },
             { key: "currentlyUsesMedications" as const, noteKey: "currentlyUsesMedicationsNote" as const, labelKey: "personal.q4" },
-            { key: "weeklyPhysicalActivity30MinOrLess" as const, noteKey: "weeklyPhysicalActivity30MinOrLessNote" as const, labelKey: "personal.q5" },
-            { key: "hasSportsHistoryOrCurrentlyDoingSport" as const, noteKey: "hasSportsHistoryOrCurrentlyDoingSportNote" as const, labelKey: "personal.q6" },
+            {
+                key: "weeklyPhysicalActivity30MinOrLess" as const,
+                noteKey: "weeklyPhysicalActivity30MinOrLessNote" as const,
+                labelKey: "personal.q5",
+            },
+            {
+                key: "hasSportsHistoryOrCurrentlyDoingSport" as const,
+                noteKey: "hasSportsHistoryOrCurrentlyDoingSportNote" as const,
+                labelKey: "personal.q6",
+            },
             { key: "jobRequiresLongSitting" as const, labelKey: "personal.q7" },
             { key: "jobRequiresRepetitiveMovement" as const, labelKey: "personal.q8" },
             { key: "jobRequiresHighHeels" as const, labelKey: "personal.q9" },
@@ -182,6 +223,7 @@ export default function StudentDetailScreen() {
                 }
 
                 const d = snap.data() as any;
+
                 setStudent({
                     id: snap.id,
                     ...d,
@@ -189,6 +231,7 @@ export default function StudentDetailScreen() {
                     trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
                     followUpDays: typeof d.followUpDays === "number" ? d.followUpDays : 30,
                 });
+
                 setPtNote((d.ptNote as string) ?? "");
             } catch (err) {
                 console.error(err);
@@ -204,11 +247,7 @@ export default function StudentDetailScreen() {
     useEffect(() => {
         if (!id) return;
 
-        const qy = query(
-            recordsColRef(auth.currentUser?.uid!),
-            where("studentId", "==", id),
-            orderBy("createdAt", "desc")
-        );
+        const qy = query(recordsColRef(auth.currentUser?.uid!), where("studentId", "==", id), orderBy("createdAt", "desc"));
 
         const unsub = onSnapshot(
             qy,
@@ -292,8 +331,13 @@ export default function StudentDetailScreen() {
         router.push({ pathname: "/newrecord/[id]", params: { id: student.id } });
     };
 
-    const viewRecord = (recordId: string) =>
-        router.push({ pathname: "/record/[id]", params: { id: recordId } });
+    const viewRecord = (recordId: string) => router.push({ pathname: "/record/[id]", params: { id: recordId } });
+
+    // ✅ EDIT artık newstudent ekranında
+    const goEdit = () => {
+        if (!student) return;
+        router.push({ pathname: "/newstudent", params: { id: student.id, mode: "edit" } });
+    };
 
     const firstLetter = student?.name?.[0]?.toUpperCase() ?? "?";
 
@@ -367,26 +411,23 @@ export default function StudentDetailScreen() {
                                         <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
                                     </TouchableOpacity>
 
-                                    <View style={styles.headerActions}>
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.toggleButton,
-                                                student.aktif === "Aktif" ? styles.toggleButtonPassive : styles.toggleButtonActive,
-                                            ]}
-                                            onPress={toggleAktif}
-                                            disabled={toggling}
-                                        >
-                                            <Text style={styles.toggleButtonText}>
-                                                {student.aktif === "Aktif"
-                                                    ? t("studentDetail.toggle.makePassive")
-                                                    : t("studentDetail.toggle.makeActive")}
-                                            </Text>
-                                        </TouchableOpacity>
+                                    {/* ✅ EDIT BLOĞU sadeleşti */}
+                                    <View style={[styles.headerActions, { justifyContent: "flex-end" }]}>
+                                        <View style={{ flexDirection: "row" }}>
+                                            <TouchableOpacity style={styles.editButton} onPress={addRecord} activeOpacity={0.85}>
+                                                <Edit size={14} color={theme.colors.text.onAccent} />
+                                                <Text style={styles.editButtonText}>{t("studentDetail.addRecord")}</Text>
+                                            </TouchableOpacity>
 
-                                        <TouchableOpacity style={styles.editButton} onPress={addRecord}>
-                                            <Edit size={14} color={theme.colors.text.onAccent} />
-                                            <Text style={styles.editButtonText}>{t("studentDetail.addRecord")}</Text>
-                                        </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.editButton, { marginLeft: theme.spacing.xs }]}
+                                                onPress={goEdit}
+                                                activeOpacity={0.85}
+                                            >
+                                                <Edit size={14} color={theme.colors.text.onAccent} />
+                                                <Text style={styles.editButtonText}>{t("common.edit")}</Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 </View>
 
@@ -398,18 +439,20 @@ export default function StudentDetailScreen() {
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.studentName}>{student.name}</Text>
 
-                                        <View
+                                        <TouchableOpacity
+                                            activeOpacity={0.85}
+                                            onPress={toggleAktif}
+                                            disabled={toggling}
                                             style={[
-                                                styles.statusBadge,
+                                                styles.statusBadgeBtn,
                                                 student.aktif === "Aktif" ? styles.statusActive : styles.statusPassive,
+                                                toggling && { opacity: 0.7 },
                                             ]}
                                         >
                                             <Text style={student.aktif === "Aktif" ? styles.statusActiveText : styles.statusPassiveText}>
-                                                {student.aktif === "Aktif"
-                                                    ? t("studentDetail.student.active")
-                                                    : t("studentDetail.student.passive")}
+                                                {student.aktif === "Aktif" ? t("studentDetail.student.active") : t("studentDetail.student.passive")}
                                             </Text>
-                                        </View>
+                                        </TouchableOpacity>
 
                                         <View style={styles.metaLine}>
                                             <Calendar size={14} color={theme.colors.text.muted} />
@@ -431,11 +474,7 @@ export default function StudentDetailScreen() {
                                                             activeOpacity={0.85}
                                                             disabled={savingFollowUp}
                                                             onPress={() => setFollowUpDays(d)}
-                                                            style={[
-                                                                styles.followUpPill,
-                                                                active && styles.followUpPillActive,
-                                                                savingFollowUp && { opacity: 0.7 },
-                                                            ]}
+                                                            style={[styles.followUpPill, active && styles.followUpPillActive, savingFollowUp && { opacity: 0.7 }]}
                                                         >
                                                             <Text style={[styles.followUpPillText, active && styles.followUpPillTextActive]}>
                                                                 {d === 7 ? t("studentDetail.followUp.week1") : t("studentDetail.followUp.days", { count: d })}
@@ -444,9 +483,7 @@ export default function StudentDetailScreen() {
                                                     );
                                                 })}
 
-                                                {savingFollowUp && (
-                                                    <Text style={styles.followUpSavingText}>{t("studentDetail.followUp.saving")}</Text>
-                                                )}
+                                                {savingFollowUp && <Text style={styles.followUpSavingText}>{t("studentDetail.followUp.saving")}</Text>}
                                             </View>
 
                                             <Text style={styles.followUpHint}>{t("studentDetail.followUp.hint")}</Text>
@@ -455,41 +492,45 @@ export default function StudentDetailScreen() {
                                 </View>
                             </View>
 
+                            {/* PERSONAL INFO (view-only) */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.personalInfo")}</Text>
 
-                                <InfoRow
-                                    styles={styles}
-                                    label={t("studentDetail.label.email")}
-                                    value={student.email || "-"}
-                                    icon={<Mail size={16} color={theme.colors.primary} />}
-                                />
-                                <InfoRow
-                                    styles={styles}
-                                    label={t("studentDetail.label.phone")}
-                                    value={student.number || "-"}
-                                    icon={<Phone size={16} color={theme.colors.primary} />}
-                                />
-                                <InfoRow
-                                    styles={styles}
-                                    label={t("studentDetail.label.gender")}
-                                    value={student.gender || "-"}
-                                    icon={<User size={16} color={theme.colors.primary} />}
-                                />
-                                <InfoRow
-                                    styles={styles}
-                                    label={t("studentDetail.label.birthDate")}
-                                    value={formatDateTR(student.dateOfBirth)}
-                                    icon={<Calendar size={16} color={theme.colors.primary} />}
-                                />
-                                <InfoRow
-                                    styles={styles}
-                                    label={t("studentDetail.label.height")}
-                                    value={student.boy || "-"}
-                                    icon={<User size={16} color={theme.colors.primary} />}
-                                />
+                                <>
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.email")}
+                                        value={student.email || "-"}
+                                        icon={<Mail size={16} color={theme.colors.primary} />}
+                                    />
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.phone")}
+                                        value={student.number || "-"}
+                                        icon={<Phone size={16} color={theme.colors.primary} />}
+                                    />
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.gender")}
+                                        value={student.gender || "-"}
+                                        icon={<User size={16} color={theme.colors.primary} />}
+                                    />
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.birthDate")}
+                                        value={formatDateTR(student.dateOfBirth)}
+                                        icon={<Calendar size={16} color={theme.colors.primary} />}
+                                    />
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.height")}
+                                        value={student.boy || "-"}
+                                        icon={<User size={16} color={theme.colors.primary} />}
+                                    />
+                                </>
                             </View>
 
+                            {/* PARQ (view-only) */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.parq")}</Text>
 
@@ -509,6 +550,7 @@ export default function StudentDetailScreen() {
                                 })}
                             </View>
 
+                            {/* PERSONAL DETAILS (view-only) */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.personalDetails")}</Text>
 
@@ -561,6 +603,7 @@ export default function StudentDetailScreen() {
                                 </View>
                             </View>
 
+                            {/* PT NOTE (aynı) */}
                             <View style={styles.card}>
                                 <TouchableOpacity activeOpacity={0.85} onPress={onTogglePtNote}>
                                     <Text style={styles.cardTitle}>{t("studentDetail.section.ptNote")}</Text>
@@ -595,9 +638,7 @@ export default function StudentDetailScreen() {
                                             disabled={savingPtNote}
                                             activeOpacity={0.85}
                                         >
-                                            <Text style={styles.ptNoteSaveText}>
-                                                {savingPtNote ? t("common.saving") : t("common.save")}
-                                            </Text>
+                                            <Text style={styles.ptNoteSaveText}>{savingPtNote ? t("common.saving") : t("common.save")}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}
@@ -607,12 +648,9 @@ export default function StudentDetailScreen() {
                         </View>
                     }
                     renderItem={({ item }) => {
-                        const dateStr =
-                            item.createdAt?.toDate
-                                ? `${item.createdAt.toDate().toLocaleDateString("tr-TR")} • ${item.createdAt
-                                    .toDate()
-                                    .toLocaleTimeString("tr-TR")}`
-                                : "-";
+                        const dateStr = item.createdAt?.toDate
+                            ? `${item.createdAt.toDate().toLocaleDateString("tr-TR")} • ${item.createdAt.toDate().toLocaleTimeString("tr-TR")}`
+                            : "-";
 
                         return (
                             <TouchableOpacity style={styles.recordCard} onPress={() => viewRecord(item.id)}>
@@ -639,6 +677,7 @@ export default function StudentDetailScreen() {
         </SafeAreaView>
     );
 }
+
 
 /* ----------------- UI PIECES ----------------- */
 
@@ -751,6 +790,15 @@ function makeStyles(theme: ThemeUI) {
             alignItems: "center",
             marginBottom: theme.spacing.sm - 2,
         },
+        statusBadgeBtn: {
+            marginTop: theme.spacing.xs,
+            paddingHorizontal: theme.spacing.sm - 2,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            alignSelf: "flex-start",
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
 
         backButton: {
             flexDirection: "row",
@@ -768,7 +816,60 @@ function makeStyles(theme: ThemeUI) {
             marginLeft: theme.spacing.xs,
         },
 
-        headerActions: { flexDirection: "row", marginLeft: theme.spacing.xs },
+        cancelButton: {
+            paddingHorizontal: theme.spacing.md,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            marginLeft: theme.spacing.xs,
+        },
+        cancelButtonText: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "800",
+        },
+        saveButton: {
+            paddingHorizontal: theme.spacing.md,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.accent,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            marginLeft: theme.spacing.xs,
+        },
+        saveButtonText: {
+            color: theme.colors.text.onAccent,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "900",
+        },
+
+        editRow: { marginTop: theme.spacing.sm },
+        editLabel: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.sm,
+            fontWeight: "700",
+            marginBottom: 6,
+        },
+        editInput: {
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+            paddingHorizontal: theme.spacing.sm,
+            paddingVertical: theme.spacing.sm - 2,
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.sm,
+        },
+
+        headerActions: {
+            flexDirection: "row",
+            marginLeft: theme.spacing.xs,
+            justifyContent: "flex-end",
+            alignItems: "center",
+            flex: 1,
+        },
 
         toggleButton: {
             flexDirection: "row",
@@ -794,6 +895,37 @@ function makeStyles(theme: ThemeUI) {
             fontSize: theme.fontSize.sm,
             fontWeight: "600",
             color: theme.colors.text.onAccent,
+        },
+        editQWrap: { marginTop: theme.spacing.sm },
+        editQTitle: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm, fontWeight: "800" },
+
+        editQButtons: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
+        editQBtn: {
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+        },
+        editQBtnActive: {
+            borderColor: theme.colors.accent,
+            backgroundColor: "rgba(56,189,248,0.12)",
+        },
+        editQBtnText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, fontWeight: "900" },
+        editQBtnTextActive: { color: theme.colors.accent },
+
+        editQNote: {
+            marginTop: 10,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+            padding: theme.spacing.sm,
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.sm,
+            lineHeight: 18,
+            minHeight: 70,
         },
 
         editButton: {

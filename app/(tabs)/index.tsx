@@ -546,7 +546,7 @@ function makeStyles(theme: ThemeUI) {
     },
     container: {
       flex: 1,
-      backgroundColor: theme.colors.surfaceDark,
+      backgroundColor: theme.colors.background,
     },
 
     headerWrapper: {
