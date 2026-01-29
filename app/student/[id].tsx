@@ -425,7 +425,7 @@ export default function StudentDetailScreen() {
                                                 activeOpacity={0.85}
                                             >
                                                 <Edit size={14} color={theme.colors.text.onAccent} />
-                                                <Text style={styles.editButtonText}>{t("common.edit")}</Text>
+                                                <Text style={styles.editButtonText}>{t("studentDetail.edit")}</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>

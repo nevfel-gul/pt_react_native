@@ -543,6 +543,10 @@
   "common.na": "-",
   "common.description": "Description",
   "students.record.add": "Add record",
+  "studentDetail.edit": "Edit",
+  "newstudent.header.title_new": "New Student",
+  "newstudent.button.update_student": "Update Student",
+  "newstudent.header.title_edit": "Edit Student",
   "students.record.none": "No record",
   "students.record.overdue": "Add record"
 }

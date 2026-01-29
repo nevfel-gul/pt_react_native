@@ -201,7 +201,7 @@ const YeniOgrenciScreen = () => {
             try {
                 setLoading(true);
 
-                const ref = doc(studentsColRef(auth.currentUser.uid), id!);
+                const ref = doc(studentsColRef(auth.currentUser!.uid), id!);
                 const snap = await getDoc(ref);
                 if (!snap.exists()) return;
 
@@ -253,6 +253,13 @@ const YeniOgrenciScreen = () => {
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
+    };
+    const goBackSmart = () => {
+        if (router.canGoBack()) {
+            router.back();
+        } else {
+            router.replace("/(tabs)");
+        }
     };
 
     const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -308,10 +315,11 @@ const YeniOgrenciScreen = () => {
                     {/* HEADER */}
                     <View style={styles.headerCard}>
                         <View style={styles.headerTopRow}>
-                            <TouchableOpacity style={styles.backButton} onPress={() => router.replace("/(tabs)")}>
+                            <TouchableOpacity style={styles.backButton} onPress={goBackSmart}>
                                 <ArrowLeft size={18} color={theme.colors.text.primary} />
                                 <Text style={styles.backButtonText}>{t("newstudent.header.back")}</Text>
                             </TouchableOpacity>
+
 
                             <View style={styles.headerTitleRow}>
                                 <View style={styles.iconCircle}>
@@ -319,7 +327,9 @@ const YeniOgrenciScreen = () => {
                                 </View>
 
                                 <View>
-                                    <Text style={styles.headerTitle}>{t("newstudent.header.title")}</Text>
+                                    <Text style={styles.headerTitle}>
+                                        {isEdit ? t("newstudent.header.title_edit") : t("newstudent.header.title_new")}
+                                    </Text>
 
                                     <View style={styles.dateRow}>
                                         <Calendar size={14} color={theme.colors.text.muted} />
@@ -529,7 +539,11 @@ const YeniOgrenciScreen = () => {
                         <TouchableOpacity style={[styles.saveButton, saving && { opacity: 0.6 }]} onPress={handleSubmit} disabled={saving}>
                             <Save size={18} color={theme.colors.text.onAccent} />
                             <Text style={styles.saveButtonText}>
-                                {saving ? t("newstudent.button.saving") : t("newstudent.button.save_student")}
+                                {saving
+                                    ? t("newstudent.button.saving")
+                                    : isEdit
+                                        ? t("newstudent.button.update_student")
+                                        : t("newstudent.button.save_student")}
                             </Text>
                         </TouchableOpacity>
                     </View>

@@ -545,6 +545,10 @@
   "common.na": "-",
   "common.description": "Açıklama",
   "students.record.add": "Kayıt ekle",
+  "studentDetail.edit": "Düzenle",
+  "newstudent.header.title_new": "Yeni Öğrenci",
+  "newstudent.button.update_student": "Güncelle",
+  "newstudent.header.title_edit": "Öğrenci Düzenle",
   "students.record.none": "Kayıt yok",
   "students.record.overdue": "Kayıt ekle"
 }
