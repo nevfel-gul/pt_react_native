@@ -1,12 +1,13 @@
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import PremiumStarIcon from "@/constants/PremiumStarIcon";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
 import { Tabs, useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 
 
 export default function TabLayout() {
@@ -116,19 +117,36 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 5) PREMIUM */}
       <Tabs.Screen
         name="premium"
         options={{
           title: t("tabs.premium"),
           href: premiumHref,
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[iconWrap, focused && glow]}>
-              <IconSymbol size={28} name="crown.fill" color={color} />
+
+          // ✅ Label’ı biz çiziyoruz: HER ZAMAN gold
+          tabBarLabel: ({ focused }) => (
+            <View>
+              <Text
+                style={{
+                  color: theme.colors.gold,
+                  fontWeight: "700",
+                  fontSize: 9,
+                  opacity: focused ? 1 : 0.75,
+                }}
+              >
+                {t("tabs.premium")}
+              </Text>
             </View>
+          ),
+
+          // ✅ Icon zaten gold (PremiumStarIcon içinde)
+          tabBarIcon: ({ focused }) => (
+            <PremiumStarIcon focused={focused} theme={theme} size={28} />
           ),
         }}
       />
+
+
     </Tabs>
   );
 }
