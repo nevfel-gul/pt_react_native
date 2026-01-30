@@ -177,7 +177,7 @@ export default function PremiumStarIcon({ focused, theme, size = 28, style }: Pr
                     height: box + 16,
                     left: -(8),
                     top: -(8),
-                    opacity: glowOpacity,
+                    opacity: focused ? 0.10 : 0.16,
                 }}
             >
                 <Svg width="100%" height="100%" viewBox="0 0 100 100">
@@ -194,24 +194,6 @@ export default function PremiumStarIcon({ focused, theme, size = 28, style }: Pr
                     <Path d="M0 0H100V100H0Z" fill="url(#glowGrad)" />
                 </Svg>
             </Animated.View>
-
-
-            {/* Shimmer (sadece focused değilken) */}
-            {!focused && (
-                <Animated.View
-                    pointerEvents="none"
-                    style={{
-                        position: "absolute",
-                        width: 18,
-                        height: Math.round(mainStarSize * 0.75),
-                        borderRadius: 12,
-                        backgroundColor: "#ffffff",
-                        opacity: 0.12,
-                        transform: [{ translateX: shimmerTranslate }, { rotate: "-18deg" }],
-                    }}
-                />
-            )}
-
             {/* Sparkles */}
             {!focused &&
                 sparkleLayout.map((p, idx) => (

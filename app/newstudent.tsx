@@ -1,5 +1,10 @@
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
+
 import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
+
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { addDoc, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
@@ -9,18 +14,17 @@ import { useTranslation } from "react-i18next";
 import {
     Alert,
     KeyboardAvoidingView,
+    Modal,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import type { ThemeUI } from "@/constants/types";
-import { useTheme } from "@/constants/usetheme";
 
 type Gender = "Kadın" | "Erkek" | "";
 type Status = "Aktif" | "Pasif";
@@ -29,7 +33,7 @@ type Bool = boolean | null;
 type FormState = {
     name: string;
     boy: string;
-    dateOfBirth: string;
+    dateOfBirth: string; // ISO: YYYY-MM-DD
     number: string;
     email: string;
     gender: Gender;
@@ -106,7 +110,15 @@ const YeniOgrenciScreen = () => {
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const today = new Date().toISOString().split("T")[0];
+
     const [errors, setErrors] = useState<FormErrors>({});
+    const [user, setUser] = useState<FirebaseUser | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    const [saving, setSaving] = useState(false);
+
+    // ✅ DOB picker state
+    const [showDobPicker, setShowDobPicker] = useState(false);
 
     const trainingGoalOptions = useMemo(
         () => [
@@ -120,10 +132,6 @@ const YeniOgrenciScreen = () => {
         [t]
     );
 
-    const [user, setUser] = useState<FirebaseUser | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    const [saving, setSaving] = useState(false);
     const [form, setForm] = useState<FormState>({
         name: "",
         boy: "",
@@ -185,50 +193,58 @@ const YeniOgrenciScreen = () => {
         otherGoal: "",
     });
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-            setUser(firebaseUser);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, []);
-    useEffect(() => {
-        if (!isEdit) return;
-        if (!auth.currentUser?.uid) return;
-
-        (async () => {
-            try {
-                setLoading(true);
-
-                const ref = doc(studentsColRef(auth.currentUser!.uid), id!);
-                const snap = await getDoc(ref);
-                if (!snap.exists()) return;
-
-                const d = snap.data() as any;
-
-                setForm((prev) => ({
-                    ...prev,
-                    ...d,
-                    trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
-                    plannedDaysPerWeek: typeof d.plannedDaysPerWeek === "number" ? d.plannedDaysPerWeek : null,
-                    assessmentDate: d.assessmentDate ?? prev.assessmentDate,
-                }));
-            } catch (e) {
-                console.error("edit load error:", e);
-            } finally {
-                setLoading(false);
-            }
-        })();
-    }, [isEdit, id]);
+    /* -------------------- helpers -------------------- */
+    const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+        setForm((prev) => ({ ...prev, [key]: value }));
+    };
 
     const normalizeTRPhone = (input: string) => {
         let p = (input || "").replace(/[^\d+]/g, "");
-
         if (p.startsWith("+90")) p = "0" + p.slice(3);
         if (p.startsWith("90") && p.length >= 12) p = "0" + p.slice(2);
-
         return p;
+    };
+
+    const toISODate = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    };
+
+    const parseISODate = (iso?: string): Date | null => {
+        if (!iso) return null;
+        const parts = iso.split("-").map((x) => Number(x));
+        if (parts.length !== 3) return null;
+        const [y, m, d] = parts;
+        if (!y || !m || !d) return null;
+        return new Date(y, m - 1, d);
+    };
+
+    const formatDateTR = (iso?: string) => {
+        const d = parseISODate(iso);
+        if (!d) return "";
+        return d.toLocaleDateString("tr-TR"); // 30.01.2000
+    };
+
+    const onDobChange = (event: DateTimePickerEvent, selected?: Date) => {
+        // Android seçince kapanır; iOS'ta spinner açık kalabilir (istersen ayrıca "Tamam" ekleriz)
+        if (Platform.OS !== "ios") setShowDobPicker(false);
+
+        if (event.type === "dismissed") return;
+        if (!selected) return;
+
+        updateField("dateOfBirth", toISODate(selected));
+    };
+
+    const toggleMulti = (key: "trainingGoals", value: string) => {
+        setForm((prev) => {
+            const exists = prev[key].includes(value);
+            return {
+                ...prev,
+                [key]: exists ? prev[key].filter((x) => x !== value) : [...prev[key], value],
+            };
+        });
     };
 
     const validateForm = () => {
@@ -254,28 +270,52 @@ const YeniOgrenciScreen = () => {
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
+
     const goBackSmart = () => {
-        if (router.canGoBack()) {
-            router.back();
-        } else {
-            router.replace("/(tabs)");
-        }
+        if (router.canGoBack()) router.back();
+        else router.replace("/(tabs)");
     };
 
-    const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-        setForm((prev) => ({ ...prev, [key]: value }));
-    };
-
-    const toggleMulti = (key: "trainingGoals", value: string) => {
-        setForm((prev) => {
-            const exists = prev[key].includes(value);
-            return {
-                ...prev,
-                [key]: exists ? prev[key].filter((x) => x !== value) : [...prev[key], value],
-            };
+    /* -------------------- effects -------------------- */
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            setUser(firebaseUser);
+            setLoading(false);
         });
-    };
+        return () => unsubscribe();
+    }, []);
 
+    useEffect(() => {
+        if (!isEdit) return;
+        if (!auth.currentUser?.uid) return;
+
+        (async () => {
+            try {
+                setLoading(true);
+
+                const ref = doc(studentsColRef(auth.currentUser!.uid), id!);
+                const snap = await getDoc(ref);
+                if (!snap.exists()) return;
+
+                const d = snap.data() as any;
+
+                setForm((prev) => ({
+                    ...prev,
+                    ...d,
+                    trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
+                    plannedDaysPerWeek: typeof d.plannedDaysPerWeek === "number" ? d.plannedDaysPerWeek : null,
+                    assessmentDate: d.assessmentDate ?? prev.assessmentDate,
+                    dateOfBirth: d.dateOfBirth ?? prev.dateOfBirth,
+                }));
+            } catch (e) {
+                console.error("edit load error:", e);
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, [isEdit, id]);
+
+    /* -------------------- submit -------------------- */
     const handleSubmit = async () => {
         if (!validateForm()) return;
 
@@ -298,8 +338,7 @@ const YeniOgrenciScreen = () => {
             Alert.alert(t("newstudent.alert.success.title"), t("newstudent.alert.success.message"), [
                 { text: t("newstudent.alert.success.ok"), onPress: () => router.replace("/(tabs)") },
             ]);
-        }
-        finally {
+        } finally {
             setSaving(false);
         }
     };
@@ -319,7 +358,6 @@ const YeniOgrenciScreen = () => {
                                 <ArrowLeft size={18} color={theme.colors.text.primary} />
                                 <Text style={styles.backButtonText}>{t("newstudent.header.back")}</Text>
                             </TouchableOpacity>
-
 
                             <View style={styles.headerTitleRow}>
                                 <View style={styles.iconCircle}>
@@ -343,11 +381,7 @@ const YeniOgrenciScreen = () => {
                     </View>
 
                     {/* FORM */}
-                    <ScrollView
-                        style={styles.formScroll}
-                        contentContainerStyle={{ paddingBottom: 120 }}
-                        showsVerticalScrollIndicator={false}
-                    >
+                    <ScrollView style={styles.formScroll} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
                         {/* BÖLÜM 1 */}
                         <View style={styles.sectionCard}>
                             <Text style={styles.sectionTitle}>{t("newstudent.section.personal_info")}</Text>
@@ -402,26 +436,89 @@ const YeniOgrenciScreen = () => {
                                 error={errors.email}
                             />
 
-                            <View style={styles.row}>
-                                <View style={styles.rowItem}>
-                                    <FormInput
-                                        theme={theme}
-                                        styles={styles}
-                                        label={t("newstudent.label.birth_date")}
-                                        placeholder={t("newstudent.placeholder.birth_date")}
-                                        value={form.dateOfBirth}
-                                        onChangeText={(tx) => updateField("dateOfBirth", tx)}
-                                        error={errors.dateOfBirth}
-                                    />
-                                </View>
+                            {/* ✅ DOB PICKER (tek alan) */}
+                            <View style={{ marginBottom: 14 }}>
+                                <Text style={styles.label}>{t("newstudent.label.birth_date")}</Text>
 
+                                <Pressable onPress={() => setShowDobPicker(true)}>
+                                    <View pointerEvents="none">
+                                        <TextInput
+                                            value={formatDateTR(form.dateOfBirth)}
+                                            placeholder={t("newstudent.placeholder.birth_date")}
+                                            placeholderTextColor={theme.colors.text.muted}
+                                            editable={false}
+                                            style={styles.input}
+                                        />
+                                    </View>
+                                </Pressable>
+                                {showDobPicker && (
+                                    <Modal
+                                        transparent
+                                        animationType="fade"
+                                        visible={showDobPicker}
+                                        onRequestClose={() => setShowDobPicker(false)} // Android back
+                                    >
+                                        {/* Dış boşluk: buraya basınca kapanacak */}
+                                        <Pressable style={styles.pickerOverlay} onPress={() => setShowDobPicker(false)}>
+                                            {/* İç içerik: buraya basınca kapanmasın */}
+                                            <Pressable style={styles.pickerCard} onPress={() => { }}>
+                                                <DateTimePicker
+                                                    value={parseISODate(form.dateOfBirth) ?? new Date(2000, 0, 1)}
+                                                    mode="date"
+                                                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                                                    onChange={(event, selected) => {
+                                                        // Android seçince kapat
+                                                        if (Platform.OS !== "ios") setShowDobPicker(false);
+
+                                                        if (event.type === "dismissed") return;
+                                                        if (!selected) return;
+
+                                                        updateField("dateOfBirth", toISODate(selected));
+                                                    }}
+                                                    maximumDate={new Date()}
+                                                />
+
+                                                {/* iOS'ta spinner açık kaldığı için bir kapatma butonu ekleyelim */}
+                                                {Platform.OS === "ios" && (
+                                                    <TouchableOpacity
+                                                        style={[styles.saveButton, { marginTop: 10 }]}
+                                                        onPress={() => setShowDobPicker(false)}
+                                                    >
+                                                        <Text style={styles.saveButtonText}>Tamam</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </Pressable>
+                                        </Pressable>
+                                    </Modal>
+                                )}
+
+
+
+                                {errors.dateOfBirth && <Text style={styles.errorText}>{errors.dateOfBirth}</Text>}
+                            </View>
+
+                            {/* Gender */}
+                            <View style={styles.row}>
                                 <View style={styles.rowItem}>
                                     <Text style={styles.label}>{t("newstudent.label.gender")}</Text>
 
                                     <View style={styles.chipRow}>
-                                        <Chip theme={theme} styles={styles} label={t("newstudent.gender.female")} active={form.gender === "Kadın"} onPress={() => updateField("gender", "Kadın")} />
-                                        <Chip theme={theme} styles={styles} label={t("newstudent.gender.male")} active={form.gender === "Erkek"} onPress={() => updateField("gender", "Erkek")} />
+                                        <Chip
+                                            theme={theme}
+                                            styles={styles}
+                                            label={t("newstudent.gender.female")}
+                                            active={form.gender === "Kadın"}
+                                            onPress={() => updateField("gender", "Kadın")}
+                                        />
+                                        <Chip
+                                            theme={theme}
+                                            styles={styles}
+                                            label={t("newstudent.gender.male")}
+                                            active={form.gender === "Erkek"}
+                                            onPress={() => updateField("gender", "Erkek")}
+                                        />
                                     </View>
+
                                     {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
                                 </View>
                             </View>
@@ -439,37 +536,86 @@ const YeniOgrenciScreen = () => {
 
                             <QuestionBool styles={styles} theme={theme} title={t("newstudent.parq.q1")} value={form.doctorSaidHeartOrHypertension} onChange={(v) => updateField("doctorSaidHeartOrHypertension", v)} />
                             {form.doctorSaidHeartOrHypertension === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.doctorSaidHeartOrHypertensionNote} onChangeText={(tx) => updateField("doctorSaidHeartOrHypertensionNote", tx)} />
+                                <FormTextArea
+                                    theme={theme}
+                                    styles={styles}
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
+                                    value={form.doctorSaidHeartOrHypertensionNote}
+                                    onChangeText={(tx) => updateField("doctorSaidHeartOrHypertensionNote", tx)}
+                                />
                             )}
 
                             <QuestionBool styles={styles} theme={theme} title={t("newstudent.parq.q2")} value={form.chestPainDuringActivityOrDaily} onChange={(v) => updateField("chestPainDuringActivityOrDaily", v)} />
                             {form.chestPainDuringActivityOrDaily === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.chestPainDuringActivityOrDailyNote} onChangeText={(tx) => updateField("chestPainDuringActivityOrDailyNote", tx)} />
+                                <FormTextArea
+                                    theme={theme}
+                                    styles={styles}
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
+                                    value={form.chestPainDuringActivityOrDailyNote}
+                                    onChangeText={(tx) => updateField("chestPainDuringActivityOrDailyNote", tx)}
+                                />
                             )}
 
                             <QuestionBool styles={styles} theme={theme} title={t("newstudent.parq.q3")} value={form.dizzinessOrLostConsciousnessLast12Months} onChange={(v) => updateField("dizzinessOrLostConsciousnessLast12Months", v)} />
                             {form.dizzinessOrLostConsciousnessLast12Months === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.dizzinessOrLostConsciousnessLast12MonthsNote} onChangeText={(tx) => updateField("dizzinessOrLostConsciousnessLast12MonthsNote", tx)} />
+                                <FormTextArea
+                                    theme={theme}
+                                    styles={styles}
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
+                                    value={form.dizzinessOrLostConsciousnessLast12MonthsNote}
+                                    onChangeText={(tx) => updateField("dizzinessOrLostConsciousnessLast12MonthsNote", tx)}
+                                />
                             )}
 
                             <QuestionBool styles={styles} theme={theme} title={t("newstudent.parq.q4")} value={form.diagnosedOtherChronicDisease} onChange={(v) => updateField("diagnosedOtherChronicDisease", v)} />
                             {form.diagnosedOtherChronicDisease === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.diagnosedOtherChronicDiseaseNote} onChangeText={(tx) => updateField("diagnosedOtherChronicDiseaseNote", tx)} />
+                                <FormTextArea
+                                    theme={theme}
+                                    styles={styles}
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
+                                    value={form.diagnosedOtherChronicDiseaseNote}
+                                    onChangeText={(tx) => updateField("diagnosedOtherChronicDiseaseNote", tx)}
+                                />
                             )}
 
                             <QuestionBool styles={styles} theme={theme} title={t("newstudent.parq.q5")} value={form.usesMedicationForChronicDisease} onChange={(v) => updateField("usesMedicationForChronicDisease", v)} />
                             {form.usesMedicationForChronicDisease === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.usesMedicationForChronicDiseaseNote} onChangeText={(tx) => updateField("usesMedicationForChronicDiseaseNote", tx)} />
+                                <FormTextArea
+                                    theme={theme}
+                                    styles={styles}
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
+                                    value={form.usesMedicationForChronicDiseaseNote}
+                                    onChangeText={(tx) => updateField("usesMedicationForChronicDiseaseNote", tx)}
+                                />
                             )}
 
                             <QuestionBool styles={styles} theme={theme} title={t("newstudent.parq.q6")} value={form.boneJointSoftTissueProblemWorseWithActivity} onChange={(v) => updateField("boneJointSoftTissueProblemWorseWithActivity", v)} />
                             {form.boneJointSoftTissueProblemWorseWithActivity === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.boneJointSoftTissueProblemWorseWithActivityNote} onChangeText={(tx) => updateField("boneJointSoftTissueProblemWorseWithActivityNote", tx)} />
+                                <FormTextArea
+                                    theme={theme}
+                                    styles={styles}
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
+                                    value={form.boneJointSoftTissueProblemWorseWithActivityNote}
+                                    onChangeText={(tx) => updateField("boneJointSoftTissueProblemWorseWithActivityNote", tx)}
+                                />
                             )}
 
                             <QuestionBool styles={styles} theme={theme} title={t("newstudent.parq.q7")} value={form.doctorSaidOnlyUnderMedicalSupervision} onChange={(v) => updateField("doctorSaidOnlyUnderMedicalSupervision", v)} />
                             {form.doctorSaidOnlyUnderMedicalSupervision === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.doctorSaidOnlyUnderMedicalSupervisionNote} onChangeText={(tx) => updateField("doctorSaidOnlyUnderMedicalSupervisionNote", tx)} />
+                                <FormTextArea
+                                    theme={theme}
+                                    styles={styles}
+                                    label={t("newstudent.label.explanation")}
+                                    placeholder={t("newstudent.placeholder.explanation")}
+                                    value={form.doctorSaidOnlyUnderMedicalSupervisionNote}
+                                    onChangeText={(tx) => updateField("doctorSaidOnlyUnderMedicalSupervisionNote", tx)}
+                                />
                             )}
                         </View>
 
@@ -539,11 +685,7 @@ const YeniOgrenciScreen = () => {
                         <TouchableOpacity style={[styles.saveButton, saving && { opacity: 0.6 }]} onPress={handleSubmit} disabled={saving}>
                             <Save size={18} color={theme.colors.text.onAccent} />
                             <Text style={styles.saveButtonText}>
-                                {saving
-                                    ? t("newstudent.button.saving")
-                                    : isEdit
-                                        ? t("newstudent.button.update_student")
-                                        : t("newstudent.button.save_student")}
+                                {saving ? t("newstudent.button.saving") : isEdit ? t("newstudent.button.update_student") : t("newstudent.button.save_student")}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -713,6 +855,19 @@ const createStyles = (themeui: ThemeUI) =>
         dateText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.xs, marginLeft: themeui.spacing.xs },
 
         formScroll: { flex: 1 },
+        pickerOverlay: {
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.35)",
+            justifyContent: "center",
+            paddingHorizontal: themeui.spacing.md,
+        },
+        pickerCard: {
+            backgroundColor: themeui.colors.surface,
+            borderRadius: themeui.radius.lg,
+            borderWidth: 1,
+            borderColor: themeui.colors.border,
+            padding: themeui.spacing.md,
+        },
 
         sectionCard: {
             marginHorizontal: themeui.spacing.md,
