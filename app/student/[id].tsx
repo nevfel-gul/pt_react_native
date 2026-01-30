@@ -1,6 +1,6 @@
-// app/student/[id].tsx
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
 
-import { themeui } from "@/constants/themeui";
 import { auth } from "@/services/firebase";
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -9,28 +9,27 @@ import {
     onSnapshot,
     orderBy,
     query,
+    serverTimestamp,
     updateDoc,
-    where
+    where,
 } from "firebase/firestore";
-import {
-    ArrowLeft,
-    Calendar,
-    Edit,
-    Eye,
-    Mail,
-    Phone,
-    User
-} from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+
+import { ArrowLeft, Calendar, Edit, Eye, Mail, Phone, User } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
+    KeyboardAvoidingView,
+    Platform,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Bool = boolean | null;
@@ -38,7 +37,6 @@ type Bool = boolean | null;
 type Student = {
     id: string;
 
-    // Kişisel
     name: string;
     email?: string;
     number?: string;
@@ -47,8 +45,9 @@ type Student = {
     gender?: string;
     aktif?: "Aktif" | "Pasif";
     assessmentDate?: string; // YYYY-MM-DD
+    ptNote?: string;
+    ptNoteUpdatedAt?: any;
 
-    // PAR-Q (7)
     doctorSaidHeartOrHypertension?: Bool;
     doctorSaidHeartOrHypertensionNote?: string;
 
@@ -70,7 +69,6 @@ type Student = {
     doctorSaidOnlyUnderMedicalSupervision?: Bool;
     doctorSaidOnlyUnderMedicalSupervisionNote?: string;
 
-    // Kişisel Detaylar
     hadPainOrInjury?: Bool;
     hadPainOrInjuryNote?: string;
 
@@ -99,6 +97,9 @@ type Student = {
 
     trainingGoals?: string[];
     otherGoal?: string;
+    followUpDays?: number;
+    followUpDaysUpdatedAt?: any;
+
 };
 
 type RecordItem = {
@@ -118,22 +119,26 @@ const formatDateTR = (iso?: string) => {
     return new Date(y, m - 1, d).toLocaleDateString("tr-TR");
 };
 
-const boolText = (v?: Bool) => {
-    if (v === true) return "Evet";
-    if (v === false) return "Hayır";
-    return "-";
-};
-
 export default function StudentDetailScreen() {
     const router = useRouter();
     const { t } = useTranslation();
     const { id } = useLocalSearchParams<{ id: string }>();
+
+    const { theme } = useTheme();
+    const styles = useMemo(() => makeStyles(theme), [theme]);
+
+    const listRef = useRef<FlatList<RecordItem>>(null);
 
     const [student, setStudent] = useState<Student | null>(null);
     const [records, setRecords] = useState<RecordItem[]>([]);
     const [loadingStudent, setLoadingStudent] = useState(true);
     const [loadingRecords, setLoadingRecords] = useState(true);
     const [toggling, setToggling] = useState(false);
+
+    const [ptNote, setPtNote] = useState("");
+    const [savingPtNote, setSavingPtNote] = useState(false);
+    const [ptNoteOpen, setPtNoteOpen] = useState(false);
+    const [savingFollowUp, setSavingFollowUp] = useState(false);
 
     const parqQuestions = useMemo(
         () => [
@@ -178,26 +183,14 @@ export default function StudentDetailScreen() {
 
     const personalQuestions = useMemo(
         () => [
-            {
-                key: "hadPainOrInjury" as const,
-                noteKey: "hadPainOrInjuryNote" as const,
-                labelKey: "personal.q1",
-            },
-            {
-                key: "hadSurgery" as const,
-                noteKey: "hadSurgeryNote" as const,
-                labelKey: "personal.q2",
-            },
+            { key: "hadPainOrInjury" as const, noteKey: "hadPainOrInjuryNote" as const, labelKey: "personal.q1" },
+            { key: "hadSurgery" as const, noteKey: "hadSurgeryNote" as const, labelKey: "personal.q2" },
             {
                 key: "diagnosedChronicDiseaseByDoctor" as const,
                 noteKey: "diagnosedChronicDiseaseByDoctorNote" as const,
                 labelKey: "personal.q3",
             },
-            {
-                key: "currentlyUsesMedications" as const,
-                noteKey: "currentlyUsesMedicationsNote" as const,
-                labelKey: "personal.q4",
-            },
+            { key: "currentlyUsesMedications" as const, noteKey: "currentlyUsesMedicationsNote" as const, labelKey: "personal.q4" },
             {
                 key: "weeklyPhysicalActivity30MinOrLess" as const,
                 noteKey: "weeklyPhysicalActivity30MinOrLessNote" as const,
@@ -230,12 +223,16 @@ export default function StudentDetailScreen() {
                 }
 
                 const d = snap.data() as any;
+
                 setStudent({
                     id: snap.id,
                     ...d,
                     aktif: d.aktif ?? "Aktif",
                     trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
+                    followUpDays: typeof d.followUpDays === "number" ? d.followUpDays : 30,
                 });
+
+                setPtNote((d.ptNote as string) ?? "");
             } catch (err) {
                 console.error(err);
                 setStudent(null);
@@ -249,11 +246,8 @@ export default function StudentDetailScreen() {
 
     useEffect(() => {
         if (!id) return;
-        const qy = query(
-            recordsColRef(auth.currentUser?.uid!),
-            where("studentId", "==", id),
-            orderBy("createdAt", "desc")
-        );
+
+        const qy = query(recordsColRef(auth.currentUser?.uid!), where("studentId", "==", id), orderBy("createdAt", "desc"));
 
         const unsub = onSnapshot(
             qy,
@@ -292,19 +286,87 @@ export default function StudentDetailScreen() {
         }
     };
 
+    const savePtNote = async () => {
+        if (!student) return;
+
+        try {
+            setSavingPtNote(true);
+
+            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), {
+                ptNote: ptNote.trim(),
+                ptNoteUpdatedAt: serverTimestamp(),
+            });
+
+            Alert.alert(t("common.success"), t("studentDetail.ptNote.saved"));
+        } catch (err) {
+            console.error("ptNote save error:", err);
+            Alert.alert(t("common.error"), t("studentDetail.ptNote.saveError"));
+        } finally {
+            setSavingPtNote(false);
+        }
+    };
+
+    const setFollowUpDays = async (days: number) => {
+        if (!student) return;
+
+        try {
+            setSavingFollowUp(true);
+
+            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), {
+                followUpDays: days,
+                followUpDaysUpdatedAt: serverTimestamp(),
+            });
+
+            setStudent({ ...student, followUpDays: days });
+        } catch (err) {
+            console.error("followUpDays save error:", err);
+            Alert.alert(t("common.error"), t("studentDetail.followUp.saveError"));
+        } finally {
+            setSavingFollowUp(false);
+        }
+    };
+
     const addRecord = () => {
         if (!student) return;
         router.push({ pathname: "/newrecord/[id]", params: { id: student.id } });
     };
 
-    const viewRecord = (recordId: string) =>
-        router.push({ pathname: "/record/[id]", params: { id: recordId } });
+    const viewRecord = (recordId: string) => router.push({ pathname: "/record/[id]", params: { id: recordId } });
+
+    // ✅ EDIT artık newstudent ekranında
+    const goEdit = () => {
+        if (!student) return;
+        router.push({ pathname: "/newstudent", params: { id: student.id, mode: "edit" } });
+    };
+
+    const firstLetter = student?.name?.[0]?.toUpperCase() ?? "?";
+
+    const onTogglePtNote = useCallback(() => {
+        setPtNoteOpen((prev) => {
+            const next = !prev;
+
+            if (next) {
+                setTimeout(() => {
+                    listRef.current?.scrollToEnd({ animated: true });
+                }, 50);
+            }
+
+            return next;
+        });
+    }, []);
+
+    const onFocusPtNote = useCallback(() => {
+        setPtNoteOpen(true);
+        setTimeout(() => {
+            listRef.current?.scrollToEnd({ animated: true });
+        }, 250);
+    }, []);
 
     if (loadingStudent) {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#60a5fa" />
+                    <ActivityIndicator size="large" color={theme.colors.accent} />
                     <Text style={styles.loadingText}>{t("studentDetail.loading")}</Text>
                 </View>
             </SafeAreaView>
@@ -318,7 +380,7 @@ export default function StudentDetailScreen() {
                     <Text style={styles.errorText}>{t("studentDetail.notFound")}</Text>
 
                     <TouchableOpacity style={styles.backButton} onPress={goBack}>
-                        <ArrowLeft size={18} color="#f1f5f9" />
+                        <ArrowLeft size={18} color={theme.colors.text.primary} />
                         <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
                     </TouchableOpacity>
                 </View>
@@ -326,116 +388,149 @@ export default function StudentDetailScreen() {
         );
     }
 
-    const firstLetter = student.name?.[0]?.toUpperCase() ?? "?";
-
     return (
         <SafeAreaView style={styles.safeArea}>
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <View style={styles.headerTopRow}>
-                        <TouchableOpacity style={styles.backButton} onPress={goBack}>
-                            <ArrowLeft size={18} color="#f1f5f9" />
-                            <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
-                        </TouchableOpacity>
-
-                        <View style={styles.headerActions}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.toggleButton,
-                                    student.aktif === "Aktif"
-                                        ? styles.toggleButtonPassive
-                                        : styles.toggleButtonActive
-                                ]}
-                                onPress={toggleAktif}
-                                disabled={toggling}
-                            >
-                                <Text style={[styles.toggleButtonText, { color: themeui.colors.text.primary }]}>
-                                    {student.aktif === "Aktif"
-                                        ? t("studentDetail.toggle.makePassive")
-                                        : t("studentDetail.toggle.makeActive")}
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity style={styles.editButton} onPress={addRecord}>
-                                <Edit size={14} color="#f1f5f9" />
-                                <Text style={styles.editButtonText}>{t("studentDetail.addRecord")}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    <View style={styles.studentRow}>
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>{firstLetter}</Text>
-                        </View>
-
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.studentName}>{student.name}</Text>
-
-                            <View
-                                style={[
-                                    styles.statusBadge,
-                                    student.aktif === "Aktif" ? styles.statusActive : styles.statusPassive,
-                                ]}
-                            >
-                                <Text
-                                    style={
-                                        student.aktif === "Aktif"
-                                            ? styles.statusActiveText
-                                            : styles.statusPassiveText
-                                    }
-                                >
-                                    {student.aktif === "Aktif"
-                                        ? t("studentDetail.student.active")
-                                        : t("studentDetail.student.passive")}
-                                </Text>
-                            </View>
-
-                            <View style={styles.metaLine}>
-                                <Calendar size={14} color="#94a3b8" />
-                                <Text style={styles.metaText}>
-                                    {t("studentDetail.student.assessmentDate")} {formatDateTR(student.assessmentDate)}
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
+            <KeyboardAvoidingView
+                style={styles.container}
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+            >
                 <FlatList
+                    ref={listRef}
                     data={records}
                     keyExtractor={(i) => i.id}
-                    contentContainerStyle={{ paddingBottom: 40 }}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                    contentContainerStyle={styles.listContent}
                     ListHeaderComponent={
                         <View>
+                            <View style={styles.header}>
+                                <View style={styles.headerTopRow}>
+                                    <TouchableOpacity style={styles.backButton} onPress={goBack}>
+                                        <ArrowLeft size={18} color={theme.colors.text.primary} />
+                                        <Text style={styles.backButtonText}>{t("studentDetail.back")}</Text>
+                                    </TouchableOpacity>
+
+                                    {/* ✅ EDIT BLOĞU sadeleşti */}
+                                    <View style={[styles.headerActions, { justifyContent: "flex-end" }]}>
+                                        <View style={{ flexDirection: "row" }}>
+                                            <TouchableOpacity style={styles.editButton} onPress={addRecord} activeOpacity={0.85}>
+                                                <Edit size={14} color={theme.colors.text.onAccent} />
+                                                <Text style={styles.editButtonText}>{t("studentDetail.addRecord")}</Text>
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity
+                                                style={[styles.editButton, { marginLeft: theme.spacing.xs }]}
+                                                onPress={goEdit}
+                                                activeOpacity={0.85}
+                                            >
+                                                <Edit size={14} color={theme.colors.text.onAccent} />
+                                                <Text style={styles.editButtonText}>{t("studentDetail.edit")}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                <View style={styles.studentRow}>
+                                    <View style={styles.avatar}>
+                                        <Text style={styles.avatarText}>{firstLetter}</Text>
+                                    </View>
+
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.studentName}>{student.name}</Text>
+
+                                        <TouchableOpacity
+                                            activeOpacity={0.85}
+                                            onPress={toggleAktif}
+                                            disabled={toggling}
+                                            style={[
+                                                styles.statusBadgeBtn,
+                                                student.aktif === "Aktif" ? styles.statusActive : styles.statusPassive,
+                                                toggling && { opacity: 0.7 },
+                                            ]}
+                                        >
+                                            <Text style={student.aktif === "Aktif" ? styles.statusActiveText : styles.statusPassiveText}>
+                                                {student.aktif === "Aktif" ? t("studentDetail.student.active") : t("studentDetail.student.passive")}
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        <View style={styles.metaLine}>
+                                            <Calendar size={14} color={theme.colors.text.muted} />
+                                            <Text style={styles.metaText}>
+                                                {t("studentDetail.student.assessmentDate")} {formatDateTR(student.assessmentDate)}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.followUpWrap}>
+                                            <Text style={styles.followUpLabel}>{t("studentDetail.followUp.label")}</Text>
+
+                                            <View style={styles.followUpPillsRow}>
+                                                {[7, 20, 30].map((d) => {
+                                                    const active = (student.followUpDays ?? 30) === d;
+
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={d}
+                                                            activeOpacity={0.85}
+                                                            disabled={savingFollowUp}
+                                                            onPress={() => setFollowUpDays(d)}
+                                                            style={[styles.followUpPill, active && styles.followUpPillActive, savingFollowUp && { opacity: 0.7 }]}
+                                                        >
+                                                            <Text style={[styles.followUpPillText, active && styles.followUpPillTextActive]}>
+                                                                {d === 7 ? t("studentDetail.followUp.week1") : t("studentDetail.followUp.days", { count: d })}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+
+                                                {savingFollowUp && <Text style={styles.followUpSavingText}>{t("studentDetail.followUp.saving")}</Text>}
+                                            </View>
+
+                                            <Text style={styles.followUpHint}>{t("studentDetail.followUp.hint")}</Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* PERSONAL INFO (view-only) */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.personalInfo")}</Text>
 
-                                <InfoRow
-                                    label={t("studentDetail.label.email")}
-                                    value={student.email || "-"}
-                                    icon={<Mail size={16} color="#60a5fa" />}
-                                />
-                                <InfoRow
-                                    label={t("studentDetail.label.phone")}
-                                    value={student.number || "-"}
-                                    icon={<Phone size={16} color="#60a5fa" />}
-                                />
-                                <InfoRow
-                                    label={t("studentDetail.label.gender")}
-                                    value={student.gender || "-"}
-                                    icon={<User size={16} color="#60a5fa" />}
-                                />
-                                <InfoRow
-                                    label={t("studentDetail.label.birthDate")}
-                                    value={formatDateTR(student.dateOfBirth)}
-                                    icon={<Calendar size={16} color="#60a5fa" />}
-                                />
-                                <InfoRow
-                                    label={t("studentDetail.label.height")}
-                                    value={student.boy || "-"}
-                                    icon={<User size={16} color="#60a5fa" />}
-                                />
+                                <>
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.email")}
+                                        value={student.email || "-"}
+                                        icon={<Mail size={16} color={theme.colors.primary} />}
+                                    />
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.phone")}
+                                        value={student.number || "-"}
+                                        icon={<Phone size={16} color={theme.colors.primary} />}
+                                    />
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.gender")}
+                                        value={student.gender || "-"}
+                                        icon={<User size={16} color={theme.colors.primary} />}
+                                    />
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.birthDate")}
+                                        value={formatDateTR(student.dateOfBirth)}
+                                        icon={<Calendar size={16} color={theme.colors.primary} />}
+                                    />
+                                    <InfoRow
+                                        styles={styles}
+                                        label={t("studentDetail.label.height")}
+                                        value={student.boy || "-"}
+                                        icon={<User size={16} color={theme.colors.primary} />}
+                                    />
+                                </>
                             </View>
 
+                            {/* PARQ (view-only) */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.parq")}</Text>
 
@@ -445,6 +540,7 @@ export default function StudentDetailScreen() {
                                     return (
                                         <QAItem
                                             key={q.key}
+                                            styles={styles}
                                             index={idx + 1}
                                             question={t(q.labelKey)}
                                             answer={answer}
@@ -454,6 +550,7 @@ export default function StudentDetailScreen() {
                                 })}
                             </View>
 
+                            {/* PERSONAL DETAILS (view-only) */}
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>{t("studentDetail.section.personalDetails")}</Text>
 
@@ -463,6 +560,7 @@ export default function StudentDetailScreen() {
                                     return (
                                         <QAItem
                                             key={q.key}
+                                            styles={styles}
                                             index={idx + 1}
                                             question={t((q as any).labelKey)}
                                             answer={answer}
@@ -472,15 +570,17 @@ export default function StudentDetailScreen() {
                                 })}
 
                                 <InfoRow
+                                    styles={styles}
                                     label={t("studentDetail.label.plannedDaysPerWeek")}
                                     value={student.plannedDaysPerWeek ? String(student.plannedDaysPerWeek) : "-"}
-                                    icon={<Calendar size={16} color="#60a5fa" />}
+                                    icon={<Calendar size={16} color={theme.colors.primary} />}
                                 />
 
                                 <InfoRow
+                                    styles={styles}
                                     label={t("studentDetail.label.job")}
                                     value={student.jobDescription || "-"}
-                                    icon={<User size={16} color="#60a5fa" />}
+                                    icon={<User size={16} color={theme.colors.primary} />}
                                 />
 
                                 <View style={{ marginTop: 12 }}>
@@ -488,9 +588,7 @@ export default function StudentDetailScreen() {
 
                                     <View style={styles.chipWrap}>
                                         {student.trainingGoals && student.trainingGoals.length ? (
-                                            student.trainingGoals.map((g) => (
-                                                <Chip key={g} label={g} />
-                                            ))
+                                            student.trainingGoals.map((g) => <Chip key={g} styles={styles} label={g} />)
                                         ) : (
                                             <Text style={styles.mutedText}>-</Text>
                                         )}
@@ -505,27 +603,62 @@ export default function StudentDetailScreen() {
                                 </View>
                             </View>
 
+                            {/* PT NOTE (aynı) */}
+                            <View style={styles.card}>
+                                <TouchableOpacity activeOpacity={0.85} onPress={onTogglePtNote}>
+                                    <Text style={styles.cardTitle}>{t("studentDetail.section.ptNote")}</Text>
+
+                                    {!ptNoteOpen ? (
+                                        <Text style={styles.ptNoteHint}>
+                                            {ptNote?.trim()
+                                                ? ptNote.trim().slice(0, 80) + (ptNote.trim().length > 80 ? "…" : "")
+                                                : t("studentDetail.ptNote.hint")}
+                                        </Text>
+                                    ) : (
+                                        <Text style={styles.ptNoteHint}>{t("studentDetail.ptNote.hint")}</Text>
+                                    )}
+                                </TouchableOpacity>
+
+                                {ptNoteOpen && (
+                                    <View style={{ marginTop: 10 }}>
+                                        <TextInput
+                                            value={ptNote}
+                                            onChangeText={setPtNote}
+                                            placeholder={t("studentDetail.ptNote.placeholder")}
+                                            placeholderTextColor={theme.colors.text.muted}
+                                            multiline
+                                            textAlignVertical="top"
+                                            style={styles.ptNoteInput}
+                                            onFocus={onFocusPtNote}
+                                        />
+
+                                        <TouchableOpacity
+                                            style={[styles.ptNoteSaveBtn, savingPtNote && { opacity: 0.6 }]}
+                                            onPress={savePtNote}
+                                            disabled={savingPtNote}
+                                            activeOpacity={0.85}
+                                        >
+                                            <Text style={styles.ptNoteSaveText}>{savingPtNote ? t("common.saving") : t("common.save")}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+
                             <Text style={styles.recordsTitle}>{t("studentDetail.section.records")}</Text>
                         </View>
                     }
                     renderItem={({ item }) => {
-                        const dateStr =
-                            item.createdAt?.toDate
-                                ? `${item.createdAt.toDate().toLocaleDateString("tr-TR")} • ${item.createdAt
-                                    .toDate()
-                                    .toLocaleTimeString("tr-TR")}`
-                                : "-";
+                        const dateStr = item.createdAt?.toDate
+                            ? `${item.createdAt.toDate().toLocaleDateString("tr-TR")} • ${item.createdAt.toDate().toLocaleTimeString("tr-TR")}`
+                            : "-";
 
                         return (
-                            <TouchableOpacity
-                                style={styles.recordCard}
-                                onPress={() => viewRecord(item.id)}
-                            >
+                            <TouchableOpacity style={styles.recordCard} onPress={() => viewRecord(item.id)}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.recordDate}>{dateStr}</Text>
-                                    <Text style={styles.recordNote}>{item.note || "Not yok"}</Text>
+                                    <Text style={styles.recordNote}>{item.note || t("studentDetail.records.noNote")}</Text>
                                 </View>
-                                <Eye size={18} color="#f1f5f9" />
+                                <Eye size={18} color={theme.colors.text.primary} />
                             </TouchableOpacity>
                         );
                     }}
@@ -538,19 +671,23 @@ export default function StudentDetailScreen() {
                             </View>
                         ) : null
                     }
+                    ListFooterComponent={<View style={{ height: 40 }} />}
                 />
-            </View>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
 
+
 /* ----------------- UI PIECES ----------------- */
 
 function InfoRow({
+    styles,
     icon,
     label,
     value,
 }: {
+    styles: ReturnType<typeof makeStyles>;
     icon?: React.ReactNode;
     label: string;
     value: string;
@@ -567,17 +704,27 @@ function InfoRow({
 }
 
 function QAItem({
+    styles,
     index,
     question,
     answer,
     note,
 }: {
+    styles: ReturnType<typeof makeStyles>;
     index: number;
     question: string;
     answer: Bool;
     note?: string;
 }) {
-    const val = boolText(answer);
+    const { t } = useTranslation();
+
+    const val =
+        answer === true
+            ? t("recordNew.option.yes")
+            : answer === false
+                ? t("recordNew.option.no")
+                : "-";
+
     const isYes = answer === true;
 
     return (
@@ -596,11 +743,7 @@ function QAItem({
                     <Text
                         style={[
                             styles.badgeText,
-                            isYes
-                                ? styles.badgeTextYes
-                                : answer === false
-                                    ? styles.badgeTextNo
-                                    : styles.badgeTextNA,
+                            isYes ? styles.badgeTextYes : answer === false ? styles.badgeTextNo : styles.badgeTextNA,
                         ]}
                     >
                         {val}
@@ -610,7 +753,7 @@ function QAItem({
 
             {isYes && !!note?.trim() && (
                 <View style={styles.noteBox}>
-                    <Text style={styles.miniLabel}>Açıklama</Text>
+                    <Text style={styles.miniLabel}>{t("common.description")}</Text>
                     <Text style={styles.noteText}>{note}</Text>
                 </View>
             )}
@@ -618,213 +761,448 @@ function QAItem({
     );
 }
 
-function Chip({ label }: { label: string }) {
+function Chip({ styles, label }: { styles: ReturnType<typeof makeStyles>; label: string }) {
     return (
         <View style={styles.chip}>
             <Text style={styles.chipText}>{label}</Text>
         </View>
     );
 }
-
 /* ----------------- STYLES ----------------- */
-const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: themeui.colors.background },
-    container: { flex: 1, backgroundColor: themeui.colors.background },
+function makeStyles(theme: ThemeUI) {
+    return StyleSheet.create({
+        safeArea: { flex: 1, backgroundColor: theme.colors.background },
+        container: { flex: 1, backgroundColor: theme.colors.background },
 
-    center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    loadingText: { color: themeui.colors.text.secondary, marginTop: themeui.spacing.xs },
-    errorText: { color: themeui.colors.danger, marginBottom: themeui.spacing.xs },
+        center: { flex: 1, justifyContent: "center", alignItems: "center" },
+        loadingText: { color: theme.colors.text.secondary, marginTop: theme.spacing.xs },
+        errorText: { color: theme.colors.danger, marginBottom: theme.spacing.xs },
 
-    /* HEADER */
-    header: { paddingHorizontal: themeui.spacing.md, paddingTop: themeui.spacing.sm + 4, paddingBottom: themeui.spacing.xs },
-    headerTopRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: themeui.spacing.sm - 2,
-    },
+        /* HEADER */
+        header: {
+            paddingHorizontal: theme.spacing.md,
+            paddingTop: theme.spacing.sm + 4,
+            paddingBottom: theme.spacing.xs,
+        },
+        headerTopRow: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: theme.spacing.sm - 2,
+        },
+        statusBadgeBtn: {
+            marginTop: theme.spacing.xs,
+            paddingHorizontal: theme.spacing.sm - 2,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            alignSelf: "flex-start",
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
 
-    backButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.sm,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-        backgroundColor: themeui.colors.surface,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-    },
-    backButtonText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm },
+        backButton: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: theme.spacing.sm,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        backButtonText: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.sm,
+            marginLeft: theme.spacing.xs,
+        },
 
-    headerActions: { flexDirection: "row", gap: themeui.spacing.xs },
+        cancelButton: {
+            paddingHorizontal: theme.spacing.md,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            marginLeft: theme.spacing.xs,
+        },
+        cancelButtonText: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "800",
+        },
+        saveButton: {
+            paddingHorizontal: theme.spacing.md,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.accent,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            marginLeft: theme.spacing.xs,
+        },
+        saveButtonText: {
+            color: theme.colors.text.onAccent,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "900",
+        },
 
-    toggleButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.md,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-    },
-    toggleButtonActive: {
-        backgroundColor: themeui.colors.success,
-        borderColor: themeui.colors.success,
-        borderWidth: 1,
-        opacity: 0.9,
-    },
-    toggleButtonPassive: {
-        backgroundColor: themeui.colors.danger,
-        borderColor: themeui.colors.danger,
-        borderWidth: 1,
-        opacity: 0.9,
-    },
+        editRow: { marginTop: theme.spacing.sm },
+        editLabel: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.sm,
+            fontWeight: "700",
+            marginBottom: 6,
+        },
+        editInput: {
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+            paddingHorizontal: theme.spacing.sm,
+            paddingVertical: theme.spacing.sm - 2,
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.sm,
+        },
 
-    toggleButtonText: {
-        fontSize: themeui.fontSize.sm,
-        fontWeight: "600",
-    },
-    editButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.sm - 2,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-        backgroundColor: themeui.colors.editButtonbackground,
-        opacity: 0.9,
-    },
-    editButtonText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.xs, fontWeight: "700" },
+        headerActions: {
+            flexDirection: "row",
+            marginLeft: theme.spacing.xs,
+            justifyContent: "flex-end",
+            alignItems: "center",
+            flex: 1,
+        },
 
-    /* STUDENT HEADER CARD */
-    studentRow: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.md },
-    avatar: {
-        width: 58,
-        height: 58,
-        borderRadius: themeui.radius.pill,
-        backgroundColor: themeui.colors.primary,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    avatarText: { color: themeui.colors.surface, fontSize: 23, fontWeight: "800" },
-    studentName: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.lg + 3, fontWeight: "700" },
+        toggleButton: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: theme.spacing.md,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+        },
+        toggleButtonActive: {
+            backgroundColor: theme.colors.success,
+            borderColor: theme.colors.success,
+            borderWidth: 1,
+            opacity: 0.9,
+        },
+        toggleButtonPassive: {
+            backgroundColor: theme.colors.danger,
+            borderColor: theme.colors.danger,
+            borderWidth: 1,
+            opacity: 0.9,
+        },
 
-    statusBadge: {
-        marginTop: themeui.spacing.xs,
-        paddingHorizontal: themeui.spacing.sm - 4,
-        paddingVertical: themeui.spacing.xs - 2,
-        borderRadius: themeui.radius.pill,
-        alignSelf: "flex-start",
-    },
-    statusActive: { backgroundColor: themeui.colors.successSoft },
-    statusPassive: { backgroundColor: themeui.colors.dangerSoft },
-    statusActiveText: { color: themeui.colors.success, fontSize: themeui.fontSize.xs, fontWeight: "700" },
-    statusPassiveText: { color: themeui.colors.danger, fontSize: themeui.fontSize.xs, fontWeight: "700" },
+        toggleButtonText: {
+            fontSize: theme.fontSize.sm,
+            fontWeight: "600",
+            color: theme.colors.text.onAccent,
+        },
+        editQWrap: { marginTop: theme.spacing.sm },
+        editQTitle: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm, fontWeight: "800" },
 
-    metaLine: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.xs, marginTop: themeui.spacing.xs },
-    metaText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm },
+        editQButtons: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
+        editQBtn: {
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+        },
+        editQBtnActive: {
+            borderColor: theme.colors.accent,
+            backgroundColor: "rgba(56,189,248,0.12)",
+        },
+        editQBtnText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, fontWeight: "900" },
+        editQBtnTextActive: { color: theme.colors.accent },
 
-    /* CARDS */
-    card: {
-        marginHorizontal: themeui.spacing.md,
-        marginTop: themeui.spacing.sm,
-        backgroundColor: themeui.colors.surface,
-        borderRadius: themeui.radius.lg,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        padding: themeui.spacing.md,
-        ...themeui.shadow.soft,
-    },
-    cardTitle: {
-        color: themeui.colors.text.primary,
-        fontSize: themeui.fontSize.lg - 1,
-        fontWeight: "700",
-        marginBottom: themeui.spacing.sm - 4,
-    },
-    subTitle: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md, fontWeight: "700" },
-    mutedText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.md, marginTop: themeui.spacing.xs },
+        editQNote: {
+            marginTop: 10,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+            padding: theme.spacing.sm,
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.sm,
+            lineHeight: 18,
+            minHeight: 70,
+        },
 
-    /* INFO ROW */
-    infoRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingVertical: themeui.spacing.sm - 2,
-        borderBottomWidth: 1,
-        borderBottomColor: themeui.colors.border,
-    },
-    infoLabelRow: { flexDirection: "row", alignItems: "center", gap: themeui.spacing.xs },
-    infoLabel: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm },
-    infoValue: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md - 1, maxWidth: "55%", textAlign: "right" },
+        editButton: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: theme.spacing.sm - 2,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.editButtonbackground,
+            opacity: 0.9,
+            marginLeft: theme.spacing.xs,
+        },
+        editButtonText: {
+            color: theme.colors.text.onAccent,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "700",
+            marginLeft: theme.spacing.xs,
+        },
 
-    /* QA */
-    qaItem: {
-        paddingVertical: themeui.spacing.sm - 2,
-        borderBottomWidth: 1,
-        borderBottomColor: themeui.colors.border,
-    },
-    qaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: themeui.spacing.md - 4 },
-    qaQuestion: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md - 1, fontWeight: "600", flex: 1, lineHeight: 18 },
+        /* STUDENT HEADER CARD */
+        studentRow: { flexDirection: "row", alignItems: "center", marginTop: theme.spacing.sm },
+        avatar: {
+            width: 58,
+            height: 58,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.primary,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: theme.spacing.md,
+        },
+        avatarText: { color: theme.colors.text.onAccent, fontSize: 23, fontWeight: "800" },
+        studentName: { color: theme.colors.text.primary, fontSize: theme.fontSize.lg + 3, fontWeight: "700" },
 
-    badge: {
-        paddingHorizontal: themeui.spacing.sm - 2,
-        paddingVertical: themeui.spacing.xs - 2,
-        borderRadius: themeui.radius.pill,
-        borderWidth: 1,
-        alignSelf: "flex-start",
-    },
-    badgeYes: { backgroundColor: themeui.colors.successSoft, borderColor: "rgba(34,197,94,0.35)" },
-    badgeNo: { backgroundColor: themeui.colors.dangerSoft, borderColor: "rgba(248,113,113,0.35)" },
-    badgeNA: { backgroundColor: "rgba(148,163,184,0.12)", borderColor: "rgba(148,163,184,0.25)" },
-    badgeText: { fontSize: themeui.fontSize.xs, fontWeight: "800" },
-    badgeTextYes: { color: themeui.colors.success },
-    badgeTextNo: { color: themeui.colors.danger },
-    badgeTextNA: { color: themeui.colors.text.secondary },
+        statusBadge: {
+            marginTop: theme.spacing.xs,
+            paddingHorizontal: theme.spacing.sm - 4,
+            paddingVertical: theme.spacing.xs - 2,
+            borderRadius: theme.radius.pill,
+            alignSelf: "flex-start",
+        },
+        statusActive: { backgroundColor: theme.colors.successSoft },
+        statusPassive: { backgroundColor: theme.colors.dangerSoft },
+        statusActiveText: { color: theme.colors.success, fontSize: theme.fontSize.xs, fontWeight: "700" },
+        statusPassiveText: { color: theme.colors.danger, fontSize: theme.fontSize.xs, fontWeight: "700" },
 
-    noteBox: {
-        marginTop: themeui.spacing.sm,
-        padding: themeui.spacing.sm,
-        borderRadius: themeui.radius.md,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        backgroundColor: themeui.colors.surfaceSoft,
-    },
-    miniLabel: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.xs, marginBottom: 4 },
-    noteText: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm, lineHeight: 17 },
+        metaLine: { flexDirection: "row", alignItems: "center", marginTop: theme.spacing.xs },
+        metaText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
 
-    chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: themeui.spacing.xs + 2, marginTop: themeui.spacing.sm - 2 },
-    chip: {
-        paddingHorizontal: themeui.spacing.sm - 2,
-        paddingVertical: themeui.spacing.xs,
-        borderRadius: themeui.radius.pill,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        backgroundColor: "rgba(96,165,250,0.12)",
-    },
-    chipText: { color: "#bfdbfe", fontSize: themeui.fontSize.xs, fontWeight: "600" },
+        /* CARDS */
+        card: {
+            marginHorizontal: theme.spacing.md,
+            marginTop: theme.spacing.sm,
+            backgroundColor: theme.colors.surface,
+            borderRadius: theme.radius.lg,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            padding: theme.spacing.md,
+            ...(theme.shadow?.soft ?? {}),
+        },
+        cardTitle: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.lg - 1,
+            fontWeight: "700",
+            marginBottom: theme.spacing.sm - 4,
+        },
+        subTitle: { color: theme.colors.text.primary, fontSize: theme.fontSize.md, fontWeight: "700" },
+        mutedText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.md, marginTop: theme.spacing.xs },
 
-    /* RECORDS */
-    recordsTitle: {
-        marginHorizontal: themeui.spacing.md,
-        marginTop: themeui.spacing.md,
-        marginBottom: themeui.spacing.xs + 2,
-        color: themeui.colors.primary,
-        fontSize: themeui.fontSize.lg,
-        fontWeight: "700",
-    },
-    recordCard: {
-        marginHorizontal: themeui.spacing.md,
-        marginBottom: themeui.spacing.sm - 2,
-        backgroundColor: themeui.colors.surface,
-        borderRadius: themeui.radius.md,
-        borderWidth: 1,
-        borderColor: themeui.colors.border,
-        paddingVertical: themeui.spacing.sm,
-        paddingHorizontal: themeui.spacing.sm,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        gap: themeui.spacing.sm - 2,
-    },
-    recordDate: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md - 1, fontWeight: "600" },
-    recordNote: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm, marginTop: 2 },
-    emptyText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.md - 1 },
-});
+        /* INFO ROW */
+        infoRow: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingVertical: theme.spacing.sm - 2,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        infoLabelRow: { flexDirection: "row", alignItems: "center" },
+        infoLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
+        infoValue: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.md - 1,
+            maxWidth: "55%",
+            textAlign: "right",
+        },
+
+        /* QA */
+        qaItem: {
+            paddingVertical: theme.spacing.sm - 2,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+        },
+        qaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
+        qaQuestion: {
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.md - 1,
+            fontWeight: "600",
+            flex: 1,
+            lineHeight: 18,
+        },
+
+        badge: {
+            paddingHorizontal: theme.spacing.sm - 2,
+            paddingVertical: theme.spacing.xs - 2,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            alignSelf: "flex-start",
+            marginLeft: theme.spacing.md - 4,
+        },
+        badgeYes: { backgroundColor: theme.colors.successSoft, borderColor: "rgba(34,197,94,0.35)" },
+        badgeNo: { backgroundColor: theme.colors.dangerSoft, borderColor: "rgba(248,113,113,0.35)" },
+        badgeNA: { backgroundColor: "rgba(148,163,184,0.12)", borderColor: "rgba(148,163,184,0.25)" },
+        badgeText: { fontSize: theme.fontSize.xs, fontWeight: "800" },
+        badgeTextYes: { color: theme.colors.success },
+        badgeTextNo: { color: theme.colors.danger },
+        badgeTextNA: { color: theme.colors.text.secondary },
+
+        noteBox: {
+            marginTop: theme.spacing.sm,
+            padding: theme.spacing.sm,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+        },
+        miniLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, marginBottom: 4 },
+        noteText: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm, lineHeight: 17 },
+
+        chipWrap: { flexDirection: "row", flexWrap: "wrap", marginTop: theme.spacing.sm - 2 },
+        chip: {
+            paddingHorizontal: theme.spacing.sm - 2,
+            paddingVertical: theme.spacing.xs,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+            marginRight: theme.spacing.xs + 2,
+            marginBottom: theme.spacing.xs + 2,
+        },
+        chipText: { color: theme.colors.text.primary, fontSize: theme.fontSize.xs, fontWeight: "600" },
+
+        /* RECORDS */
+        recordsTitle: {
+            marginHorizontal: theme.spacing.md,
+            marginTop: theme.spacing.md,
+            marginBottom: theme.spacing.xs + 2,
+            color: theme.colors.primary,
+            fontSize: theme.fontSize.lg,
+            fontWeight: "700",
+        },
+        recordCard: {
+            marginHorizontal: theme.spacing.md,
+            marginBottom: theme.spacing.sm - 2,
+            backgroundColor: theme.colors.surface,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            paddingVertical: theme.spacing.sm,
+            paddingHorizontal: theme.spacing.sm,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+        },
+        ptNoteHint: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.sm,
+            marginBottom: theme.spacing.sm,
+            lineHeight: 18,
+        },
+
+        ptNoteInput: {
+            minHeight: 140,
+            borderRadius: theme.radius.md,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+            padding: theme.spacing.sm,
+            color: theme.colors.text.primary,
+            fontSize: theme.fontSize.sm,
+            lineHeight: 18,
+        },
+
+        ptNoteSaveBtn: {
+            marginTop: theme.spacing.sm,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.accent,
+            paddingVertical: theme.spacing.sm,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+
+        ptNoteSaveText: {
+            color: theme.colors.text.onAccent,
+            fontSize: theme.fontSize.md,
+            fontWeight: "800",
+        },
+
+        recordDate: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, fontWeight: "600" },
+        recordNote: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginTop: 2 },
+        emptyText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.md - 1 },
+
+        /* ✅ ADDED (sadece yeni eklenenler) */
+        listContent: {
+            paddingBottom: 180,
+        },
+        ptNoteHeaderPress: {
+            paddingVertical: 2,
+        },
+        ptNotePreview: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.sm,
+            lineHeight: 18,
+            marginTop: 2,
+        },
+        recordNotePress: {
+            marginTop: 2,
+        },
+        listFooterSpace: {
+            height: 40,
+        },
+        followUpWrap: {
+            marginTop: theme.spacing.sm,
+        },
+
+        followUpLabel: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.sm,
+            fontWeight: "700",
+        },
+
+        followUpPillsRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 8,
+            marginTop: theme.spacing.xs,
+        },
+
+        followUpPill: {
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceSoft,
+        },
+
+        followUpPillActive: {
+            borderColor: theme.colors.accent,
+            backgroundColor: "rgba(56,189,248,0.12)",
+        },
+
+        followUpPillText: {
+            color: theme.colors.text.secondary,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "800",
+        },
+
+        followUpPillTextActive: {
+            color: theme.colors.accent,
+        },
+
+        followUpSavingText: {
+            color: theme.colors.text.muted,
+            fontSize: theme.fontSize.xs,
+            fontWeight: "700",
+            marginLeft: 4,
+        },
+
+        followUpHint: {
+            marginTop: 6,
+            color: theme.colors.text.muted,
+            fontSize: theme.fontSize.xs,
+            lineHeight: 16,
+        },
+
+    });
+}
+
