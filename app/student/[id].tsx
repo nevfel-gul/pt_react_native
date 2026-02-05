@@ -1,109 +1,74 @@
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
-import { ChevronDown } from "lucide-react-native";
-import { Animated, Easing } from "react-native";
-
 import { auth } from "@/services/firebase";
-import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
+import { recordsColRef, studentDocRef, studentNotesColRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-    getDoc,
+    addDoc, getDoc,
     onSnapshot,
     orderBy,
     query,
     serverTimestamp,
     updateDoc,
-    where,
+    where
 } from "firebase/firestore";
-
-import { ArrowLeft, Calendar, Edit, Eye, Mail, Phone, User } from "lucide-react-native";
+import { ArrowLeft, Calendar, ChevronDown, Edit, Eye, Mail, Phone, User } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
-    Alert,
-    FlatList,
+    Alert, Animated, Easing, FlatList,
     KeyboardAvoidingView,
     Platform,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Bool = boolean | null;
 
-type Student = {
-    id: string;
-
+type StudentProfile = {
     name: string;
     email?: string;
     number?: string;
     boy?: string;
-    dateOfBirth?: string; // YYYY-MM-DD
+    dateOfBirth?: string;
     gender?: string;
     aktif?: "Aktif" | "Pasif";
-    assessmentDate?: string; // YYYY-MM-DD
-    ptNote?: string;
-    ptNoteUpdatedAt?: any;
+    assessmentDate?: string;
+};
 
+type StudentPARQ = {
     doctorSaidHeartOrHypertension?: Bool;
     doctorSaidHeartOrHypertensionNote?: string;
+    // ...
+};
 
-    chestPainDuringActivityOrDaily?: Bool;
-    chestPainDuringActivityOrDailyNote?: string;
-
-    dizzinessOrLostConsciousnessLast12Months?: Bool;
-    dizzinessOrLostConsciousnessLast12MonthsNote?: string;
-
-    diagnosedOtherChronicDisease?: Bool;
-    diagnosedOtherChronicDiseaseNote?: string;
-
-    usesMedicationForChronicDisease?: Bool;
-    usesMedicationForChronicDiseaseNote?: string;
-
-    boneJointSoftTissueProblemWorseWithActivity?: Bool;
-    boneJointSoftTissueProblemWorseWithActivityNote?: string;
-
-    doctorSaidOnlyUnderMedicalSupervision?: Bool;
-    doctorSaidOnlyUnderMedicalSupervisionNote?: string;
-
-    hadPainOrInjury?: Bool;
-    hadPainOrInjuryNote?: string;
-
-    hadSurgery?: Bool;
-    hadSurgeryNote?: string;
-
-    diagnosedChronicDiseaseByDoctor?: Bool;
-    diagnosedChronicDiseaseByDoctorNote?: string;
-
-    currentlyUsesMedications?: Bool;
-    currentlyUsesMedicationsNote?: string;
-
-    weeklyPhysicalActivity30MinOrLess?: Bool;
-    weeklyPhysicalActivity30MinOrLessNote?: string;
-
-    hasSportsHistoryOrCurrentlyDoingSport?: Bool;
-    hasSportsHistoryOrCurrentlyDoingSportNote?: string;
-
-    plannedDaysPerWeek?: number | null;
+type StudentWork = {
     jobDescription?: string;
-
     jobRequiresLongSitting?: Bool;
-    jobRequiresRepetitiveMovement?: Bool;
-    jobRequiresHighHeels?: Bool;
-    jobCausesAnxiety?: Bool;
+    // ...
+};
 
+type StudentGoals = {
     trainingGoals?: string[];
     otherGoal?: string;
+    plannedDaysPerWeek?: number | null;
     followUpDays?: number;
     followUpDaysUpdatedAt?: any;
-
 };
+
+type Student = { id: string } & StudentProfile & StudentPARQ & StudentWork & StudentGoals & {
+    ptNote?: string;
+    ptNoteUpdatedAt?: any;
+};
+
 type RecordItem = {
     id: string;
     studentId: string;
@@ -117,6 +82,13 @@ type RecordItem = {
 
     analysis?: any;
 };
+type StudentNote = {
+    id: string;
+    title?: string;
+    text: string;
+    createdAt?: any;
+};
+
 
 
 const formatDateTR = (iso?: string) => {
@@ -135,7 +107,6 @@ export default function StudentDetailScreen() {
 
     const { theme } = useTheme();
     const styles = useMemo(() => makeStyles(theme), [theme]);
-
     const listRef = useRef<FlatList<RecordItem>>(null);
 
     const [student, setStudent] = useState<Student | null>(null);
@@ -146,11 +117,26 @@ export default function StudentDetailScreen() {
     const [analyticsOpen, setAnalyticsOpen] = useState(false);
     const [testsOpen, setTestsOpen] = useState(false);
     const [range, setRange] = useState<"7g" | "30g" | "90g" | "all">("30g");
-
+    const [notesOpen, setNotesOpen] = useState(false);
+    const [notes, setNotes] = useState<StudentNote[]>([]);
+    const [loadingNotes, setLoadingNotes] = useState(true);
+    const [newNoteTitle, setNewNoteTitle] = useState("");
+    const [noteModalOpen, setNoteModalOpen] = useState(false);
+    const [newNoteText, setNewNoteText] = useState("");
+    const [savingNote, setSavingNote] = useState(false);
     const [ptNote, setPtNote] = useState("");
-    const [savingPtNote, setSavingPtNote] = useState(false);
     const [ptNoteOpen, setPtNoteOpen] = useState(false);
     const [savingFollowUp, setSavingFollowUp] = useState(false);
+    const uid = auth.currentUser?.uid;
+    const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+
+    const toggleNote = (noteId: string) => {
+        setExpandedNoteId((cur) => (cur === noteId ? null : noteId));
+    };
+
+
+
+
 
     const parqQuestions = useMemo(
         () => [
@@ -223,10 +209,12 @@ export default function StudentDetailScreen() {
 
     useEffect(() => {
         if (!id) return;
+        if (!id || !uid) return;
 
         const load = async () => {
             try {
-                const ref = studentDocRef(auth.currentUser?.uid!, id);
+                const ref = studentDocRef(uid!, id)
+
                 const snap = await getDoc(ref);
 
                 if (!snap.exists()) {
@@ -254,10 +242,11 @@ export default function StudentDetailScreen() {
         };
 
         load();
-    }, [id]);
+    }, [id, uid]);
 
     useEffect(() => {
         if (!id) return;
+        if (!id || !uid) return;
 
         const qy = query(recordsColRef(auth.currentUser?.uid!), where("studentId", "==", id), orderBy("createdAt", "desc"));
 
@@ -279,7 +268,35 @@ export default function StudentDetailScreen() {
         );
 
         return () => unsub();
-    }, [id]);
+    }, [id, uid]);
+    useEffect(() => {
+        if (!id) return;
+        if (!id || !uid) return;
+
+        const qy = query(
+            studentNotesColRef(uid, id),
+            orderBy("createdAt", "desc")
+        );
+
+        const unsub = onSnapshot(
+            qy,
+            (snap) => {
+                setNotes(
+                    snap.docs.map((d) => ({
+                        id: d.id,
+                        ...(d.data() as any),
+                    }))
+                );
+                setLoadingNotes(false);
+            },
+            (err) => {
+                console.error(err);
+                setLoadingNotes(false);
+            }
+        );
+
+        return () => unsub();
+    }, [id, uid]);
 
     const goBack = () => router.replace("/(tabs)");
 
@@ -295,26 +312,6 @@ export default function StudentDetailScreen() {
             console.error(err);
         } finally {
             setToggling(false);
-        }
-    };
-
-    const savePtNote = async () => {
-        if (!student) return;
-
-        try {
-            setSavingPtNote(true);
-
-            await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), {
-                ptNote: ptNote.trim(),
-                ptNoteUpdatedAt: serverTimestamp(),
-            });
-
-            Alert.alert(t("common.success"), t("studentDetail.ptNote.saved"));
-        } catch (err) {
-            console.error("ptNote save error:", err);
-            Alert.alert(t("common.error"), t("studentDetail.ptNote.saveError"));
-        } finally {
-            setSavingPtNote(false);
         }
     };
 
@@ -342,8 +339,44 @@ export default function StudentDetailScreen() {
         if (!student) return;
         router.push({ pathname: "/newrecord/[id]", params: { id: student.id } });
     };
+    const openNewNote = () => {
+        setNewNoteText("");
+        setNewNoteTitle("");
+        setNoteModalOpen(true);
+    };
 
-    const viewRecord = (recordId: string) => router.push({ pathname: "/record/[id]", params: { id: recordId } });
+    const saveNewNote = async () => {
+        if (!id) return;
+        const text = newNoteText.trim();
+        if (!text) {
+            Alert.alert(t("common.error"), "Not boş olamaz");
+            return;
+        }
+
+        try {
+            setSavingNote(true);
+
+            const title = newNoteTitle.trim();
+            await addDoc(studentNotesColRef(auth.currentUser?.uid!, id), {
+                title: title.length ? title : null,
+                text,
+                createdAt: serverTimestamp(),
+            });
+
+
+            setNoteModalOpen(false);
+            setNewNoteText("");
+        } catch (e) {
+            console.error("note save error", e);
+            Alert.alert(t("common.error"), "Not kaydedilemedi");
+        } finally {
+            setSavingNote(false);
+        }
+    };
+
+    const viewRecord = useCallback((recordId: string) => {
+        router.push({ pathname: "/record/[id]", params: { id: recordId } });
+    }, [router]);
 
     // ✅ EDIT artık newstudent ekranında
     const goEdit = () => {
@@ -352,6 +385,25 @@ export default function StudentDetailScreen() {
     };
 
     const firstLetter = student?.name?.[0]?.toUpperCase() ?? "?";
+    const renderRecordItem = useCallback(
+        ({ item }: { item: RecordItem }) => {
+            const dt = item.createdAt?.toDate ? item.createdAt.toDate() : null;
+            const dateStr = dt
+                ? `${dt.toLocaleDateString("tr-TR")} • ${dt.toLocaleTimeString("tr-TR")}`
+                : "-";
+
+            return (
+                <TouchableOpacity style={styles.recordCard} onPress={() => viewRecord(item.id)}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.recordDate}>{dateStr}</Text>
+                        <Text style={styles.recordNote}>{item.note || t("studentDetail.records.noNote")}</Text>
+                    </View>
+                    <Eye size={18} color={theme.colors.text.primary} />
+                </TouchableOpacity>
+            );
+        },
+        [styles, theme.colors.text.primary, t, viewRecord]
+    );
 
     const onTogglePtNote = useCallback(() => {
         setPtNoteOpen((prev) => {
@@ -617,65 +669,134 @@ export default function StudentDetailScreen() {
                                 </View>
                             </View>
 
-                            {/* PT NOTE (aynı) */}
-                            <View style={styles.card}>
-                                <TouchableOpacity activeOpacity={0.85} onPress={onTogglePtNote}>
-                                    <Text style={styles.cardTitle}>{t("studentDetail.section.ptNote")}</Text>
-
-                                    {!ptNoteOpen ? (
-                                        <Text style={styles.ptNoteHint}>
-                                            {ptNote?.trim()
-                                                ? ptNote.trim().slice(0, 80) + (ptNote.trim().length > 80 ? "…" : "")
-                                                : t("studentDetail.ptNote.hint")}
-                                        </Text>
-                                    ) : (
-                                        <Text style={styles.ptNoteHint}>{t("studentDetail.ptNote.hint")}</Text>
-                                    )}
+                            <CollapsibleCard
+                                theme={theme}
+                                styles={styles}
+                                title="Notlar"
+                                open={notesOpen}
+                                setOpen={(v) => {
+                                    setNotesOpen(v);
+                                    if (!v) setExpandedNoteId(null);
+                                }}
+                            >
+                                {/* + Yeni not */}
+                                <TouchableOpacity
+                                    activeOpacity={0.85}
+                                    onPress={openNewNote}
+                                    style={{
+                                        marginTop: theme.spacing.xs,
+                                        borderWidth: 1,
+                                        borderColor: theme.colors.border,
+                                        backgroundColor: theme.colors.surfaceSoft,
+                                        borderRadius: theme.radius.md,
+                                        paddingVertical: 10,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}
+                                >
+                                    <Text style={{ color: theme.colors.text.primary, fontWeight: "900" }}>
+                                        + Yeni Not
+                                    </Text>
                                 </TouchableOpacity>
 
-                                {ptNoteOpen && (
-                                    <View style={{ marginTop: 10 }}>
-                                        <TextInput
-                                            value={ptNote}
-                                            onChangeText={setPtNote}
-                                            placeholder={t("studentDetail.ptNote.placeholder")}
-                                            placeholderTextColor={theme.colors.text.muted}
-                                            multiline
-                                            textAlignVertical="top"
-                                            style={styles.ptNoteInput}
-                                            onFocus={onFocusPtNote}
-                                        />
-
-                                        <TouchableOpacity
-                                            style={[styles.ptNoteSaveBtn, savingPtNote && { opacity: 0.6 }]}
-                                            onPress={savePtNote}
-                                            disabled={savingPtNote}
-                                            activeOpacity={0.85}
-                                        >
-                                            <Text style={styles.ptNoteSaveText}>{savingPtNote ? t("common.saving") : t("common.save")}</Text>
-                                        </TouchableOpacity>
+                                {/* Liste */}
+                                {loadingNotes ? (
+                                    <View style={{ marginTop: theme.spacing.sm }}>
+                                        <ActivityIndicator color={theme.colors.accent} />
                                     </View>
+                                ) : notes.length ? (
+                                    <View style={{ marginTop: theme.spacing.sm }}>
+                                        {notes.slice(0, 12).map((n) => {
+                                            const dt = n.createdAt?.toDate ? n.createdAt.toDate() : null;
+                                            const dateStr = dt
+                                                ? `${dt.toLocaleDateString("tr-TR")} • ${dt.toLocaleTimeString("tr-TR")}`
+                                                : "-";
+
+                                            const raw = (n.text ?? "").trim();
+                                            const lines = raw.split("\n").map((x) => x.trim()).filter(Boolean);
+                                            const title = ((n.title ?? "").trim() || (lines[0] ?? "Not")).slice(0, 60);
+                                            const preview = lines.slice(1).join(" ").slice(0, 90);
+
+
+                                            return (
+                                                <View
+                                                    key={n.id}
+                                                    style={{
+                                                        borderTopWidth: 1,
+                                                        borderTopColor: theme.colors.border,
+                                                        paddingVertical: 10,
+                                                    }}
+                                                >
+                                                    {/* Üst satır (preview) */}
+                                                    <TouchableOpacity
+                                                        activeOpacity={0.85}
+                                                        onPress={() => toggleNote(n.id)}
+                                                        style={{
+                                                            flexDirection: "row",
+                                                            alignItems: "center",
+                                                            justifyContent: "space-between",
+                                                            gap: 10,
+                                                        }}
+                                                    >
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={{ color: theme.colors.text.primary, fontWeight: "900" }}>
+                                                                {title}
+                                                            </Text>
+
+                                                            <Text
+                                                                style={{
+                                                                    marginTop: 4,
+                                                                    color: theme.colors.text.muted,
+                                                                    fontSize: theme.fontSize.xs,
+                                                                    fontWeight: "700",
+                                                                }}
+                                                            >
+                                                                {dateStr}
+                                                            </Text>
+
+                                                            {!!preview && expandedNoteId !== n.id && (
+                                                                <Text style={{ marginTop: 6, color: theme.colors.text.secondary }}>
+                                                                    {preview}…
+                                                                </Text>
+                                                            )}
+                                                        </View>
+                                                    </TouchableOpacity>
+
+                                                    {/* ✅ Aşağı doğru açılan detay */}
+                                                    {expandedNoteId === n.id && (
+                                                        <View
+                                                            style={{
+                                                                marginTop: 10,
+                                                                borderWidth: 1,
+                                                                borderColor: theme.colors.border,
+                                                                backgroundColor: theme.colors.surfaceSoft,
+                                                                borderRadius: theme.radius.md,
+                                                                padding: theme.spacing.sm,
+                                                            }}
+                                                        >
+                                                            <Text style={{ color: theme.colors.text.primary, lineHeight: 20, fontSize: theme.fontSize.sm }}>
+                                                                {n.text}
+                                                            </Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            );
+
+
+                                        })}
+                                    </View>
+                                ) : (
+                                    <Text style={{ marginTop: theme.spacing.sm, color: theme.colors.text.muted }}>
+                                        Henüz not yok.
+                                    </Text>
                                 )}
-                            </View>
+                            </CollapsibleCard>
 
                             <Text style={styles.recordsTitle}>{t("studentDetail.section.records")}</Text>
                         </View>
                     }
-                    renderItem={({ item }) => {
-                        const dateStr = item.createdAt?.toDate
-                            ? `${item.createdAt.toDate().toLocaleDateString("tr-TR")} • ${item.createdAt.toDate().toLocaleTimeString("tr-TR")}`
-                            : "-";
+                    renderItem={renderRecordItem}
 
-                        return (
-                            <TouchableOpacity style={styles.recordCard} onPress={() => viewRecord(item.id)}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.recordDate}>{dateStr}</Text>
-                                    <Text style={styles.recordNote}>{item.note || t("studentDetail.records.noNote")}</Text>
-                                </View>
-                                <Eye size={18} color={theme.colors.text.primary} />
-                            </TouchableOpacity>
-                        );
-                    }}
                     ListEmptyComponent={
                         !loadingRecords ? (
                             <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
@@ -687,6 +808,111 @@ export default function StudentDetailScreen() {
                     }
                     ListFooterComponent={<View style={{ height: 40 }} />}
                 />
+                {noteModalOpen && (
+                    <Pressable
+                        onPress={() => setNoteModalOpen(false)}
+                        style={{
+                            position: "absolute",
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            backgroundColor: "rgba(0,0,0,0.45)",
+                            justifyContent: "center",
+                            padding: theme.spacing.md,
+                        }}
+                    >
+                        {/* dışa basınca kapansın, içe basınca kapanmasın */}
+                        <Pressable onPress={(e) => e.stopPropagation()}>
+                            <KeyboardAvoidingView
+                                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                                keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+                            >
+                                <View
+                                    style={{
+                                        backgroundColor: theme.colors.surface,
+                                        borderRadius: theme.radius.lg,
+                                        borderWidth: 1,
+                                        borderColor: theme.colors.border,
+                                        ...(theme.shadow?.soft ?? {}),
+                                        maxHeight: "85%",
+                                        overflow: "hidden", // ✅ kritik: footer düzgün dursun
+                                    }}
+                                >
+                                    {/* ✅ içerik scroll */}
+                                    <ScrollView
+                                        keyboardShouldPersistTaps="handled"
+                                        showsVerticalScrollIndicator={false}
+                                        contentContainerStyle={{
+                                            padding: theme.spacing.md,
+                                            paddingBottom: theme.spacing.md + 80, // ✅ footer için boşluk
+                                        }}
+                                    >
+                                        <Text style={{ color: theme.colors.text.primary, fontWeight: "900", fontSize: theme.fontSize.lg }}>
+                                            Yeni Not
+                                        </Text>
+
+                                        <TextInput
+                                            value={newNoteTitle}
+                                            onChangeText={setNewNoteTitle}
+                                            placeholder="Not başlığı..."
+                                            placeholderTextColor={theme.colors.text.muted}
+                                            style={[styles.editInput, { marginTop: theme.spacing.sm }]}
+                                            returnKeyType="next"
+                                        />
+
+                                        <TextInput
+                                            value={newNoteText}
+                                            onChangeText={setNewNoteText}
+                                            placeholder="Notunu yaz..."
+                                            placeholderTextColor={theme.colors.text.muted}
+                                            multiline
+                                            textAlignVertical="top"
+                                            style={[styles.ptNoteInput, { marginTop: theme.spacing.sm, minHeight: 160 }]}
+                                        />
+                                    </ScrollView>
+
+                                    {/* ✅ STICKY FOOTER: butonlar her zaman görünür */}
+                                    <View
+                                        style={{
+                                            position: "absolute",
+                                            left: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            padding: theme.spacing.md,
+                                            borderTopWidth: 1,
+                                            borderTopColor: theme.colors.border,
+                                            backgroundColor: theme.colors.surface,
+                                        }}
+                                    >
+                                        <View style={{ flexDirection: "row", gap: 10 }}>
+                                            <TouchableOpacity
+                                                onPress={() => setNoteModalOpen(false)}
+                                                activeOpacity={0.85}
+                                                style={[styles.cancelButton, { flex: 1, alignItems: "center", marginLeft: 0 }]} // ✅ marginLeft sıfırla
+                                            >
+                                                <Text style={styles.cancelButtonText}>İptal</Text>
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity
+                                                onPress={saveNewNote}
+                                                disabled={savingNote}
+                                                activeOpacity={0.85}
+                                                style={[styles.saveButton, { flex: 1, alignItems: "center", opacity: savingNote ? 0.6 : 1, marginLeft: 0 }]} // ✅ marginLeft sıfırla
+                                            >
+                                                <Text style={styles.saveButtonText}>{savingNote ? "Kaydediliyor..." : "Kaydet"}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+                            </KeyboardAvoidingView>
+                        </Pressable>
+
+                    </Pressable>
+                )}
+
+
+
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -810,9 +1036,12 @@ function windowFor(range: RangeKey) {
 }
 
 function normalize(arr: number[]) {
-    const max = Math.max(1, ...arr);
-    return arr.map((x) => x / max);
+    if (!arr.length) return [];
+    const max = Math.max(...arr);
+    const denom = max <= 0 ? 1 : max;
+    return arr.map((x) => x / denom);
 }
+
 
 function makeLabels(days: number, start: Date) {
     const out: string[] = [];
@@ -844,6 +1073,8 @@ function CollapsibleCard({
     const h = useRef(new Animated.Value(open ? 1 : 0)).current;
     const r = useRef(new Animated.Value(open ? 1 : 0)).current;
 
+    const [contentH, setContentH] = useState(0);
+
     useEffect(() => {
         Animated.parallel([
             Animated.timing(h, {
@@ -861,7 +1092,11 @@ function CollapsibleCard({
         ]).start();
     }, [open]);
 
-    const height = h.interpolate({ inputRange: [0, 1], outputRange: [0, 520] });
+    const height = h.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, Math.max(0, contentH)],
+    });
+
     const rotate = r.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] });
 
     return (
@@ -877,12 +1112,23 @@ function CollapsibleCard({
                 </Animated.View>
             </TouchableOpacity>
 
+            {/* anim container */}
             <Animated.View style={{ height, overflow: "hidden" }}>
-                <View style={{ paddingTop: theme.spacing.xs }}>{children}</View>
+                {/* ölçüm view: absolute değil, normal akışta durur */}
+                <View
+                    onLayout={(e) => {
+                        const next = Math.ceil(e.nativeEvent.layout.height);
+                        if (next !== contentH) setContentH(next);
+                    }}
+                    style={{ paddingTop: theme.spacing.xs }}
+                >
+                    {children}
+                </View>
             </Animated.View>
         </View>
     );
 }
+
 
 /* ---------- Small KPI ---------- */
 function KPI({
@@ -927,18 +1173,32 @@ function DailyBarsPro({
     counts: number[];
     labels: string[];
 }) {
-    const H = 150; // grafik alanı yüksekliği
+    const H = 150;
     const animsRef = useRef<Animated.Value[]>([]);
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-    // ✅ garanti
-    if (animsRef.current.length !== ratios.length) {
-        animsRef.current = ratios.map((r) => new Animated.Value(Math.max(0, Math.min(1, r ?? 0))));
+    // ✅ ratios güvenli
+    const safeRatios = Array.isArray(ratios) ? ratios : [];
+
+    // ✅ KRİTİK: render sırasında anim array'i senkron eşitle (yoksa interpolate patlar)
+    if (animsRef.current.length < safeRatios.length) {
+        for (let i = animsRef.current.length; i < safeRatios.length; i++) {
+            animsRef.current.push(new Animated.Value(0));
+        }
+    } else if (animsRef.current.length > safeRatios.length) {
+        animsRef.current = animsRef.current.slice(0, safeRatios.length);
     }
 
+    // ✅ range değişince tooltip sıfırla
     useEffect(() => {
-        if (!ratios?.length) return;
-        const runs = ratios.map((r, i) =>
+        setActiveIndex(null);
+    }, [safeRatios.length]);
+
+    // ✅ animasyon
+    useEffect(() => {
+        if (!safeRatios.length) return;
+
+        const runs = safeRatios.map((r, i) =>
             Animated.spring(animsRef.current[i], {
                 toValue: Math.max(0, Math.min(1, r ?? 0)),
                 speed: 18,
@@ -946,10 +1206,11 @@ function DailyBarsPro({
                 useNativeDriver: false,
             })
         );
-        Animated.stagger(10, runs).start();
-    }, [ratios.join("|")]);
 
-    if (!ratios?.length) {
+        Animated.stagger(10, runs).start();
+    }, [safeRatios.join("|")]);
+
+    if (!safeRatios.length) {
         return (
             <Text style={{ marginTop: theme.spacing.sm, color: theme.colors.text.muted, fontSize: theme.fontSize.xs }}>
                 Grafik için veri yok.
@@ -957,7 +1218,6 @@ function DailyBarsPro({
         );
     }
 
-    // grid çizgileri (0%, 33%, 66%, 100%)
     const grid = [0, 1 / 3, 2 / 3, 1];
 
     const Tooltip = ({ i }: { i: number }) => {
@@ -977,16 +1237,13 @@ function DailyBarsPro({
                     ...(theme.shadow?.soft ?? {}),
                 }}
             >
-                <Text style={{ color: theme.colors.text.primary, fontSize: 12, fontWeight: "900" }}>
-                    {c} kayıt
-                </Text>
+                <Text style={{ color: theme.colors.text.primary, fontSize: 12, fontWeight: "900" }}>{c} kayıt</Text>
             </View>
         );
     };
 
     return (
         <View style={{ marginTop: theme.spacing.sm }}>
-            {/* Grid + arka plan */}
             <View
                 style={{
                     borderWidth: 1,
@@ -998,7 +1255,7 @@ function DailyBarsPro({
                     overflow: "hidden",
                 }}
             >
-                {/* grid çizgileri */}
+                {/* grid */}
                 <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}>
                     {grid.map((g, idx) => (
                         <View
@@ -1018,7 +1275,7 @@ function DailyBarsPro({
 
                 {/* bars */}
                 <View style={{ flexDirection: "row", alignItems: "flex-end", height: H + 24 }}>
-                    {ratios.map((_, i) => {
+                    {safeRatios.map((_, i) => {
                         const h = animsRef.current[i].interpolate({
                             inputRange: [0, 1],
                             outputRange: [6, H],
@@ -1040,7 +1297,6 @@ function DailyBarsPro({
                             >
                                 {isActive ? <Tooltip i={i} /> : null}
 
-                                {/* bar container */}
                                 <View
                                     style={{
                                         width: 12,
@@ -1061,7 +1317,6 @@ function DailyBarsPro({
                                     />
                                 </View>
 
-                                {/* label */}
                                 <Text
                                     style={{
                                         marginTop: 8,
@@ -1078,7 +1333,6 @@ function DailyBarsPro({
                     })}
                 </View>
 
-                {/* küçük legend */}
                 <Text style={{ marginTop: 6, color: theme.colors.text.muted, fontSize: theme.fontSize.xs }}>
                     Dokun: Günlük kayıt sayısını gör
                 </Text>
@@ -1086,6 +1340,7 @@ function DailyBarsPro({
         </View>
     );
 }
+
 
 
 
