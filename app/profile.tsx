@@ -2,6 +2,8 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, Check, Edit3, User, X } from "lucide-react-native";
 import React from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,6 +19,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 
+import { onAuthStateChanged, updateProfile } from "firebase/auth";
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { auth, db } from "../services/firebase"; // ✅ sende db export olmalı
+
 type ProfileState = {
   name: string;
   username: string;
@@ -27,6 +33,16 @@ type ProfileState = {
   business: string;
 };
 
+const emptyProfile: ProfileState = {
+  name: "",
+  username: "",
+  email: "",
+  phone: "",
+  bio: "",
+  skills: "",
+  business: "",
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
   const scrollRef = React.useRef<ScrollView>(null);
@@ -34,22 +50,19 @@ export default function ProfileScreen() {
   const { theme } = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-  const [profile, setProfile] = React.useState<ProfileState>({
-    name: "Yağmur Koca",
-    username: "@pt.yagmur",
-    email: "yagmur.koca@example.com",
-    phone: "+90 5xx xxx xx xx",
-    bio: "",
-    skills: "",
-    business: "PT Lab",
-  });
-
+  const [profile, setProfile] = React.useState<ProfileState>(emptyProfile);
   const [editKey, setEditKey] = React.useState<keyof ProfileState | null>(null);
+  const [loading, setLoading] = React.useState(true);
 
   // ✅ input klavyeden ne kadar yukarıda dursun?
   const KEYBOARD_GAP = 130;
 
   const startEdit = (key: keyof ProfileState) => {
+    // ✅ email'i şimdilik kilitli (reauth gerekir)
+    if (key === "email") {
+      Alert.alert("Bilgi", "E-posta değiştirmek için yeniden doğrulama gerekir. İstersen ekleyelim.");
+      return;
+    }
     setEditKey(key);
   };
 
@@ -61,6 +74,77 @@ export default function ProfileScreen() {
     const responder = scrollRef.current?.getScrollResponder?.();
     responder?.scrollResponderScrollNativeHandleToKeyboard(node, KEYBOARD_GAP, true);
   };
+
+  // ✅ Auth + Firestore'dan profili otomatik doldur
+  React.useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      try {
+        setLoading(true);
+
+        if (!user) {
+          setProfile(emptyProfile);
+          return;
+        }
+
+        const uid = user.uid;
+        const userRef = doc(db, "users", uid);
+        const snap = await getDoc(userRef);
+
+        const authName = user.displayName ?? "";
+        const authEmail = user.email ?? "";
+
+        if (!snap.exists()) {
+          const base: ProfileState = {
+            ...emptyProfile,
+            name: authName,
+            email: authEmail,
+          };
+
+          await setDoc(
+            userRef,
+            {
+              uid,
+              email: authEmail?.toLowerCase?.() ?? "",
+              displayName: authName,
+              username: "",
+              phone: "",
+              bio: "",
+              skills: "",
+              business: "",
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          setProfile(base);
+          return;
+        }
+
+        const data = snap.data() as any;
+
+        const rawUsername = (data?.username ?? "").toString().trim();
+        const uiUsername =
+          rawUsername.length > 0 ? (rawUsername.startsWith("@") ? rawUsername : `@${rawUsername}`) : "";
+
+        setProfile({
+          name: (data?.displayName ?? authName ?? "").toString(),
+          username: uiUsername,
+          email: (data?.email ?? authEmail ?? "").toString(),
+          phone: (data?.phone ?? "").toString(),
+          bio: (data?.bio ?? "").toString(),
+          skills: (data?.skills ?? "").toString(),
+          business: (data?.business ?? "").toString(),
+        });
+      } catch (e: any) {
+        Alert.alert("Hata", e?.message ?? "Profil alınamadı");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return () => unsub();
+  }, []);
 
   const Section = ({ title, icon }: { title: string; icon?: React.ReactNode }) => (
     <View style={styles.sectionHeader}>
@@ -91,6 +175,14 @@ export default function ProfileScreen() {
 
     const inputRef = React.useRef<TextInput>(null);
 
+    const isPhone = fieldKey === "phone";
+
+    const sanitizePhone = (v: string) => {
+      let digits = (v ?? "").replace(/\D/g, "");
+      if (digits.length > 11) digits = digits.slice(0, 11);
+      return digits;
+    };
+
     React.useEffect(() => {
       if (isEditing) {
         setLocalValue(value);
@@ -100,6 +192,52 @@ export default function ProfileScreen() {
         });
       }
     }, [isEditing, value]);
+
+    const saveField = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const uid = user.uid;
+      const userRef = doc(db, "users", uid);
+
+      // ✅ normalize
+      let next = (localValue ?? "").toString().trim();
+      if (isPhone) next = sanitizePhone(next);
+
+      // username normalize: @ kaldır, lowercase
+      if (fieldKey === "username") {
+        next = next.replace(/^@+/, "").trim().toLowerCase();
+        setProfile((p) => ({ ...p, username: next ? `@${next}` : "" }));
+      } else {
+        setProfile((p) => ({ ...p, [fieldKey]: next }));
+      }
+
+      try {
+        setLoading(true);
+
+        const patch: any = {
+          updatedAt: serverTimestamp(),
+        };
+
+        if (fieldKey === "name") {
+          patch.displayName = next;
+          await updateProfile(user, { displayName: next });
+        } else if (fieldKey === "username") {
+          patch.username = next; // @siz
+        } else if (fieldKey === "email") {
+          patch.email = next.toLowerCase();
+        } else {
+          patch[fieldKey] = next;
+        }
+
+        await updateDoc(userRef, patch);
+        setEditKey(null);
+      } catch (e: any) {
+        Alert.alert("Hata", e?.message ?? "Kaydedilemedi");
+      } finally {
+        setLoading(false);
+      }
+    };
 
     return (
       <View style={[styles.settingRow, isLast && styles.settingRowLast]}>
@@ -124,17 +262,26 @@ export default function ProfileScreen() {
                 <TextInput
                   ref={inputRef}
                   value={localValue}
-                  onChangeText={setLocalValue}
+                  onChangeText={(v) => {
+                    if (isPhone) setLocalValue(sanitizePhone(v));
+                    else setLocalValue(v);
+                  }}
                   placeholder={placeholder}
                   placeholderTextColor={theme.colors.text.muted}
                   style={styles.inlineEditorInput}
                   returnKeyType="done"
                   blurOnSubmit
+                  onSubmitEditing={saveField}
+                  autoCapitalize={fieldKey === "username" || isPhone ? "none" : "sentences"}
+                  autoCorrect={fieldKey === "username" ? false : true}
+                  keyboardType={isPhone ? "number-pad" : "default"}
+                  maxLength={isPhone ? 11 : undefined}
                 />
               </View>
 
+              {/* ✅ X: basınca yazıyı SİL */}
               <TouchableOpacity
-                onPress={() => setEditKey(null)}
+                onPress={() => setLocalValue("")}
                 activeOpacity={0.75}
                 style={[styles.actionBtn, styles.actionBtnGhost]}
                 hitSlop={10}
@@ -143,10 +290,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => {
-                  setProfile((p) => ({ ...p, [fieldKey]: localValue }));
-                  setEditKey(null);
-                }}
+                onPress={saveField}
                 activeOpacity={0.75}
                 style={[styles.actionBtn, styles.actionBtnPrimary]}
                 hitSlop={10}
@@ -159,6 +303,19 @@ export default function ProfileScreen() {
       </View>
     );
   };
+
+  if (loading && !profile.email && !profile.name) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
+          <ActivityIndicator />
+          <Text style={{ marginTop: 10, color: theme.colors.text.secondary, fontWeight: "600" }}>
+            Profil yükleniyor...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -196,14 +353,16 @@ export default function ProfileScreen() {
               <View style={styles.profileRow}>
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>
-                    {profile.name?.trim()?.[0]?.toUpperCase() ?? "Y"}
+                    {profile.name?.trim()?.[0]?.toUpperCase() ?? "A"}
                   </Text>
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.profileName}>{profile.name}</Text>
-                  <Text style={styles.profileEmail}>{profile.email}</Text>
-                  <Text style={styles.profileTag}>PT • Reformer Pilates • Online Coaching</Text>
+                  <Text style={styles.profileName}>{profile.name || "—"}</Text>
+                  <Text style={styles.profileEmail}>{profile.email || "—"}</Text>
+                  <Text style={styles.profileTag}>
+                    {profile.username ? `${profile.username} • ` : ""}PT • Reformer Pilates • Online Coaching
+                  </Text>
                 </View>
               </View>
 
@@ -225,17 +384,61 @@ export default function ProfileScreen() {
 
             {/* USER INFO */}
             <View style={styles.card}>
-              <SettingRow label="İsim" subtitle="Uygulamada gözükecek adın" fieldKey="name" value={profile.name} placeholder="Örn: Yağmur Koca" />
-              <SettingRow label="Kullanıcı Adı" subtitle="Profil linkinde kullanılacak" fieldKey="username" value={profile.username} placeholder="Örn: @pt.yagmur" />
-              <SettingRow label="E-posta" subtitle="Giriş ve bildirimler için" fieldKey="email" value={profile.email} placeholder="Örn: mail@domain.com" />
-              <SettingRow label="Telefon" subtitle="Müşteri iletişimi için" fieldKey="phone" value={profile.phone} placeholder="Örn: +90 5xx xxx xx xx" isLast />
+              <SettingRow
+                label="İsim"
+                subtitle="Uygulamada gözükecek adın"
+                fieldKey="name"
+                value={profile.name}
+                placeholder="Örn: Yağmur Koca"
+              />
+              <SettingRow
+                label="Kullanıcı Adı"
+                subtitle="Profil linkinde kullanılacak"
+                fieldKey="username"
+                value={profile.username}
+                placeholder="Örn: @pt.yagmur"
+              />
+              <SettingRow
+                label="E-posta"
+                subtitle="Giriş ve bildirimler için"
+                fieldKey="email"
+                value={profile.email}
+                placeholder="Örn: mail@domain.com"
+              />
+              <SettingRow
+                label="Telefon"
+                subtitle="Müşteri iletişimi için"
+                fieldKey="phone"
+                value={profile.phone}
+                placeholder="Örn: 05xxxxxxxxx"
+                isLast
+              />
             </View>
 
             {/* BIO */}
             <View style={styles.card}>
-              <SettingRow label="Biyografi" subtitle="Kendini kısaca tanıt" fieldKey="bio" value={profile.bio} placeholder="Örn: 8 yıllık PT, reformer ve online koçluk..." />
-              <SettingRow label="Uzmanlık Alanların" subtitle="Reformer, Fonksiyonel Antrenman..." fieldKey="skills" value={profile.skills} placeholder="Örn: Reformer, Fonksiyonel, Mobilite..." />
-              <SettingRow label="İşletme Adı" subtitle="Müşterilerin göreceği marka" fieldKey="business" value={profile.business} placeholder="Örn: PT Lab" isLast />
+              <SettingRow
+                label="Biyografi"
+                subtitle="Kendini kısaca tanıt"
+                fieldKey="bio"
+                value={profile.bio}
+                placeholder="Örn: 8 yıllık PT, reformer ve online koçluk..."
+              />
+              <SettingRow
+                label="Uzmanlık Alanların"
+                subtitle="Reformer, Fonksiyonel Antrenman..."
+                fieldKey="skills"
+                value={profile.skills}
+                placeholder="Örn: Reformer, Fonksiyonel, Mobilite..."
+              />
+              <SettingRow
+                label="İşletme Adı"
+                subtitle="Müşterilerin göreceği marka"
+                fieldKey="business"
+                value={profile.business}
+                placeholder="Örn: PT Lab"
+                isLast
+              />
             </View>
           </ScrollView>
         </View>

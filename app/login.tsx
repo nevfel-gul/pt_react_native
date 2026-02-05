@@ -7,6 +7,7 @@ import {
     signInWithEmailAndPassword,
     updateProfile,
 } from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,6 +24,7 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { db } from "../services/firebase"; // sende db export ediliyorsa
 
 import type { ThemeMode, ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
@@ -43,6 +45,7 @@ export default function LoginScreen() {
 
     // inputs
     const [name, setName] = useState(""); // register: displayName
+    const [username, setUsername] = useState(""); // register: unique handle
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [password2, setPassword2] = useState("");
@@ -123,7 +126,7 @@ export default function LoginScreen() {
         // ✅ senin key ile
         const fillAllMsg = t("login.validation.fill_all");
 
-        if (!email || !password || (!isLoginMode && !name)) {
+        if (!email || !password || (!isLoginMode && (!name || !username))) {
             Alert.alert(t("login.error.prefix"), fillAllMsg);
             return;
         }
@@ -149,9 +152,22 @@ export default function LoginScreen() {
             if (isLoginMode) {
                 await signInWithEmailAndPassword(auth, email.trim(), password);
             } else {
+                const cleanName = name.trim();
+                const cleanUsername = username.trim().toLowerCase();
+
                 const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-                await updateProfile(cred.user, { displayName: name.trim() });
+                await updateProfile(cred.user, { displayName: cleanName });
+
+                // ✅ username + basic user doc
+                await setDoc(doc(db, "users", cred.user.uid), {
+                    uid: cred.user.uid,
+                    email: email.trim().toLowerCase(),
+                    displayName: cleanName,
+                    username: cleanUsername,
+                    createdAt: serverTimestamp(),
+                });
             }
+
 
             await persistRemember(rememberMe, email.trim());
             router.replace("/(tabs)");
@@ -212,6 +228,21 @@ export default function LoginScreen() {
                                         placeholder={t("login.placeholder.full_name")}
                                         placeholderTextColor={styles.inputPh.color as any}
                                         autoCapitalize="words"
+                                        style={styles.input}
+                                    />
+                                </View>
+                            )}
+                            {/* REGISTER: username */}
+                            {!isLoginMode && (
+                                <View style={styles.inputRow}>
+                                    <User size={18} color={styles.inputPh.color as any} />
+                                    <TextInput
+                                        value={username}
+                                        onChangeText={setUsername}
+                                        placeholder={t("login.placeholder.username")}
+                                        placeholderTextColor={styles.inputPh.color as any}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
                                         style={styles.input}
                                     />
                                 </View>

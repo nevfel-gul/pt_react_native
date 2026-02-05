@@ -3,21 +3,24 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import PremiumStarIcon from "@/constants/PremiumStarIcon";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
+import { BlurView } from "expo-blur";
 import { Tabs, useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
-
+import { Platform, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabLayout() {
   const { theme, mode } = useTheme();
-  const hasPremium = false;
+  const insets = useSafeAreaInsets();
 
+  const hasPremium = false;
   const router = useRouter();
   const [authReady, setAuthReady] = React.useState(false);
   const [isAuthed, setIsAuthed] = React.useState<boolean>(!!auth.currentUser);
   const { t } = useTranslation();
+
   React.useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setIsAuthed(!!u);
@@ -33,8 +36,7 @@ export default function TabLayout() {
   const premiumHref = hasPremium ? undefined : "/premium";
 
   const glow = {
-    backgroundColor:
-      mode === "light" ? "rgba(56,189,248,0.12)" : "rgba(56,189,248,0.10)",
+    backgroundColor: mode === "light" ? "rgba(56,189,248,0.12)" : "rgba(56,189,248,0.10)",
     shadowColor: theme.colors.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
@@ -49,17 +51,54 @@ export default function TabLayout() {
     justifyContent: "center",
   } as const;
 
+  // ✅ Tab bar ölçüsü (şişmesin)
+  const TAB_BASE = 60; // ikon+label gövdesi
+  const TAB_HEIGHT = TAB_BASE + insets.bottom;
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.text.muted,
+
+        // ✅ en kritik: tab bar şişmesin, ekstra katman oluşturmasın
         tabBarStyle: {
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.border,
-          paddingTop: 10,
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+
+          height: TAB_HEIGHT,
+          paddingBottom: Math.max(insets.bottom - 2, 8),
+          paddingTop: 6,
+
+          backgroundColor: "transparent", // ✅ background'u aşağıda çiziyoruz
+          borderTopWidth: 0,              // ✅ ayrı çizgi/katman olmasın
+          elevation: 0,                   // ✅ android shadow kapalı (istersen açarız)
         },
+
+        // ✅ tab bar arkaplanı: tek katman (kalın şerit hissi çoğu zaman burada bitiyor)
+        tabBarBackground: () => (
+          <BlurView
+            intensity={Platform.OS === "ios" ? 35 : 0}
+            tint={mode === "dark" ? "dark" : "light"}
+            style={{
+              flex: 1,
+              backgroundColor:
+                mode === "dark"
+                  ? "rgba(6,10,18,0.88)"
+                  : "rgba(248,250,252,0.92)",
+            }}
+          />
+        ),
+
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "700",
+          marginBottom: Platform.OS === "ios" ? 2 : 0,
+        },
+
         tabBarButton: HapticTab,
       }}
       initialRouteName="index"
@@ -77,19 +116,18 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 2) TAKVİM  (dosya adın takvim.tsx olmalı) */}
+      {/* 2) TAKVİM */}
       <Tabs.Screen
         name="calendar"
         options={{
           title: t("tabs.calendar"),
           tabBarIcon: ({ color, focused }) => (
             <View style={[iconWrap, focused && glow]}>
-              <IconSymbol size={26} name={focused ? "calendar" : "calendar"} color={color} />
+              <IconSymbol size={26} name="calendar" color={color} />
             </View>
           ),
         }}
       />
-
 
       {/* 3) ANALİZ */}
       <Tabs.Screen
@@ -117,13 +155,13 @@ export default function TabLayout() {
         }}
       />
 
+      {/* 5) PREMIUM */}
       <Tabs.Screen
         name="premium"
         options={{
           title: t("tabs.premium"),
           href: premiumHref,
 
-          // ✅ Label’ı biz çiziyoruz: HER ZAMAN gold
           tabBarLabel: ({ focused }) => (
             <View>
               <Text
@@ -139,14 +177,9 @@ export default function TabLayout() {
             </View>
           ),
 
-          // ✅ Icon zaten gold (PremiumStarIcon içinde)
-          tabBarIcon: ({ focused }) => (
-            <PremiumStarIcon focused={focused} theme={theme} size={28} />
-          ),
+          tabBarIcon: ({ focused }) => <PremiumStarIcon focused={focused} theme={theme} size={28} />,
         }}
       />
-
-
     </Tabs>
   );
 }
