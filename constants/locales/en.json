@@ -491,6 +491,7 @@
   "newstudent.alert.success.title": "Success",
   "newstudent.alert.success.message": "Student saved.",
   "newstudent.alert.success.ok": "OK",
+  "login.placeholder.password_again": "Password (Again)",
   "newstudent.alert.error.title": "Error",
   "newstudent.alert.error.message": "Student could not be saved.",
   "newstudent.validation.name_required": "Full name is required",
@@ -548,5 +549,40 @@
   "newstudent.button.update_student": "Update Student",
   "newstudent.header.title_edit": "Edit Student",
   "students.record.none": "No record",
-  "students.record.overdue": "Add record"
+  "students.record.overdue": "Add record",
+  "onboarding": {
+    "header": "OnBoarding",
+    "skip": "Skip",
+    "continue": "Continue",
+    "slides": {
+      "intake": {
+        "tag": {
+          "title": "Smart Intake",
+          "body": "Fill out health info & goals so you can focus on the person, not paperwork."
+        },
+        "title": "Client Intake,",
+        "titleAccent": " Simplified",
+        "desc": "Register new clients and gather essential health data effortlessly. A calm start to a strong journey."
+      },
+      "data": {
+        "title": "All Data,",
+        "titleAccent": " One Place",
+        "desc": "Record and monitor all client fitness tests and results over time. Keep everything organized.",
+        "chips": {
+          "strength": "Strength Tests",
+          "flexibility": "Flexibility Tests",
+          "body": "Body Analysis"
+        }
+      },
+      "ai": {
+        "tag": {
+          "title": "AI Insights",
+          "body": "Analyze test results to provide clear insights and help your client progress faster."
+        },
+        "title": "AI-Powered",
+        "titleAccent": " Analysis",
+        "desc": "Use AI to analyze test results and get instant insights. Categorize clients by their needs and performance."
+      }
+    }
+  }
 }

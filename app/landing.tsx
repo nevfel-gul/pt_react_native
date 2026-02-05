@@ -1,20 +1,18 @@
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-    Activity,
-    ArrowRight,
-    BarChart3,
-    ChevronDown,
-    ShieldCheck,
-    Sparkles,
-    Users,
-    Zap,
-} from "lucide-react-native";
-import React, { useEffect, useRef } from "react";
+import { ArrowRight } from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     Animated,
     Dimensions,
+    Easing,
+    FlatList,
+    Image,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
     StatusBar,
     StyleSheet,
     Text,
@@ -28,309 +26,438 @@ import { useTheme } from "@/constants/usetheme";
 
 const { width, height } = Dimensions.get("window");
 
-export default function LandingScreen() {
+const PAGE_PAD = 18;
+const MAX_W = Math.min(360, width - PAGE_PAD * 2);
+
+// glow’lu PNG: kırpma yok, contain
+const ART_W = Math.min(390, width);
+const ART_H = Math.round(Math.min(330, height * 0.35));
+
+type Slide = {
+    key: string;
+    type: "logo" | "content";
+    topTagTitleKey?: string;
+    topTagBodyKey?: string;
+    titleKey?: string;
+    titleAccentKey?: string;
+    descKey?: string;
+    image?: any;
+    chipsKeys?: string[];
+};
+
+export default function OnboardingScreen() {
     const router = useRouter();
     const { t } = useTranslation();
-
     const { theme, mode } = useTheme();
 
-    const scrollY = useRef(new Animated.Value(0)).current;
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(30)).current;
+    const styles = useMemo(() => createStyles(theme, mode), [theme, mode]);
+
+    // ✅ floating anim values (MINIMAL)
+    const floatA = useRef(new Animated.Value(0)).current;
+    const floatB = useRef(new Animated.Value(0)).current;
+    const floatC = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 1000,
-                useNativeDriver: true,
-            }),
-            Animated.timing(slideAnim, {
-                toValue: 0,
-                duration: 800,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [fadeAnim, slideAnim]);
+        const mk = (v: Animated.Value, delay: number) =>
+            Animated.loop(
+                Animated.sequence([
+                    Animated.delay(delay),
+                    Animated.timing(v, {
+                        toValue: 1,
+                        duration: 3000,
+                        easing: Easing.inOut(Easing.quad),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(v, {
+                        toValue: 0,
+                        duration: 3000,
+                        easing: Easing.inOut(Easing.quad),
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
 
-    const handleStart = () => router.push("/(tabs)");
+        const a = mk(floatA, 0);
+        const b = mk(floatB, 260);
+        const c = mk(floatC, 520);
 
-    const heroOpacity = scrollY.interpolate({
-        inputRange: [0, height * 0.4],
-        outputRange: [1, 0],
-        extrapolate: "clamp",
-    });
+        a.start();
+        b.start();
+        c.start();
+
+        return () => {
+            a.stop();
+            b.stop();
+            c.stop();
+        };
+    }, [floatA, floatB, floatC]);
+
+    const slides: Slide[] = useMemo(
+        () => [
+            { key: "logo", type: "logo" },
+            {
+                key: "intake",
+                type: "content",
+                topTagTitleKey: "onboarding.slides.intake.tag.title",
+                topTagBodyKey: "onboarding.slides.intake.tag.body",
+                titleKey: "onboarding.slides.intake.title",
+                titleAccentKey: "onboarding.slides.intake.titleAccent",
+                descKey: "onboarding.slides.intake.desc",
+                image: require("../assets/images/Mask-group-2.png"),
+            },
+            {
+                key: "data",
+                type: "content",
+                titleKey: "onboarding.slides.data.title",
+                titleAccentKey: "onboarding.slides.data.titleAccent",
+                descKey: "onboarding.slides.data.desc",
+                image: require("../assets/images/Mask-group-3.png"),
+                chipsKeys: [
+                    "onboarding.slides.data.chips.strength",
+                    "onboarding.slides.data.chips.flexibility",
+                    "onboarding.slides.data.chips.body",
+                ],
+            },
+            {
+                key: "ai",
+                type: "content",
+                topTagTitleKey: "onboarding.slides.ai.tag.title",
+                topTagBodyKey: "onboarding.slides.ai.tag.body",
+                titleKey: "onboarding.slides.ai.title",
+                titleAccentKey: "onboarding.slides.ai.titleAccent",
+                descKey: "onboarding.slides.ai.desc",
+                image: require("../assets/images/Mask-group-4.png"),
+            },
+        ],
+        []
+    );
+
+    const listRef = useRef<FlatList<Slide>>(null);
+    const [index, setIndex] = useState(0);
+
+    const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const x = e.nativeEvent.contentOffset.x;
+        setIndex(Math.round(x / width));
+    };
+
+    const handleSkip = () => router.replace("/login");
+    const handleContinue = () => {
+        if (index < slides.length - 1) {
+            listRef.current?.scrollToOffset({ offset: (index + 1) * width, animated: true });
+            setIndex((v) => v + 1);
+            return;
+        }
+        router.replace("/login");
+    };
+
+    // ✅ helpers: anim transforms (MINIMAL amp)
+    const floatY = (v: Animated.Value, amp: number) =>
+        v.interpolate({ inputRange: [0, 1], outputRange: [0, -amp] });
+
+    const floatX = (v: Animated.Value, amp: number) =>
+        v.interpolate({ inputRange: [0, 1], outputRange: [0, amp] });
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.colors.surfaceDark }]}>
+        <View style={styles.root}>
             <StatusBar barStyle={mode === "dark" ? "light-content" : "dark-content"} />
 
-            <Animated.ScrollView
-                onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-                    useNativeDriver: true,
-                })}
-                scrollEventThrottle={16}
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={{ height }}>
-                    <Animated.Image
-                        source={{
-                            uri: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070",
-                        }}
-                        style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
-                    />
+            <LinearGradient
+                colors={
+                    mode === "dark"
+                        ? [theme.colors.surfaceDark, theme.colors.background, "#01030a"]
+                        : [theme.colors.background, theme.colors.surfaceSoft, theme.colors.surfaceDark]
+                }
+                locations={[0, 0.62, 1]}
+                style={StyleSheet.absoluteFill}
+            />
 
-                    <LinearGradient
-                        colors={
-                            mode === "dark"
-                                ? ["rgba(10,15,26,0.2)", "rgba(10,15,26,0.8)", theme.colors.surfaceDark]
-                                : ["rgba(248,250,252,0.15)", "rgba(248,250,252,0.75)", theme.colors.background]
-                        }
-                        style={StyleSheet.absoluteFill}
-                    />
+            <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+                {/* header */}
+                <View style={styles.header}>
+                    <Text style={styles.logoText}>ATHLETRACK</Text>
 
-                    <SafeAreaView style={styles.heroContent}>
-                        <Animated.View
-                            style={{
-                                opacity: heroOpacity,
-                                transform: [
-                                    {
-                                        translateY: scrollY.interpolate({
-                                            inputRange: [0, 500],
-                                            outputRange: [0, 100],
-                                            extrapolate: "clamp",
-                                        }),
-                                    },
-                                ],
-                            }}
-                        >
-                            <Animated.View
-                                style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
-                            >
-                                <View
-                                    style={[
-                                        styles.logoBadge,
-                                        {
-                                            backgroundColor:
-                                                mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.04)",
-                                            borderColor:
-                                                mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.08)",
-                                        },
-                                    ]}
-                                >
-                                    <Activity size={18} color={theme.colors.primary} />
-                                    <Text style={[styles.logoBadgeText, { color: theme.colors.text.secondary }]}>
-                                        {t("app.version_badge")}
-                                    </Text>
-                                </View>
-
-                                <Text style={[styles.brandName, { color: theme.colors.text.primary }]}>
-                                    ATHLE<Text style={{ color: theme.colors.primary }}>TRACK</Text>
-                                </Text>
-                            </Animated.View>
-
-                            <View style={styles.middleSection}>
-                                <Animated.Text style={[styles.mainTitle, { opacity: fadeAnim, color: theme.colors.text.primary }]}>
-                                    {t("landing.hero.title.line1")}
-                                    {"\n"}
-                                    <Text style={[styles.highlightText, { color: theme.colors.primary }]}>
-                                        {t("landing.hero.title.highlight")}
-                                    </Text>
-                                </Animated.Text>
-
-                                <Animated.Text
-                                    style={[
-                                        styles.description,
-                                        { opacity: fadeAnim, color: theme.colors.text.secondary },
-                                    ]}
-                                >
-                                    {t("landing.hero.description")}
-                                </Animated.Text>
-                            </View>
-                        </Animated.View>
-
-                        <Animated.View style={[styles.scrollHint, { opacity: heroOpacity }]}>
-                            <Text style={[styles.scrollHintText, { color: theme.colors.text.muted }]}>
-                                {t("landing.scroll_hint")}
-                            </Text>
-                            <ChevronDown size={24} color={theme.colors.primary} />
-                        </Animated.View>
-                    </SafeAreaView>
-                </View>
-
-                <View style={[styles.infoSection, { backgroundColor: theme.colors.surfaceDark }]}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={[styles.sectionTag, { color: theme.colors.primary }]}>{t("landing.mission.tag")}</Text>
-                        <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>{t("landing.mission.title")}</Text>
-                        <View style={[styles.divider, { backgroundColor: theme.colors.primary }]} />
-                    </View>
-
-                    <Text style={[styles.infoText, { color: theme.colors.text.secondary }]}>
-                        {t("landing.mission.description")}
-                    </Text>
-
-                    <View style={styles.featureGrid}>
-                        <InfoCard
-                            theme={theme}
-                            mode={mode}
-                            icon={<BarChart3 size={24} color={theme.colors.primary} />}
-                            title={t("landing.feature.analysis.title")}
-                            desc={t("landing.feature.analysis.desc")}
-                        />
-                        <InfoCard
-                            theme={theme}
-                            mode={mode}
-                            icon={<ShieldCheck size={24} color={theme.colors.success} />}
-                            title={t("landing.feature.posture.title")}
-                            desc={t("landing.feature.posture.desc")}
-                        />
-                        <InfoCard
-                            theme={theme}
-                            mode={mode}
-                            icon={<Zap size={24} color={theme.colors.warning} />}
-                            title={t("landing.feature.performance.title")}
-                            desc={t("landing.feature.performance.desc")}
-                        />
-                        <InfoCard
-                            theme={theme}
-                            mode={mode}
-                            icon={<Users size={24} color={theme.colors.premium} />}
-                            title={t("landing.feature.students.title")}
-                            desc={t("landing.feature.students.desc")}
-                        />
-                    </View>
-                </View>
-
-                <View style={styles.finalSection}>
-                    <LinearGradient colors={[theme.colors.surfaceSoft, theme.colors.surfaceDark]} style={styles.ctaCard}>
-                        <Sparkles size={40} color={theme.colors.primary} style={{ marginBottom: 16 }} />
-
-                        <Text style={[styles.ctaTitle, { color: theme.colors.text.primary }]}>{t("landing.cta.title")}</Text>
-
-                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8} onPress={handleStart}>
-                            <LinearGradient
-                                colors={[theme.colors.primary, theme.colors.info]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.buttonGradient}
-                            >
-                                <Text style={[styles.buttonText, { color: theme.colors.surfaceDark }]}>{t("landing.cta.button")}</Text>
-                                <ArrowRight size={20} color={theme.colors.surfaceDark} strokeWidth={3} />
-                            </LinearGradient>
+                    {index > 0 ? (
+                        <TouchableOpacity activeOpacity={0.8} onPress={handleSkip} style={styles.skipBtn}>
+                            <Text style={styles.skipText}>{t("onboarding.skip")}</Text>
                         </TouchableOpacity>
-                    </LinearGradient>
+                    ) : (
+                        <View style={{ width: 44 }} />
+                    )}
                 </View>
-            </Animated.ScrollView>
+
+                <FlatList
+                    ref={listRef}
+                    data={slides}
+                    keyExtractor={(i) => i.key}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onMomentumScrollEnd={onScrollEnd}
+                    renderItem={({ item }) => {
+                        if (item.type === "logo") {
+                            return (
+                                <View style={[styles.page, styles.pageLogo]}>
+                                    <View style={styles.logoWrap}>
+                                        <Image source={require("../assets/images/AppIcon_tr 1.png")} style={styles.logoImg} resizeMode="contain" />
+                                    </View>
+                                </View>
+                            );
+                        }
+
+                        const hasTag = !!item.topTagTitleKey && !!item.topTagBodyKey;
+
+                        return (
+                            <View style={styles.page}>
+                                {/* top bubble (varsa) */}
+                                {hasTag ? (
+                                    <View style={styles.topTag}>
+                                        <Text style={styles.topTagTitle}>{t(item.topTagTitleKey!)}</Text>
+                                        <Text style={styles.topTagBody}>{t(item.topTagBodyKey!)}</Text>
+                                    </View>
+                                ) : (
+                                    <View style={{ height: 18 }} />
+                                )}
+
+                                {/* ✅ TITLE + DESC (REFERANS GİBİ FOTO ÜSTÜNDE) */}
+                                {!!item.titleKey && (
+                                    <View style={styles.headText}>
+                                        <Text style={styles.title}>
+                                            {t(item.titleKey)}
+                                            <Text style={styles.titleAccent}>{item.titleAccentKey ? t(item.titleAccentKey) : ""}</Text>
+                                        </Text>
+                                        {!!item.descKey && <Text style={styles.descTop}>{t(item.descKey)}</Text>}
+                                    </View>
+                                )}
+
+                                {/* image */}
+                                <View style={styles.artWrap}>
+                                    <Image source={item.image} style={styles.artImg} resizeMode="contain" />
+
+                                    {/* ✅ Floating feature pills (Sadece chips varsa) */}
+                                    {!!item.chipsKeys?.length && (
+                                        <>
+                                            <Animated.View
+                                                style={[
+                                                    styles.floatingChip,
+                                                    styles.chipOne,
+                                                    { transform: [{ translateY: floatY(floatA, 4) }, { translateX: floatX(floatA, 2) }] },
+                                                ]}
+                                            >
+                                                <BlurView intensity={18} tint={mode === "dark" ? "dark" : "light"} style={styles.blurPill}>
+                                                    <Text style={styles.chipText}>{t(item.chipsKeys[0])}</Text>
+                                                </BlurView>
+                                            </Animated.View>
+
+                                            <Animated.View
+                                                style={[
+                                                    styles.floatingChip,
+                                                    styles.chipTwo,
+                                                    { transform: [{ translateY: floatY(floatB, 4) }, { translateX: floatX(floatB, -2) }] },
+                                                ]}
+                                            >
+                                                <BlurView intensity={18} tint={mode === "dark" ? "dark" : "light"} style={styles.blurPill}>
+                                                    <Text style={styles.chipText}>{t(item.chipsKeys[1])}</Text>
+                                                </BlurView>
+                                            </Animated.View>
+
+                                            <Animated.View
+                                                style={[
+                                                    styles.floatingChip,
+                                                    styles.chipThree,
+                                                    { transform: [{ translateY: floatY(floatC, 4) }, { translateX: floatX(floatC, 2) }] },
+                                                ]}
+                                            >
+                                                <BlurView intensity={18} tint={mode === "dark" ? "dark" : "light"} style={styles.blurPill}>
+                                                    <Text style={styles.chipText}>{t(item.chipsKeys[2])}</Text>
+                                                </BlurView>
+                                            </Animated.View>
+                                        </>
+                                    )}
+                                </View>
+                            </View>
+                        );
+                    }}
+                />
+
+                {/* dots + CTA */}
+                <View style={styles.bottom}>
+                    <View style={styles.dots}>
+                        {slides.map((_, i) => {
+                            const active = i === index;
+                            return <View key={i} style={[styles.dot, active && styles.dotActive]} />;
+                        })}
+                    </View>
+
+                    <TouchableOpacity activeOpacity={0.9} onPress={handleContinue} style={styles.cta}>
+                        <Text style={styles.ctaText}>{t("onboarding.continue")}</Text>
+                        <ArrowRight size={18} color={styles.ctaText.color as any} strokeWidth={3} />
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
         </View>
     );
 }
 
-function InfoCard({
-    icon,
-    title,
-    desc,
-    theme,
-    mode,
-}: {
-    icon: React.ReactNode;
-    title: string;
-    desc: string;
-    theme: ThemeUI;
-    mode: ThemeMode;
-}) {
-    return (
-        <View
-            style={[
-                styles.infoCard,
-                {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
-                    borderRadius: theme.radius.xl,
-                    ...(theme.shadow?.soft ?? {}),
-                },
-            ]}
-        >
-            <View
-                style={[
-                    styles.iconCircle,
-                    {
-                        backgroundColor: mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.04)",
-                        borderRadius: theme.radius.lg,
-                    },
-                ]}
-            >
-                {icon}
-            </View>
-            <Text style={[styles.infoCardTitle, { color: theme.colors.text.primary }]}>{title}</Text>
-            <Text style={[styles.infoCardDesc, { color: theme.colors.text.muted }]}>{desc}</Text>
-        </View>
-    );
+function createStyles(theme: ThemeUI, mode: ThemeMode) {
+    const isDark = mode === "dark";
+
+    const accent = theme.colors.primary;
+    const accent2 = theme.colors.accent;
+    const brand = theme.colors.logoText;
+
+    const tagBg = theme.colors.surfaceElevated;
+    const tagBorder = theme.colors.border;
+
+    const titleBase = theme.colors.text.emphasis;
+    const descColor = theme.colors.text.muted;
+    const skipColor = theme.colors.text.secondary;
+
+    const dotInactive = isDark ? "rgba(255,255,255,0.28)" : "rgba(15,23,42,0.22)";
+
+    return StyleSheet.create({
+        root: { flex: 1 },
+        safe: { flex: 1 },
+
+        header: {
+            paddingHorizontal: PAGE_PAD,
+            paddingTop: 6,
+            paddingBottom: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+        },
+
+        logoText: {
+            fontSize: theme.fontSize.lg,
+            fontWeight: "800",
+            color: brand,
+            letterSpacing: 0.8,
+        },
+
+        skipBtn: { paddingHorizontal: 6, paddingVertical: 6 },
+        skipText: { color: skipColor, fontSize: 13, fontWeight: "700" },
+
+        page: { width, paddingHorizontal: PAGE_PAD, paddingTop: 4, alignItems: "center" },
+        pageLogo: { justifyContent: "center", paddingTop: 0 },
+
+        logoWrap: {
+            width: width - PAGE_PAD * 2,
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: Math.round(height * 0.62),
+        },
+        logoImg: { width: 132, height: 132 },
+
+        topTag: {
+            width: "100%",
+            maxWidth: MAX_W,
+            backgroundColor: tagBg,
+            borderWidth: 1,
+            borderColor: tagBorder,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            borderRadius: 14,
+            marginBottom: 10,
+        },
+        topTagTitle: { color: theme.colors.text.primary, fontSize: 12, fontWeight: "800", marginBottom: 4 },
+        topTagBody: { color: theme.colors.text.secondary, fontSize: 11, lineHeight: 15, fontWeight: "600" },
+
+        /* ✅ head text (referans gibi üstte) */
+        headText: {
+            width: "100%",
+            maxWidth: 380,
+            alignItems: "center",
+            marginTop: 6,
+            marginBottom: 14,
+        },
+        title: {
+            color: titleBase,
+            fontSize: 34,
+            fontWeight: "900",
+            letterSpacing: 0.2,
+            textAlign: "center",
+        },
+        titleAccent: { color: accent2, fontWeight: "900" },
+        descTop: {
+            marginTop: 10,
+            textAlign: "center",
+            color: descColor,
+            fontSize: 13,
+            lineHeight: 19,
+            fontWeight: "600",
+            maxWidth: 360,
+        },
+
+        artWrap: {
+            width: ART_W,
+            height: ART_H,
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+            marginTop: 6,
+        },
+        artImg: { width: "100%", height: "100%" },
+
+        /* ✅ Floating pills (referans gibi: küçük, soft, foto içinde) */
+        floatingChip: {
+            position: "absolute",
+            borderRadius: 999,
+            overflow: "hidden",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.06)", // daha soft
+            shadowColor: "#000",
+            shadowOpacity: 0.14,
+            shadowRadius: 16,
+            elevation: 5,
+        },
+        blurPill: {
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: isDark ? "rgba(10,15,26,0.72)" : "rgba(255,255,255,0.65)",
+        },
+        chipText: {
+            color: isDark ? "rgba(255,255,255,0.88)" : "rgba(15,23,42,0.82)",
+            fontSize: 10,
+            fontWeight: "800",
+        },
+
+        /* ✅ POZİSYONLAR ART_W/ART_H bazlı (ekran farkında bile bozulmaz) */
+        chipOne: {
+            top: ART_H * 1,
+            left: ART_W * 0.08,
+        },
+        chipTwo: {
+            top: ART_H * 0.46,
+            right: ART_W * 0.06,
+        },
+        chipThree: {
+            bottom: ART_H * 0.10,
+            left: ART_W * 0.12,
+        },
+
+        bottom: {
+            paddingHorizontal: PAGE_PAD,
+            paddingBottom: Platform.OS === "ios" ? 6 : 14,
+            paddingTop: 10,
+            alignItems: "center",
+            gap: 12,
+        },
+        dots: { flexDirection: "row", alignItems: "center", gap: 8, height: 18 },
+        dot: { width: 5, height: 5, borderRadius: 999, backgroundColor: dotInactive },
+        dotActive: { width: 16, backgroundColor: accent, opacity: 0.95 },
+
+        cta: {
+            width: "100%",
+            maxWidth: 360,
+            height: 48,
+            borderRadius: 14,
+            backgroundColor: accent,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+            gap: 8,
+        },
+        ctaText: { color: theme.colors.text.onAccent, fontSize: 14, fontWeight: "900" },
+    });
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1 },
-
-    heroContent: {
-        flex: 1,
-        paddingHorizontal: 24,
-        justifyContent: "space-between",
-        paddingVertical: 40,
-    },
-    header: { alignItems: "flex-start" },
-
-    logoBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        borderWidth: 1,
-        marginBottom: 12,
-    },
-    logoBadgeText: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5, marginLeft: 6 },
-
-    brandName: { fontSize: 32, fontWeight: "900", letterSpacing: -1 },
-
-    middleSection: { marginTop: 20 },
-    mainTitle: { fontSize: 52, fontWeight: "900", lineHeight: 58, letterSpacing: -2 },
-    highlightText: {},
-
-    description: { fontSize: 17, marginTop: 20, lineHeight: 26, maxWidth: "90%" },
-
-    scrollHint: { alignItems: "center", marginBottom: 20 },
-    scrollHintText: { fontSize: 12, fontWeight: "700", marginBottom: 8, letterSpacing: 1 },
-
-    /* Bilgi Bölümü */
-    infoSection: { padding: 24, paddingTop: 60 },
-    sectionHeader: { marginBottom: 30 },
-    sectionTag: { fontSize: 12, fontWeight: "800", letterSpacing: 2, marginBottom: 8 },
-    sectionTitle: { fontSize: 32, fontWeight: "800" },
-    divider: { width: 60, height: 4, marginTop: 15, borderRadius: 2 },
-    infoText: { fontSize: 16, lineHeight: 26, marginBottom: 40 },
-
-    featureGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-    infoCard: { width: "48%", padding: 20, marginBottom: 16, borderWidth: 1 },
-    iconCircle: {
-        width: 48,
-        height: 48,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: 16,
-    },
-    infoCardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
-    infoCardDesc: { fontSize: 12, lineHeight: 18 },
-
-    /* Final Bölümü */
-    finalSection: { padding: 24, paddingBottom: 100 },
-    ctaCard: { padding: 40, borderRadius: 40, alignItems: "center", overflow: "hidden" },
-    ctaTitle: { fontSize: 28, fontWeight: "800", textAlign: "center", marginBottom: 32, lineHeight: 36 },
-
-    primaryButton: { height: 64, borderRadius: 20, overflow: "hidden", width: "100%" },
-    buttonGradient: {
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    buttonText: { fontSize: 18, fontWeight: "800", marginRight: 10 },
-});

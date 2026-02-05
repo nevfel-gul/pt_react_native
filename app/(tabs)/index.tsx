@@ -1,5 +1,6 @@
 import { auth } from "@/services/firebase";
 import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import {
@@ -100,6 +101,7 @@ function daysDiff(a: Date, b: Date): number {
 export default function KayitlarScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
+  const tabBarH = useBottomTabBarHeight();
 
   // ✅ theme
   const { theme } = useTheme();
@@ -530,7 +532,10 @@ export default function KayitlarScreen() {
           )}
         </View>
 
-        <TouchableOpacity style={styles.fab} onPress={handleAddStudent}>
+        <TouchableOpacity
+          style={[styles.fab, { bottom: tabBarH - 12 }]}
+          onPress={handleAddStudent}
+        >
           <Plus size={24} color={theme.colors.surfaceDark} />
         </TouchableOpacity>
       </View>

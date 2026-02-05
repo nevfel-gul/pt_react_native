@@ -1,336 +1,564 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-    Activity,
-    ArrowRight,
-    BarChart3,
-    ChevronDown,
-    ShieldCheck,
-    Sparkles,
-    Users,
-    Zap,
-} from "lucide-react-native";
-import React, { useEffect, useRef } from "react";
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
+    signInWithEmailAndPassword,
+    updateProfile,
+} from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    Animated,
-    Dimensions,
-    StatusBar,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { db } from "../services/firebase"; // sende db export ediliyorsa
 
 import type { ThemeMode, ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
+import { auth } from "../services/firebase";
 
-const { width, height } = Dimensions.get("window");
+const STORAGE_EMAIL_KEY = "auth_remember_email";
+const STORAGE_REMEMBER_KEY = "auth_remember_enabled";
+const STORAGE_LANG_KEY = "app_lang";
 
-export default function LandingScreen() {
+export default function LoginScreen() {
     const router = useRouter();
-    const { t } = useTranslation();
-
+    const { t, i18n } = useTranslation();
     const { theme, mode } = useTheme();
 
-    const scrollY = useRef(new Animated.Value(0)).current;
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(30)).current;
+    const styles = useMemo(() => createStyles(theme, mode), [theme, mode]);
 
+    const [isLoginMode, setIsLoginMode] = useState(true);
+
+    // inputs
+    const [name, setName] = useState(""); // register: displayName
+    const [username, setUsername] = useState(""); // register: unique handle
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [password2, setPassword2] = useState("");
+
+    const [rememberMe, setRememberMe] = useState(false);
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    // ✅ load remember + language
     useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 1000,
-                useNativeDriver: true,
-            }),
-            Animated.timing(slideAnim, {
-                toValue: 0,
-                duration: 800,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [fadeAnim, slideAnim]);
+        (async () => {
+            try {
+                const enabled = await AsyncStorage.getItem(STORAGE_REMEMBER_KEY);
+                const savedEmail = await AsyncStorage.getItem(STORAGE_EMAIL_KEY);
+                const isEnabled = enabled === "1";
+                setRememberMe(isEnabled);
+                if (isEnabled && savedEmail) setEmail(savedEmail);
 
-    const handleStart = () => router.push("/(tabs)");
+                const savedLang = await AsyncStorage.getItem(STORAGE_LANG_KEY);
+                if (savedLang && savedLang !== i18n.language) {
+                    await i18n.changeLanguage(savedLang);
+                }
+            } catch {
+                // sessiz
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    const heroOpacity = scrollY.interpolate({
-        inputRange: [0, height * 0.4],
-        outputRange: [1, 0],
-        extrapolate: "clamp",
-    });
+    const persistRemember = async (nextRemember: boolean, nextEmail: string) => {
+        try {
+            await AsyncStorage.setItem(STORAGE_REMEMBER_KEY, nextRemember ? "1" : "0");
+            if (nextRemember) await AsyncStorage.setItem(STORAGE_EMAIL_KEY, nextEmail ?? "");
+            else await AsyncStorage.removeItem(STORAGE_EMAIL_KEY);
+        } catch { }
+    };
+
+    const persistLang = async (lang: "tr" | "en") => {
+        try {
+            await AsyncStorage.setItem(STORAGE_LANG_KEY, lang);
+        } catch { }
+    };
+
+    const onToggleRemember = async () => {
+        const next = !rememberMe;
+        setRememberMe(next);
+        await persistRemember(next, email);
+    };
+
+    const onChangeEmail = async (v: string) => {
+        setEmail(v);
+        if (rememberMe) await persistRemember(true, v);
+    };
+
+    const toggleLang = async () => {
+        const next = (i18n.language || "tr").startsWith("tr") ? "en" : "tr";
+        await i18n.changeLanguage(next);
+        await persistLang(next);
+    };
+
+    const handleForgotPassword = async () => {
+        if (!email) {
+            Alert.alert(t("login.error.prefix"), t("login.validation.fill_all"));
+            return;
+        }
+        try {
+            setLoading(true);
+            await sendPasswordResetEmail(auth, email.trim());
+            Alert.alert(t("login.error.prefix"), "Reset maili gönderildi.");
+        } catch (err: any) {
+            Alert.alert(t("login.error.prefix"), err?.message ?? "Unknown error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = async () => {
+        // ✅ senin key ile
+        const fillAllMsg = t("login.validation.fill_all");
+
+        if (!email || !password || (!isLoginMode && (!name || !username))) {
+            Alert.alert(t("login.error.prefix"), fillAllMsg);
+            return;
+        }
+
+        if (!isLoginMode) {
+            if (!password2) {
+                Alert.alert(t("login.error.prefix"), fillAllMsg);
+                return;
+            }
+            if (password !== password2) {
+                Alert.alert(t("login.error.prefix"), "Şifreler aynı değil.");
+                return;
+            }
+            if (password.length < 6) {
+                Alert.alert(t("login.error.prefix"), "Şifre en az 6 karakter olmalı.");
+                return;
+            }
+        }
+
+        try {
+            setLoading(true);
+
+            if (isLoginMode) {
+                await signInWithEmailAndPassword(auth, email.trim(), password);
+            } else {
+                const cleanName = name.trim();
+                const cleanUsername = username.trim().toLowerCase();
+
+                const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+                await updateProfile(cred.user, { displayName: cleanName });
+
+                // ✅ username + basic user doc
+                await setDoc(doc(db, "users", cred.user.uid), {
+                    uid: cred.user.uid,
+                    email: email.trim().toLowerCase(),
+                    displayName: cleanName,
+                    username: cleanUsername,
+                    createdAt: serverTimestamp(),
+                });
+            }
+
+
+            await persistRemember(rememberMe, email.trim());
+            router.replace("/(tabs)");
+        } catch (err: any) {
+            Alert.alert(t("login.error.prefix"), err?.message ?? "Unknown error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const headerTitle = isLoginMode ? t("login.header.welcome_back") : t("login.header.join_us");
+    const headerSub = isLoginMode ? t("login.header.sub_continue") : t("login.header.sub_start");
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.colors.surfaceDark }]}>
-            <StatusBar barStyle={mode === "dark" ? "light-content" : "dark-content"} />
+        <View style={styles.root}>
+            <LinearGradient
+                colors={
+                    mode === "dark"
+                        ? ["#060A12", "#070D18", "#050914"]
+                        : [
+                            theme.colors.background ?? "#F8FAFC",
+                            theme.colors.surfaceSoft ?? "#EEF2FF",
+                            theme.colors.surface ?? "#E2E8F0",
+                        ]
+                }
+                locations={[0, 0.55, 1]}
+                style={StyleSheet.absoluteFill}
+            />
 
-            <Animated.ScrollView
-                onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-                    useNativeDriver: true,
-                })}
-                scrollEventThrottle={16}
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={{ height }}>
-                    <Animated.Image
-                        source={{
-                            uri: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070",
-                        }}
-                        style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
-                    />
+            <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
+                    <View style={styles.topBar}>
+                        <Text style={styles.logoText}>ATHLETRACK</Text>
 
-                    <LinearGradient
-                        colors={
-                            mode === "dark"
-                                ? ["rgba(10,15,26,0.2)", "rgba(10,15,26,0.8)", theme.colors.surfaceDark]
-                                : ["rgba(248,250,252,0.15)", "rgba(248,250,252,0.75)", theme.colors.background]
-                        }
-                        style={StyleSheet.absoluteFill}
-                    />
-
-                    <SafeAreaView style={styles.heroContent}>
-                        <Animated.View
-                            style={{
-                                opacity: heroOpacity,
-                                transform: [
-                                    {
-                                        translateY: scrollY.interpolate({
-                                            inputRange: [0, 500],
-                                            outputRange: [0, 100],
-                                            extrapolate: "clamp",
-                                        }),
-                                    },
-                                ],
-                            }}
-                        >
-                            <Animated.View
-                                style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
-                            >
-                                <View
-                                    style={[
-                                        styles.logoBadge,
-                                        {
-                                            backgroundColor:
-                                                mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(15,23,42,0.04)",
-                                            borderColor:
-                                                mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.08)",
-                                        },
-                                    ]}
-                                >
-                                    <Activity size={18} color={theme.colors.primary} />
-                                    <Text style={[styles.logoBadgeText, { color: theme.colors.text.secondary }]}>
-                                        {t("app.version_badge")}
-                                    </Text>
-                                </View>
-
-                                <Text style={[styles.brandName, { color: theme.colors.text.primary }]}>
-                                    ATHLE<Text style={{ color: theme.colors.primary }}>TRACK</Text>
-                                </Text>
-                            </Animated.View>
-
-                            <View style={styles.middleSection}>
-                                <Animated.Text style={[styles.mainTitle, { opacity: fadeAnim, color: theme.colors.text.primary }]}>
-                                    {t("landing.hero.title.line1")}
-                                    {"\n"}
-                                    <Text style={[styles.highlightText, { color: theme.colors.primary }]}>
-                                        {t("landing.hero.title.highlight")}
-                                    </Text>
-                                </Animated.Text>
-
-                                <Animated.Text
-                                    style={[
-                                        styles.description,
-                                        { opacity: fadeAnim, color: theme.colors.text.secondary },
-                                    ]}
-                                >
-                                    {t("landing.hero.description")}
-                                </Animated.Text>
-                            </View>
-                        </Animated.View>
-
-                        <Animated.View style={[styles.scrollHint, { opacity: heroOpacity }]}>
-                            <Text style={[styles.scrollHintText, { color: theme.colors.text.muted }]}>
-                                {t("landing.scroll_hint")}
-                            </Text>
-                            <ChevronDown size={24} color={theme.colors.primary} />
-                        </Animated.View>
-                    </SafeAreaView>
-                </View>
-
-                <View style={[styles.infoSection, { backgroundColor: theme.colors.surfaceDark }]}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={[styles.sectionTag, { color: theme.colors.primary }]}>{t("landing.mission.tag")}</Text>
-                        <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>{t("landing.mission.title")}</Text>
-                        <View style={[styles.divider, { backgroundColor: theme.colors.primary }]} />
-                    </View>
-
-                    <Text style={[styles.infoText, { color: theme.colors.text.secondary }]}>
-                        {t("landing.mission.description")}
-                    </Text>
-
-                    <View style={styles.featureGrid}>
-                        <InfoCard
-                            theme={theme}
-                            mode={mode}
-                            icon={<BarChart3 size={24} color={theme.colors.primary} />}
-                            title={t("landing.feature.analysis.title")}
-                            desc={t("landing.feature.analysis.desc")}
-                        />
-                        <InfoCard
-                            theme={theme}
-                            mode={mode}
-                            icon={<ShieldCheck size={24} color={theme.colors.success} />}
-                            title={t("landing.feature.posture.title")}
-                            desc={t("landing.feature.posture.desc")}
-                        />
-                        <InfoCard
-                            theme={theme}
-                            mode={mode}
-                            icon={<Zap size={24} color={theme.colors.warning} />}
-                            title={t("landing.feature.performance.title")}
-                            desc={t("landing.feature.performance.desc")}
-                        />
-                        <InfoCard
-                            theme={theme}
-                            mode={mode}
-                            icon={<Users size={24} color={theme.colors.premium} />}
-                            title={t("landing.feature.students.title")}
-                            desc={t("landing.feature.students.desc")}
-                        />
-                    </View>
-                </View>
-
-                <View style={styles.finalSection}>
-                    <LinearGradient colors={[theme.colors.surfaceSoft, theme.colors.surfaceDark]} style={styles.ctaCard}>
-                        <Sparkles size={40} color={theme.colors.primary} style={{ marginBottom: 16 }} />
-
-                        <Text style={[styles.ctaTitle, { color: theme.colors.text.primary }]}>{t("landing.cta.title")}</Text>
-
-                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8} onPress={handleStart}>
-                            <LinearGradient
-                                colors={[theme.colors.primary, theme.colors.info]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.buttonGradient}
-                            >
-                                <Text style={[styles.buttonText, { color: theme.colors.surfaceDark }]}>{t("landing.cta.button")}</Text>
-                                <ArrowRight size={20} color={theme.colors.surfaceDark} strokeWidth={3} />
-                            </LinearGradient>
+                        <TouchableOpacity activeOpacity={0.85} onPress={toggleLang} style={styles.langBtn}>
+                            <Text style={styles.langText}>{(i18n.language || "tr").startsWith("tr") ? "TR" : "EN"}</Text>
                         </TouchableOpacity>
-                    </LinearGradient>
-                </View>
-            </Animated.ScrollView>
+                    </View>
+
+                    <View style={styles.centerWrap}>
+                        {/* top icon circle */}
+                        <View style={styles.iconCircle}>
+                            <View style={styles.iconInner} />
+                        </View>
+
+                        <Text style={styles.title}>{headerTitle}</Text>
+                        <Text style={styles.subtitle}>{headerSub}</Text>
+
+                        {/* card */}
+                        <View style={styles.card}>
+                            {/* REGISTER: name */}
+                            {!isLoginMode && (
+                                <View style={styles.inputRow}>
+                                    <User size={18} color={styles.inputPh.color as any} />
+                                    <TextInput
+                                        value={name}
+                                        onChangeText={setName}
+                                        placeholder={t("login.placeholder.full_name")}
+                                        placeholderTextColor={styles.inputPh.color as any}
+                                        autoCapitalize="words"
+                                        style={styles.input}
+                                    />
+                                </View>
+                            )}
+                            {/* REGISTER: username */}
+                            {!isLoginMode && (
+                                <View style={styles.inputRow}>
+                                    <User size={18} color={styles.inputPh.color as any} />
+                                    <TextInput
+                                        value={username}
+                                        onChangeText={setUsername}
+                                        placeholder={t("login.placeholder.username")}
+                                        placeholderTextColor={styles.inputPh.color as any}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                        style={styles.input}
+                                    />
+                                </View>
+                            )}
+
+                            {/* email */}
+                            <View style={styles.inputRow}>
+                                <Mail size={18} color={styles.inputPh.color as any} />
+                                <TextInput
+                                    value={email}
+                                    onChangeText={onChangeEmail}
+                                    placeholder={t("login.placeholder.email")}
+                                    placeholderTextColor={styles.inputPh.color as any}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                    style={styles.input}
+                                />
+                            </View>
+
+                            {/* password */}
+                            <View style={styles.inputRow}>
+                                <Lock size={18} color={styles.inputPh.color as any} />
+                                <TextInput
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    placeholder={t("login.placeholder.password")}
+                                    placeholderTextColor={styles.inputPh.color as any}
+                                    secureTextEntry={!isPasswordVisible}
+                                    style={styles.input}
+                                />
+                                <Pressable onPress={() => setIsPasswordVisible((v) => !v)} hitSlop={10}>
+                                    {isPasswordVisible ? (
+                                        <EyeOff size={18} color={styles.inputPh.color as any} />
+                                    ) : (
+                                        <Eye size={18} color={styles.inputPh.color as any} />
+                                    )}
+                                </Pressable>
+                            </View>
+
+                            {/* REGISTER: password again */}
+                            {!isLoginMode && (
+                                <View style={styles.inputRow}>
+                                    <Lock size={18} color={styles.inputPh.color as any} />
+                                    <TextInput
+                                        value={password2}
+                                        onChangeText={setPassword2}
+                                        placeholder={t("login.placeholder.password_again")}
+                                        placeholderTextColor={styles.inputPh.color as any}
+                                        secureTextEntry={!isPasswordVisible}
+                                        style={styles.input}
+                                    />
+                                </View>
+                            )}
+
+                            {/* row: remember + forgot (forgot sadece login) */}
+                            <View style={styles.row}>
+                                <TouchableOpacity activeOpacity={0.8} onPress={onToggleRemember} style={styles.rememberWrap}>
+                                    <View style={[styles.switchBase, rememberMe && styles.switchOn]}>
+                                        <View style={[styles.knob, rememberMe && styles.knobOn]} />
+                                    </View>
+                                    <Text style={styles.rememberText}>{t("login.remember_me")}</Text>
+                                </TouchableOpacity>
+
+                                {isLoginMode ? (
+                                    <TouchableOpacity activeOpacity={0.8} onPress={handleForgotPassword} disabled={loading}>
+                                        <Text style={styles.forgot}>{t("login.forgot_password")}</Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={{ width: 1 }} />
+                                )}
+                            </View>
+
+                            {/* button */}
+                            <TouchableOpacity
+                                activeOpacity={0.9}
+                                onPress={handleSubmit}
+                                disabled={loading}
+                                style={[styles.buttonOuter, loading && { opacity: 0.75 }]}
+                            >
+                                <LinearGradient
+                                    colors={[theme.colors.primary ?? "#4D8DFF", theme.colors.info ?? "#60A5FA"]}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.button}
+                                >
+                                    {loading ? (
+                                        <ActivityIndicator />
+                                    ) : (
+                                        <>
+                                            <Text style={styles.buttonText}>
+                                                {isLoginMode ? t("login.button.sign_in") : t("login.button.sign_up")}
+                                            </Text>
+                                            <Text style={styles.buttonArrow}>→</Text>
+                                        </>
+                                    )}
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* bottom link: toggle mode */}
+                        <View style={styles.bottomRow}>
+                            <Text style={styles.bottomText}>
+                                {isLoginMode ? t("login.toggle.no_account") : t("login.toggle.already_here")}
+                            </Text>
+                            <TouchableOpacity activeOpacity={0.85} onPress={() => setIsLoginMode((v) => !v)}>
+                                <Text style={styles.bottomLink}>
+                                    {isLoginMode ? t("login.toggle.sign_up") : t("login.toggle.sign_in")}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
         </View>
     );
 }
 
-function InfoCard({
-    icon,
-    title,
-    desc,
-    theme,
-    mode,
-}: {
-    icon: React.ReactNode;
-    title: string;
-    desc: string;
-    theme: ThemeUI;
-    mode: ThemeMode;
-}) {
-    return (
-        <View
-            style={[
-                styles.infoCard,
-                {
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
-                    borderRadius: theme.radius.xl,
-                    ...(theme.shadow?.soft ?? {}),
-                },
-            ]}
-        >
-            <View
-                style={[
-                    styles.iconCircle,
-                    {
-                        backgroundColor: mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(15,23,42,0.04)",
-                        borderRadius: theme.radius.lg,
-                    },
-                ]}
-            >
-                {icon}
-            </View>
-            <Text style={[styles.infoCardTitle, { color: theme.colors.text.primary }]}>{title}</Text>
-            <Text style={[styles.infoCardDesc, { color: theme.colors.text.muted }]}>{desc}</Text>
-        </View>
-    );
+function createStyles(theme: ThemeUI, mode: ThemeMode) {
+    const isDark = mode === "dark";
+    const link = theme.colors.primary ?? "#4D8DFF";
+
+    const cardBg = isDark ? "rgba(17,24,39,0.72)" : "rgba(255,255,255,0.82)";
+    const cardBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)";
+
+    const inputBg = isDark ? "rgba(8,12,20,0.75)" : "rgba(241,245,249,0.95)";
+    const inputBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)";
+
+    const textPrimary = isDark ? "#FFFFFF" : (theme.colors.text?.primary ?? "#0F172A");
+    const textMuted = isDark ? "rgba(148,163,184,1)" : (theme.colors.text?.secondary ?? "rgba(15,23,42,0.55)");
+
+    return StyleSheet.create({
+        root: { flex: 1 },
+        safe: { flex: 1 },
+        flex: { flex: 1 },
+
+        topBar: {
+            paddingHorizontal: 18,
+            paddingTop: 6,
+            paddingBottom: 6,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+        },
+        brand: {
+            color: "rgba(255,255,255,0.65)",
+            fontWeight: "900",
+            letterSpacing: 1.6,
+            fontSize: 13,
+        },
+        langBtn: {
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: "rgba(255,255,255,0.06)",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.10)",
+        },
+        langText: { color: "rgba(255,255,255,0.75)", fontWeight: "900", fontSize: 12 },
+
+        centerWrap: {
+            flex: 1,
+            justifyContent: "center",
+            paddingHorizontal: 24,
+            paddingBottom: 24,
+        },
+
+        iconCircle: {
+            alignSelf: "center",
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: isDark ? "rgba(77,141,255,0.10)" : "rgba(77,141,255,0.08)",
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(77,141,255,0.22)" : "rgba(77,141,255,0.18)",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 14,
+        },
+        iconInner: {
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: isDark ? "rgba(77,141,255,0.35)" : "rgba(77,141,255,0.30)",
+        },
+
+        title: {
+            textAlign: "center",
+            color: textPrimary,
+            fontSize: 34,
+            fontWeight: "900",
+            letterSpacing: -0.9,
+        },
+        logoText: {
+            fontSize: theme.fontSize.lg,
+            fontWeight: "800",
+            color: theme.colors.primary,
+        },
+        subtitle: {
+            textAlign: "center",
+            marginTop: 6,
+            marginBottom: 22,
+            color: textMuted,
+            fontSize: 14,
+            fontWeight: "600",
+        },
+
+        card: {
+            backgroundColor: cardBg,
+            borderWidth: 1,
+            borderColor: cardBorder,
+            borderRadius: 26,
+            padding: 18,
+            shadowColor: "#000",
+            shadowOpacity: isDark ? 0.38 : 0.12,
+            shadowRadius: 20,
+            shadowOffset: { width: 0, height: 12 },
+        },
+
+        inputRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+            paddingHorizontal: 14,
+            height: 54,
+            borderRadius: 16,
+            backgroundColor: inputBg,
+            borderWidth: 1,
+            borderColor: inputBorder,
+            marginBottom: 12,
+        },
+        input: {
+            flex: 1,
+            color: textPrimary,
+            fontSize: 15.5,
+            fontWeight: "700",
+        },
+        inputPh: {
+            color: isDark ? "rgba(148,163,184,0.85)" : "rgba(100,116,139,0.85)",
+        },
+
+        row: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 6,
+            marginBottom: 14,
+        },
+
+        rememberWrap: { flexDirection: "row", alignItems: "center", gap: 10 },
+        rememberText: { color: isDark ? "rgba(148,163,184,1)" : "rgba(15,23,42,0.55)", fontSize: 13, fontWeight: "700" },
+
+        // switch (custom)
+        switchBase: {
+            width: 46,
+            height: 24,
+            borderRadius: 999,
+            backgroundColor: isDark ? "rgba(148,163,184,0.16)" : "rgba(15,23,42,0.10)",
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.10)",
+            padding: 2,
+            justifyContent: "center",
+        },
+        switchOn: {
+            backgroundColor: isDark ? "rgba(77,141,255,0.28)" : "rgba(77,141,255,0.25)",
+            borderColor: isDark ? "rgba(77,141,255,0.40)" : "rgba(77,141,255,0.35)",
+        },
+        knob: {
+            width: 18,
+            height: 18,
+            borderRadius: 9,
+            backgroundColor: "#FFFFFF",
+            transform: [{ translateX: 0 }],
+        },
+        knobOn: {
+            transform: [{ translateX: 22 }],
+            backgroundColor: "#FFFFFF",
+        },
+
+        forgot: {
+            color: link,
+            fontSize: 13,
+            fontWeight: "900",
+        },
+
+        buttonOuter: {
+            height: 56,
+            borderRadius: 16,
+            overflow: "hidden",
+        },
+        button: {
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+        },
+        buttonText: {
+            color: "#07101D",
+            fontSize: 16.5,
+            fontWeight: "900",
+        },
+        buttonArrow: {
+            color: "#07101D",
+            fontSize: 18,
+            fontWeight: "900",
+            marginTop: -1,
+        },
+
+        bottomRow: {
+            marginTop: 18,
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 6,
+        },
+        bottomText: { color: isDark ? "rgba(148,163,184,1)" : "rgba(15,23,42,0.55)", fontSize: 13.5, fontWeight: "700" },
+        bottomLink: { color: link, fontSize: 13.5, fontWeight: "900" },
+    });
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1 },
-
-    heroContent: {
-        flex: 1,
-        paddingHorizontal: 24,
-        justifyContent: "space-between",
-        paddingVertical: 40,
-    },
-    header: { alignItems: "flex-start" },
-
-    logoBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        borderWidth: 1,
-        marginBottom: 12,
-    },
-    logoBadgeText: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5, marginLeft: 6 },
-
-    brandName: { fontSize: 32, fontWeight: "900", letterSpacing: -1 },
-
-    middleSection: { marginTop: 20 },
-    mainTitle: { fontSize: 52, fontWeight: "900", lineHeight: 58, letterSpacing: -2 },
-    highlightText: {},
-
-    description: { fontSize: 17, marginTop: 20, lineHeight: 26, maxWidth: "90%" },
-
-    scrollHint: { alignItems: "center", marginBottom: 20 },
-    scrollHintText: { fontSize: 12, fontWeight: "700", marginBottom: 8, letterSpacing: 1 },
-
-    /* Bilgi Bölümü */
-    infoSection: { padding: 24, paddingTop: 60 },
-    sectionHeader: { marginBottom: 30 },
-    sectionTag: { fontSize: 12, fontWeight: "800", letterSpacing: 2, marginBottom: 8 },
-    sectionTitle: { fontSize: 32, fontWeight: "800" },
-    divider: { width: 60, height: 4, marginTop: 15, borderRadius: 2 },
-    infoText: { fontSize: 16, lineHeight: 26, marginBottom: 40 },
-
-    featureGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-    infoCard: { width: "48%", padding: 20, marginBottom: 16, borderWidth: 1 },
-    iconCircle: {
-        width: 48,
-        height: 48,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: 16,
-    },
-    infoCardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
-    infoCardDesc: { fontSize: 12, lineHeight: 18 },
-
-    /* Final Bölümü */
-    finalSection: { padding: 24, paddingBottom: 100 },
-    ctaCard: { padding: 40, borderRadius: 40, alignItems: "center", overflow: "hidden" },
-    ctaTitle: { fontSize: 28, fontWeight: "800", textAlign: "center", marginBottom: 32, lineHeight: 36 },
-
-    primaryButton: { height: 64, borderRadius: 20, overflow: "hidden", width: "100%" },
-    buttonGradient: {
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    buttonText: { fontSize: 18, fontWeight: "800", marginRight: 10 },
-});
