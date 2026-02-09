@@ -584,5 +584,22 @@
         "desc": "Use AI to analyze test results and get instant insights. Categorize clients by their needs and performance."
       }
     }
+  },
+  
+  "summary": {
+    "stat": {
+      "measuredStudents": "Students measured",
+      "measuredStudents": {
+        "sub": "Unique students with at least 1 record in the selected range"
+      },
+      "followUpDue": "Follow-up due",
+      "followUpDue": {
+        "sub": "Students whose follow-up interval has passed (or have no records)"
+      },
+      "followUpOk": "On track",
+      "followUpOk": {
+        "sub": "Students whose last record is within their follow-up interval"
+      }
+    }
   }
 }
