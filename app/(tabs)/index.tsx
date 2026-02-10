@@ -3,6 +3,7 @@ import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import {
   ArrowLeft,
   Bell,
@@ -12,7 +13,6 @@ import {
   Phone,
   Plus,
   Search,
-  Sparkles,
   Users,
   XIcon,
 } from "lucide-react-native";
@@ -30,9 +30,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// ✅ NEW
+// ✅ NEW THEME
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
+
+// ✅ AI UI COMPONENT
+import AiStudentSearchUI from "@/components/AiStudentSearchUI";
 
 /* -------------------- TYPES -------------------- */
 type Student = {
@@ -102,10 +105,14 @@ export default function KayitlarScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const tabBarH = useBottomTabBarHeight();
+  const { theme, mode } = useTheme();
+  const styles = useMemo(() => makeStyles(theme, mode), [theme, mode]);
 
-  // ✅ theme
-  const { theme } = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  // ✅ AI state (listeyi ETKİLEMEZ; sadece chat içinde gösterilecek)
+  const [aiMode, setAiMode] = useState(false);
+  const [aiReason, setAiReason] = useState("");
+  const [aiSearchLoading, setAiSearchLoading] = useState(false);
+  const [aiIds, setAiIds] = useState<Set<string> | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchActive, setSearchActive] = useState(false);
@@ -124,11 +131,6 @@ export default function KayitlarScreen() {
 
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const overlayOpacity = searchAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.55],
-  });
-
   const openAnimatedSearch = () => {
     setSearchActive(true);
     Animated.timing(searchAnim, {
@@ -146,6 +148,11 @@ export default function KayitlarScreen() {
     }).start(() => {
       setSearchActive(false);
       setSearchTerm("");
+
+      // AI state reset
+      setAiIds(null);
+      setAiMode(false);
+      setAiReason("");
     });
   };
 
@@ -154,6 +161,7 @@ export default function KayitlarScreen() {
     outputRange: [1, 0],
   });
 
+  // ✅ ANA LİSTE FİLTRESİ (AI YOK!)
   const filteredStudents = useMemo(() => {
     return students.filter((student) => {
       const matchesSearch =
@@ -186,19 +194,17 @@ export default function KayitlarScreen() {
             number: data.number ?? "",
             aktif: (data.aktif as "Aktif" | "Pasif") ?? "Aktif",
             assessmentDate: data.assessmentDate ?? new Date().toISOString(),
-            followUpDays: typeof data.followUpDays === "number" ? data.followUpDays : 30, // ✅
+            followUpDays: typeof data.followUpDays === "number" ? data.followUpDays : 30,
           };
         });
 
         setStudents(list);
-        // loading burada bitmesin; records da gelsin
       },
       (error) => {
         console.error("students dinlenirken hata:", error);
       }
     );
 
-    // ✅ records dinle (takvim mantığı için)
     const qRecords = query(recordsColRef(uid), orderBy("createdAt", "desc"));
     const unsubRecords = onSnapshot(
       qRecords,
@@ -245,6 +251,69 @@ export default function KayitlarScreen() {
     return map;
   }, [records]);
 
+  // ✅ aiIds -> öğrenci listesi (SADECE chat içinde göstermek için)
+  const aiMatchedStudents = useMemo(() => {
+    if (!aiIds) return [];
+    return students.filter((s) => aiIds.has(s.id));
+  }, [aiIds, students]);
+
+  async function runAiSearch(overrideQuery?: string) {
+    const q = (overrideQuery ?? searchTerm ?? "").trim();
+    if (!q) return;
+
+    try {
+      setAiSearchLoading(true);
+
+      const payload = students.map((s) => ({
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        aktif: s.aktif,
+        lastRecordAtMs: lastRecordByStudent.get(s.id)?.getTime() ?? null,
+      }));
+
+      const fn = httpsCallable<
+        {
+          queryText: string;
+          locale?: "tr" | "en";
+          students: Array<{
+            id: string;
+            name: string;
+            email?: string;
+            aktif?: "Aktif" | "Pasif";
+            lastRecordAtMs?: number | null;
+          }>;
+        },
+        { ids: string[]; reason?: string }
+      >(getFunctions(undefined, "europe-west1"), "aiStudentSearch");
+
+      const res = await fn({
+        queryText: q,
+        locale: i18n.language?.startsWith("en") ? "en" : "tr",
+        students: payload,
+      });
+
+      const idsArr = Array.isArray(res.data?.ids) ? res.data.ids : [];
+      const reason = typeof res.data?.reason === "string" ? res.data.reason : "";
+
+      setAiIds(new Set(idsArr));
+      setAiReason(reason);
+      setAiMode(true); // sadece UI/chat bilgisi
+    } catch (e: any) {
+      const message = e?.message || "Unknown error";
+      const details = e?.details || null;
+      const traceId = details?.traceId ? String(details.traceId) : "";
+
+      const uiMsg = typeof details?.message === "string" && details.message ? details.message : message;
+
+      setAiReason(`AI hata: ${uiMsg}${traceId ? ` (traceId: ${traceId})` : ""}`);
+      setAiMode(false);
+      setAiIds(null);
+    } finally {
+      setAiSearchLoading(false);
+    }
+  }
+
   const dateLocale = i18n.language?.startsWith("en") ? "en-US" : "tr-TR";
 
   if (loading) {
@@ -276,9 +345,8 @@ export default function KayitlarScreen() {
               left: 0,
               right: 0,
               bottom: 0,
-              // karartma yok
               backgroundColor: "transparent",
-              zIndex: 998,
+              zIndex: 1,
             }}
           />
         </TouchableWithoutFeedback>
@@ -368,34 +436,50 @@ export default function KayitlarScreen() {
               placeholder={t("search.student.placeholder")}
               placeholderTextColor={theme.colors.text.muted}
               value={searchTerm}
-              onChangeText={setSearchTerm}
-              autoFocus
+              onChangeText={(txt) => {
+                setSearchTerm(txt);
+
+                // kullanıcı yeni arama yazınca AI state'i temizle (listeyi etkilemiyor ama chat için mantıklı)
+                if (aiMode) {
+                  setAiMode(false);
+                  setAiIds(null);
+                  setAiReason("");
+                }
+              }}
               style={{
                 flex: 1,
                 color: theme.colors.text.primary,
                 fontSize: 16,
                 fontWeight: "600",
-                paddingVertical: 10, // Android’de iyi oturur
+                paddingVertical: 10,
               }}
             />
 
-            <TouchableOpacity
-              onPress={() => console.log("AI butonu tıklandı")}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: theme.radius.pill,
-                backgroundColor: theme.colors.premium,
-                alignItems: "center",
-                justifyContent: "center",
-                marginLeft: 8,
-              }}
-            >
-              <Sparkles size={18} color="#fff" />
-            </TouchableOpacity>
+            {/* ✅ AI UI: sonuçlar SADECE modal chat içinde gösterilecek */}
+            <AiStudentSearchUI
+              theme={theme}
+              searchTerm={searchTerm}
+              aiMode={aiMode}
+              aiReason={aiReason}
+              aiSearchLoading={aiSearchLoading}
+              runAiSearch={runAiSearch}
+              searchActive={searchActive}
+              autoSendSearchTerm={false}
+              results={aiMatchedStudents}
+              onOpenStudent={(id) => handleViewDetails(id)}
+
+            />
 
             {searchTerm.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchTerm("")} style={{ marginLeft: 8 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchTerm("");
+                  setAiIds(null);
+                  setAiMode(false);
+                  setAiReason("");
+                }}
+                style={{ marginLeft: 8 }}
+              >
                 <XIcon size={18} color={theme.colors.text.muted} />
               </TouchableOpacity>
             )}
@@ -462,7 +546,6 @@ export default function KayitlarScreen() {
                 const today = startOfDay(new Date());
                 const last = lastRecordByStudent.get(item.id) ?? null;
 
-                // ✅ renk dinamik kalsın (yazı kaldırıldı)
                 let recordTextColor = theme.colors.success;
 
                 if (!last) {
@@ -484,7 +567,6 @@ export default function KayitlarScreen() {
                           {item.name}
                         </Text>
 
-                        {/* ✅ sadece icon, isimden 5px sonra */}
                         <Clipboard style={styles.recordIcon} size={14} color={recordTextColor} />
                       </View>
 
@@ -532,10 +614,7 @@ export default function KayitlarScreen() {
           )}
         </View>
 
-        <TouchableOpacity
-          style={[styles.fab, { bottom: tabBarH - 12 }]}
-          onPress={handleAddStudent}
-        >
+        <TouchableOpacity style={[styles.fab, { bottom: tabBarH - 12 }]} onPress={handleAddStudent}>
           <Plus size={24} color={theme.colors.surfaceDark} />
         </TouchableOpacity>
       </View>
@@ -543,7 +622,8 @@ export default function KayitlarScreen() {
   );
 }
 
-function makeStyles(theme: ThemeUI) {
+function makeStyles(theme: ThemeUI, mode: "light" | "dark") {
+  const isLight = mode === "light";
   return StyleSheet.create({
     safeArea: {
       flex: 1,
@@ -615,7 +695,7 @@ function makeStyles(theme: ThemeUI) {
       fontWeight: "600",
       color: theme.colors.text.primary,
       marginBottom: theme.spacing.xs,
-      flexShrink: 1, // ✅ isim uzarsa iconu ezmesin
+      flexShrink: 1,
     },
 
     cardRow: {
@@ -731,10 +811,11 @@ function makeStyles(theme: ThemeUI) {
     },
 
     filterBoxActiveALL: {
-      shadowColor: theme.colors.info,
-      shadowOpacity: 0.8,
       shadowRadius: 16,
       elevation: 10,
+      shadowOffset: { width: 0, height: 0 },
+      shadowColor: isLight ? "rgba(0,0,0,0.65)" : theme.colors.info,
+      shadowOpacity: isLight ? 0.55 : 0.8,
     },
 
     filterBoxActiveA: {
@@ -794,7 +875,6 @@ function makeStyles(theme: ThemeUI) {
       flex: 1,
     },
 
-    // ✅ name + icon yan yana, ikon isimden 5px sonra
     nameRow: {
       flexDirection: "row",
       alignItems: "center",

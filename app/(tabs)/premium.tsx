@@ -16,8 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 
-import type { BillingCycle, PlanDoc } from "./paywall";
-import { calcDisplayedPrice, calcPerClientText } from "./paywall";
+import type { BillingCycle, PlanDoc } from "@/constants/paywall";
+import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
 
 type Props = {
   onContinue?: (args: { plan: PlanDoc; billing: BillingCycle; intentId: string }) => Promise<void> | void;

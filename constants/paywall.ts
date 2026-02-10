@@ -9,7 +9,7 @@ import {
     where,
 } from "firebase/firestore";
 import { Platform } from "react-native";
-import { auth, db } from "../../services/firebase";
+import { auth, db } from "../services/firebase";
 
 export type BillingCycle = "monthly" | "annual";
 
