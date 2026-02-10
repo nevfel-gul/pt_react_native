@@ -12,7 +12,7 @@ import {
   Shield,
   Smartphone,
 } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -34,17 +34,13 @@ import { useTheme } from "@/constants/usetheme";
 
 type TabKey = "preferences" | "security";
 
-// ✅ STORAGE KEY
 const STORAGE_SETTINGS_KEY = "settings_v1";
-
-// ✅ privacy policy url (bunu değiştir)
 const PRIVACY_POLICY_URL = "https://example.com/privacy";
 
 type StoredSettings = {
   pushEnabled: boolean;
   emailEnabled: boolean;
   hapticEnabled: boolean;
-
   saveLogin: boolean;
   twoFactor: boolean;
 };
@@ -53,41 +49,89 @@ const DEFAULT_SETTINGS: StoredSettings = {
   pushEnabled: true,
   emailEnabled: false,
   hapticEnabled: true,
-
   saveLogin: true,
   twoFactor: false,
+};
+
+// ✅ CUSTOM SWITCH COMPONENT - Her switch tamamen izole
+const CustomSwitch = ({
+  id,
+  value,
+  onToggle,
+  trackColorActive,
+  trackColorInactive,
+  thumbColorActive,
+  thumbColorInactive,
+}: {
+  id: string;
+  value: boolean;
+  onToggle: (newValue: boolean) => void;
+  trackColorActive: string;
+  trackColorInactive: string;
+  thumbColorActive: string;
+  thumbColorInactive: string;
+}) => {
+  const [internalValue, setInternalValue] = useState(value);
+
+  useEffect(() => {
+    setInternalValue(value);
+  }, [value]);
+
+  const handleChange = useCallback(
+    (newVal: boolean) => {
+      setInternalValue(newVal);
+      onToggle(newVal);
+    },
+    [onToggle]
+  );
+
+  return (
+    <Switch
+      key={`switch-${id}-${internalValue ? "on" : "off"}`}
+      value={internalValue}
+      onValueChange={handleChange}
+      trackColor={{ false: trackColorInactive, true: trackColorActive }}
+      thumbColor={internalValue ? thumbColorActive : thumbColorInactive}
+      ios_backgroundColor={trackColorInactive}
+    />
+  );
 };
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-
   const { theme, mode, setMode } = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [activeTab, setActiveTab] = useState<TabKey>("preferences");
-
   const [settingsReady, setSettingsReady] = useState(false);
 
-  // ✅ toggles
-  const [pushEnabled, setPushEnabled] = useState(DEFAULT_SETTINGS.pushEnabled);
-  const [emailEnabled, setEmailEnabled] = useState(DEFAULT_SETTINGS.emailEnabled);
-  const [hapticEnabled, setHapticEnabled] = useState(DEFAULT_SETTINGS.hapticEnabled);
+  // ✅ STATE - Her toggle için ayrı state
+  const [isDarkMode, setIsDarkMode] = useState(mode === "dark");
+  const [isPushEnabled, setIsPushEnabled] = useState(DEFAULT_SETTINGS.pushEnabled);
+  const [isEmailEnabled, setIsEmailEnabled] = useState(DEFAULT_SETTINGS.emailEnabled);
+  const [isHapticEnabled, setIsHapticEnabled] = useState(DEFAULT_SETTINGS.hapticEnabled);
+  const [isSaveLoginEnabled, setIsSaveLoginEnabled] = useState(DEFAULT_SETTINGS.saveLogin);
+  const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(DEFAULT_SETTINGS.twoFactor);
 
-  const [saveLogin, setSaveLogin] = useState(DEFAULT_SETTINGS.saveLogin);
-  const [twoFactor, setTwoFactor] = useState(DEFAULT_SETTINGS.twoFactor);
+  // ✅ COLORS - Memoized
+  const colors = useMemo(
+    () => ({
+      trackActive: theme.colors.primary,
+      trackInactive: theme.colors.border,
+      thumbActive: "#ffffff",
+      thumbInactive: "#0f172a",
+    }),
+    [theme.colors.primary, theme.colors.border]
+  );
 
-  // ✅ Switch renkleri
-  const switchTrackFalse = theme.colors.border;
-  const switchTrackTrue = theme.colors.primary;
-  const switchThumb = mode === "dark" ? "#ffffff" : "#0f172a";
-  const switchIOSBg = theme.colors.border;
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
-  // ✅ theme switch local (takılma fix)
-  const [themeSwitch, setThemeSwitch] = useState(mode === "dark");
-  useEffect(() => setThemeSwitch(mode === "dark"), [mode]);
+  // ✅ THEME SYNC
+  useEffect(() => {
+    setIsDarkMode(mode === "dark");
+  }, [mode]);
 
-  // ✅ load settings
+  // ✅ LOAD SETTINGS
   useEffect(() => {
     let mounted = true;
 
@@ -95,16 +139,15 @@ export default function SettingsScreen() {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_SETTINGS_KEY);
         const parsed = raw ? (JSON.parse(raw) as Partial<StoredSettings>) : null;
-        const next: StoredSettings = { ...DEFAULT_SETTINGS, ...(parsed ?? {}) };
+        const settings: StoredSettings = { ...DEFAULT_SETTINGS, ...(parsed ?? {}) };
 
         if (!mounted) return;
 
-        setPushEnabled(!!next.pushEnabled);
-        setEmailEnabled(!!next.emailEnabled);
-        setHapticEnabled(!!next.hapticEnabled);
-
-        setSaveLogin(!!next.saveLogin);
-        setTwoFactor(!!next.twoFactor);
+        setIsPushEnabled(settings.pushEnabled);
+        setIsEmailEnabled(settings.emailEnabled);
+        setIsHapticEnabled(settings.hapticEnabled);
+        setIsSaveLoginEnabled(settings.saveLogin);
+        setIsTwoFactorEnabled(settings.twoFactor);
       } catch {
         // ignore
       } finally {
@@ -117,7 +160,8 @@ export default function SettingsScreen() {
     };
   }, []);
 
-  const persistSettings = async (patch: Partial<StoredSettings>) => {
+  // ✅ PERSIST HELPER
+  const persistSettings = useCallback(async (patch: Partial<StoredSettings>) => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_SETTINGS_KEY);
       const current = raw ? (JSON.parse(raw) as Partial<StoredSettings>) : {};
@@ -126,17 +170,71 @@ export default function SettingsScreen() {
     } catch {
       // ignore
     }
-  };
+  }, []);
 
-  const handleLogout = async () => {
+  // ✅ HANDLERS
+  const handleThemeToggle = useCallback(
+    (newValue: boolean) => {
+      setIsDarkMode(newValue);
+      InteractionManager.runAfterInteractions(() => {
+        setMode(newValue ? "dark" : "light");
+      });
+    },
+    [setMode]
+  );
+
+  const handlePushToggle = useCallback(
+    (newValue: boolean) => {
+      setIsPushEnabled(newValue);
+      if (settingsReady) persistSettings({ pushEnabled: newValue });
+    },
+    [settingsReady, persistSettings]
+  );
+
+  const handleEmailToggle = useCallback(
+    (newValue: boolean) => {
+      setIsEmailEnabled(newValue);
+      if (settingsReady) persistSettings({ emailEnabled: newValue });
+    },
+    [settingsReady, persistSettings]
+  );
+
+  const handleHapticToggle = useCallback(
+    (newValue: boolean) => {
+      setIsHapticEnabled(newValue);
+      if (settingsReady) persistSettings({ hapticEnabled: newValue });
+    },
+    [settingsReady, persistSettings]
+  );
+
+  const handleSaveLoginToggle = useCallback(
+    (newValue: boolean) => {
+      setIsSaveLoginEnabled(newValue);
+      if (settingsReady) persistSettings({ saveLogin: newValue });
+    },
+    [settingsReady, persistSettings]
+  );
+
+  const handleTwoFactorToggle = useCallback(
+    (newValue: boolean) => {
+      setIsTwoFactorEnabled(newValue);
+      if (settingsReady) persistSettings({ twoFactor: newValue });
+    },
+    [settingsReady, persistSettings]
+  );
+
+  const handleLogout = useCallback(async () => {
     await signOut(auth);
     router.replace("/login");
-  };
+  }, [router]);
 
-  const handleChangePassword = async () => {
+  const handleChangePassword = useCallback(async () => {
     const email = auth.currentUser?.email;
     if (!email) {
-      Alert.alert(t("login.error.prefix") || "Hata", t("settings.security.noEmail") || "E-posta bulunamadı.");
+      Alert.alert(
+        t("login.error.prefix") || "Hata",
+        t("settings.security.noEmail") || "E-posta bulunamadı."
+      );
       return;
     }
 
@@ -149,9 +247,9 @@ export default function SettingsScreen() {
     } catch (err: any) {
       Alert.alert(t("login.error.prefix") || "Hata", err?.message ?? "Unknown error");
     }
-  };
+  }, [t]);
 
-  const handleOpenPrivacyPolicy = async () => {
+  const handleOpenPrivacyPolicy = useCallback(async () => {
     try {
       const can = await Linking.canOpenURL(PRIVACY_POLICY_URL);
       if (!can) {
@@ -162,299 +260,315 @@ export default function SettingsScreen() {
     } catch {
       Alert.alert(t("settings.about.privacyPolicy") || "Privacy Policy", "Link açılamıyor.");
     }
-  };
+  }, [t]);
 
-  // -------------------------
-  // TAB BUTTON
-  // -------------------------
-  const renderTabButton = (key: TabKey, label: string, icon: React.ReactNode) => {
-    const isActive = activeTab === key;
-    return (
+  const handleLanguagePress = useCallback(() => {
+    const next = i18n.language === "tr" ? "en" : "tr";
+    setAppLanguage(next);
+  }, [i18n.language]);
+
+  // ✅ TAB BUTTON
+  const TabButton = useCallback(
+    ({ tabKey, label, icon }: { tabKey: TabKey; label: string; icon: React.ReactNode }) => {
+      const isActive = activeTab === tabKey;
+      return (
+        <TouchableOpacity
+          onPress={() => setActiveTab(tabKey)}
+          style={[styles.tabButton, isActive && styles.tabButtonActive]}
+        >
+          <View style={styles.tabIcon}>{icon}</View>
+          <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{label}</Text>
+        </TouchableOpacity>
+      );
+    },
+    [activeTab, styles]
+  );
+
+  // ✅ SECTION HEADER
+  const SectionHeader = useCallback(
+    ({ title, icon }: { title: string; icon?: React.ReactNode }) => (
+      <View style={styles.sectionHeader}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {icon}
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+      </View>
+    ),
+    [styles]
+  );
+
+  // ✅ SETTING ROW
+  const SettingRow = useCallback(
+    ({
+      label,
+      subtitle,
+      right,
+      onPress,
+      isLast,
+      showChevron = false,
+    }: {
+      label: string;
+      subtitle?: string;
+      right?: React.ReactNode;
+      onPress?: () => void;
+      isLast?: boolean;
+      showChevron?: boolean;
+    }) => (
       <TouchableOpacity
-        onPress={() => setActiveTab(key)}
-        style={[styles.tabButton, isActive && styles.tabButtonActive]}
+        activeOpacity={onPress ? 0.7 : 1}
+        style={[styles.settingRow, isLast && styles.settingRowLast]}
+        onPress={onPress}
       >
-        <View style={styles.tabIcon}>{icon}</View>
-        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{label}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.settingLabel}>{label}</Text>
+          {subtitle ? <Text style={styles.settingSubtitle}>{subtitle}</Text> : null}
+        </View>
+
+        {right}
+
+        {showChevron ? (
+          <ChevronRight size={16} color={theme.colors.text.muted} style={{ marginLeft: 6 }} />
+        ) : null}
       </TouchableOpacity>
-    );
-  };
-
-  // -------------------------
-  // SECTION
-  // -------------------------
-  const Section = ({ title, icon }: { title: string; icon?: React.ReactNode }) => (
-    <View style={styles.sectionHeader}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        {icon}
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-    </View>
+    ),
+    [styles, theme.colors.text.muted]
   );
 
-  // -------------------------
-  // ROW
-  // -------------------------
-  const SettingRow = ({
-    label,
-    subtitle,
-    right,
-    onPress,
-    isLast,
-    showChevron = false,
-  }: {
-    label: string;
-    subtitle?: string;
-    right?: React.ReactNode;
-    onPress?: () => void;
-    isLast?: boolean;
-    showChevron?: boolean;
-  }) => (
-    <TouchableOpacity
-      activeOpacity={onPress ? 0.7 : 1}
-      style={[styles.settingRow, isLast && styles.settingRowLast]}
-      onPress={onPress}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={styles.settingLabel}>{label}</Text>
-        {subtitle ? <Text style={styles.settingSubtitle}>{subtitle}</Text> : null}
-      </View>
+  // ✅ PREFERENCES TAB
+  const PreferencesTab = useMemo(
+    () => (
+      <>
+        <SectionHeader
+          title={t("settings.section.preferences")}
+          icon={<Palette size={18} color={theme.colors.premium} />}
+        />
 
-      {right}
+        <View style={styles.card}>
+          <SettingRow
+            label={t("settings.preference.darkTheme")}
+            subtitle={t("settings.preference.darkTheme.sub")}
+            right={
+              <CustomSwitch
+                id="theme"
+                value={isDarkMode}
+                onToggle={handleThemeToggle}
+                trackColorActive={colors.trackActive}
+                trackColorInactive={colors.trackInactive}
+                thumbColorActive={colors.thumbActive}
+                thumbColorInactive={colors.thumbInactive}
+              />
+            }
+          />
 
-      {showChevron ? (
-        <ChevronRight size={16} color={theme.colors.text.muted} style={{ marginLeft: 6 }} />
-      ) : null}
-    </TouchableOpacity>
+          <SettingRow
+            label={t("settings.preference.language")}
+            subtitle={t("settings.preference.language.sub")}
+            right={
+              <Text style={styles.settingValueText}>
+                {i18n.language === "tr" ? "Türkçe 🇹🇷" : "English 🇺🇸"}
+              </Text>
+            }
+            onPress={handleLanguagePress}
+            showChevron
+          />
+
+          <SettingRow
+            label={t("settings.preference.region")}
+            subtitle={t("settings.preference.region.sub")}
+            right={<Text style={styles.settingValueText}>{t("settings.value.turkey")}</Text>}
+            isLast
+          />
+        </View>
+
+        <SectionHeader
+          title={t("settings.section.notifications")}
+          icon={<Bell size={18} color={theme.colors.gold} />}
+        />
+
+        <View style={styles.card}>
+          <SettingRow
+            label={t("settings.notifications.push")}
+            subtitle={t("settings.notifications.push.sub")}
+            right={
+              <CustomSwitch
+                id="push"
+                value={isPushEnabled}
+                onToggle={handlePushToggle}
+                trackColorActive={colors.trackActive}
+                trackColorInactive={colors.trackInactive}
+                thumbColorActive={colors.thumbActive}
+                thumbColorInactive={colors.thumbInactive}
+              />
+            }
+          />
+
+          <SettingRow
+            label={t("settings.notifications.email")}
+            subtitle={t("settings.notifications.email.sub")}
+            right={
+              <CustomSwitch
+                id="email"
+                value={isEmailEnabled}
+                onToggle={handleEmailToggle}
+                trackColorActive={colors.trackActive}
+                trackColorInactive={colors.trackInactive}
+                thumbColorActive={colors.thumbActive}
+                thumbColorInactive={colors.thumbInactive}
+              />
+            }
+          />
+
+          <SettingRow
+            label={t("settings.notifications.haptic")}
+            subtitle={t("settings.notifications.haptic.sub")}
+            right={
+              <CustomSwitch
+                id="haptic"
+                value={isHapticEnabled}
+                onToggle={handleHapticToggle}
+                trackColorActive={colors.trackActive}
+                trackColorInactive={colors.trackInactive}
+                thumbColorActive={colors.thumbActive}
+                thumbColorInactive={colors.thumbInactive}
+              />
+            }
+            isLast
+          />
+        </View>
+
+        <SectionHeader
+          title={t("settings.section.app")}
+          icon={<Smartphone size={18} color={theme.colors.accent} />}
+        />
+
+        <View style={styles.card}>
+          <SettingRow
+            label={t("settings.about.privacyPolicy")}
+            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
+            onPress={handleOpenPrivacyPolicy}
+            isLast
+          />
+        </View>
+      </>
+    ),
+    [
+      t,
+      theme.colors,
+      styles,
+      isDarkMode,
+      isPushEnabled,
+      isEmailEnabled,
+      isHapticEnabled,
+      i18n.language,
+      colors,
+      handleThemeToggle,
+      handlePushToggle,
+      handleEmailToggle,
+      handleHapticToggle,
+      handleLanguagePress,
+      handleOpenPrivacyPolicy,
+      SectionHeader,
+      SettingRow,
+    ]
   );
 
-  // -------------------------
-  // PREFERENCES TAB
-  // -------------------------
-  const renderPreferencesTab = () => (
-    <>
-      <Section
-        title={t("settings.section.preferences")}
-        icon={<Palette size={18} color={theme.colors.premium} />}
-      />
-
-      <View style={styles.card}>
-        {/* ✅ THEME */}
-        <SettingRow
-          label={t("settings.preference.darkTheme")}
-          subtitle={t("settings.preference.darkTheme.sub")}
-          right={
-            <Switch
-              value={themeSwitch}
-              onValueChange={(v) => {
-                setThemeSwitch(v);
-                InteractionManager.runAfterInteractions(() => {
-                  setMode(v ? "dark" : "light");
-                });
-              }}
-              trackColor={{ false: switchTrackFalse, true: switchTrackTrue }}
-              thumbColor={themeSwitch ? "#ffffff" : "#0f172a"}
-              ios_backgroundColor={switchIOSBg}
-            />
-          }
+  // ✅ SECURITY TAB
+  const SecurityTab = useMemo(
+    () => (
+      <>
+        <SectionHeader
+          title={t("settings.section.security")}
+          icon={<Shield size={18} color={theme.colors.warning} />}
         />
 
-        {/* ✅ LANGUAGE */}
-        <SettingRow
-          label={t("settings.preference.language")}
-          subtitle={t("settings.preference.language.sub")}
-          right={
-            <Text style={styles.settingValueText}>
-              {i18n.language === "tr" ? "Türkçe 🇹🇷" : "English 🇺🇸"}
-            </Text>
-          }
-          onPress={() => {
-            const next = i18n.language === "tr" ? "en" : "tr";
-            setAppLanguage(next);
-          }}
-          showChevron
+        <View style={styles.card}>
+          <SettingRow
+            label={t("settings.security.rememberSession")}
+            subtitle={t("settings.security.rememberSession.sub")}
+            right={
+              <CustomSwitch
+                id="savelogin"
+                value={isSaveLoginEnabled}
+                onToggle={handleSaveLoginToggle}
+                trackColorActive={colors.trackActive}
+                trackColorInactive={colors.trackInactive}
+                thumbColorActive={colors.thumbActive}
+                thumbColorInactive={colors.thumbInactive}
+              />
+            }
+          />
+
+          <SettingRow
+            label={t("settings.security.twoFactor")}
+            subtitle={t("settings.security.twoFactor.sub")}
+            right={
+              <CustomSwitch
+                id="twofactor"
+                value={isTwoFactorEnabled}
+                onToggle={handleTwoFactorToggle}
+                trackColorActive={colors.trackActive}
+                trackColorInactive={colors.trackInactive}
+                thumbColorActive={colors.thumbActive}
+                thumbColorInactive={colors.thumbInactive}
+              />
+            }
+          />
+
+          <SettingRow
+            label={t("settings.security.changePassword")}
+            subtitle={t("settings.security.changePassword.sub")}
+            right={<Text style={styles.badgeMuted}>{t("settings.security.change")}</Text>}
+            onPress={handleChangePassword}
+            isLast
+          />
+        </View>
+
+        <SectionHeader
+          title={t("settings.section.about")}
+          icon={<Info size={18} color={theme.colors.text.secondary} />}
         />
 
-        <SettingRow
-          label={t("settings.preference.region")}
-          subtitle={t("settings.preference.region.sub")}
-          right={<Text style={styles.settingValueText}>{t("settings.value.turkey")}</Text>}
-          isLast
-        />
-      </View>
+        <View style={styles.card}>
+          <SettingRow
+            label={t("settings.about.version")}
+            right={<Text style={styles.settingValueText}>v0.0.0</Text>}
+          />
 
-      {/* NOTIFICATIONS */}
-      <Section
-        title={t("settings.section.notifications")}
-        icon={<Bell size={18} color={theme.colors.gold} />}
-      />
+          <SettingRow
+            label={t("settings.about.license")}
+            right={<Text style={styles.settingValueText}>PT Lab</Text>}
+          />
 
-      <View style={styles.card}>
-        <SettingRow
-          label={t("settings.notifications.push")}
-          subtitle={t("settings.notifications.push.sub")}
-          right={
-            <Switch
-              value={pushEnabled}
-              onValueChange={(v) => {
-                setPushEnabled(v);
-                if (settingsReady) persistSettings({ pushEnabled: v });
-              }}
-              trackColor={{ false: switchTrackFalse, true: switchTrackTrue }}
-              thumbColor={switchThumb}
-              ios_backgroundColor={switchIOSBg}
-            />
-          }
-        />
+          <SettingRow
+            label={t("settings.about.privacyPolicy")}
+            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
+            onPress={handleOpenPrivacyPolicy}
+            isLast
+          />
+        </View>
 
-        <SettingRow
-          label={t("settings.notifications.email")}
-          subtitle={t("settings.notifications.email.sub")}
-          right={
-            <Switch
-              value={emailEnabled}
-              onValueChange={(v) => {
-                setEmailEnabled(v);
-                if (settingsReady) persistSettings({ emailEnabled: v });
-              }}
-              trackColor={{ false: switchTrackFalse, true: switchTrackTrue }}
-              thumbColor={switchThumb}
-              ios_backgroundColor={switchIOSBg}
-            />
-          }
-        />
-
-        <SettingRow
-          label={t("settings.notifications.haptic")}
-          subtitle={t("settings.notifications.haptic.sub")}
-          right={
-            <Switch
-              value={hapticEnabled}
-              onValueChange={(v) => {
-                setHapticEnabled(v);
-                if (settingsReady) persistSettings({ hapticEnabled: v });
-              }}
-              trackColor={{ false: switchTrackFalse, true: switchTrackTrue }}
-              thumbColor={switchThumb}
-              ios_backgroundColor={switchIOSBg}
-            />
-          }
-          isLast
-        />
-      </View>
-
-      {/* APP */}
-      <Section
-        title={t("settings.section.app")}
-        icon={<Smartphone size={18} color={theme.colors.accent} />}
-      />
-
-      <View style={styles.card}>
-        <SettingRow
-          label={t("settings.about.privacyPolicy")}
-          right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
-          onPress={handleOpenPrivacyPolicy}
-          isLast
-        />
-      </View>
-    </>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <LogOut size={18} color="#fca5a5" />
+          <Text style={styles.logoutText}>{t("settings.logout")}</Text>
+        </TouchableOpacity>
+      </>
+    ),
+    [
+      t,
+      theme.colors,
+      styles,
+      isSaveLoginEnabled,
+      isTwoFactorEnabled,
+      colors,
+      handleSaveLoginToggle,
+      handleTwoFactorToggle,
+      handleChangePassword,
+      handleOpenPrivacyPolicy,
+      handleLogout,
+      SectionHeader,
+      SettingRow,
+    ]
   );
-
-  // -------------------------
-  // SECURITY TAB
-  // -------------------------
-  const renderSecurityTab = () => (
-    <>
-      <Section
-        title={t("settings.section.security")}
-        icon={<Shield size={18} color={theme.colors.warning} />}
-      />
-
-      <View style={styles.card}>
-        <SettingRow
-          label={t("settings.security.rememberSession")}
-          subtitle={t("settings.security.rememberSession.sub")}
-          right={
-            <Switch
-              value={saveLogin}
-              onValueChange={(v) => {
-                setSaveLogin(v);
-                if (settingsReady) persistSettings({ saveLogin: v });
-              }}
-              trackColor={{ false: switchTrackFalse, true: switchTrackTrue }}
-              thumbColor={switchThumb}
-              ios_backgroundColor={switchIOSBg}
-            />
-          }
-        />
-
-        <SettingRow
-          label={t("settings.security.twoFactor")}
-          subtitle={t("settings.security.twoFactor.sub")}
-          right={
-            <Switch
-              value={twoFactor}
-              onValueChange={(v) => {
-                setTwoFactor(v);
-                if (settingsReady) persistSettings({ twoFactor: v });
-              }}
-              trackColor={{ false: switchTrackFalse, true: switchTrackTrue }}
-              thumbColor={switchThumb}
-              ios_backgroundColor={switchIOSBg}
-            />
-          }
-        />
-
-        <SettingRow
-          label={t("settings.security.changePassword")}
-          subtitle={t("settings.security.changePassword.sub")}
-          right={<Text style={styles.badgeMuted}>{t("settings.security.change")}</Text>}
-          onPress={handleChangePassword}
-          isLast
-        />
-      </View>
-
-      {/* ABOUT */}
-      <Section
-        title={t("settings.section.about")}
-        icon={<Info size={18} color={theme.colors.text.secondary} />}
-      />
-
-      <View style={styles.card}>
-        <SettingRow
-          label={t("settings.about.version")}
-          right={<Text style={styles.settingValueText}>v0.0.0</Text>}
-        />
-
-        <SettingRow
-          label={t("settings.about.license")}
-          right={<Text style={styles.settingValueText}>PT Lab</Text>}
-        />
-
-        <SettingRow
-          label={t("settings.about.privacyPolicy")}
-          right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
-          onPress={handleOpenPrivacyPolicy}
-          isLast
-        />
-      </View>
-
-      {/* LOGOUT */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <LogOut size={18} color="#fca5a5" />
-        <Text style={styles.logoutText}>{t("settings.logout")}</Text>
-      </TouchableOpacity>
-    </>
-  );
-
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case "preferences":
-        return renderPreferencesTab();
-      case "security":
-        return renderSecurityTab();
-    }
-  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -467,22 +581,28 @@ export default function SettingsScreen() {
 
           {/* TABS */}
           <View style={styles.tabsRow}>
-            {renderTabButton("preferences", t("settings.tab.preferences"), <Moon size={16} color="#bfdbfe" />)}
-            {renderTabButton("security", t("settings.tab.security"), <Shield size={16} color="#bfdbfe" />)}
+            <TabButton
+              tabKey="preferences"
+              label={t("settings.tab.preferences")}
+              icon={<Moon size={16} color="#bfdbfe" />}
+            />
+            <TabButton
+              tabKey="security"
+              label={t("settings.tab.security")}
+              icon={<Shield size={16} color="#bfdbfe" />}
+            />
           </View>
         </View>
 
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-          {renderActiveTab()}
+          {activeTab === "preferences" ? PreferencesTab : SecurityTab}
         </ScrollView>
       </View>
     </SafeAreaView>
   );
 }
 
-// -------------------------
-// STYLES
-// -------------------------
+// ✅ STYLES
 function makeStyles(theme: ThemeUI) {
   return StyleSheet.create({
     safeArea: {

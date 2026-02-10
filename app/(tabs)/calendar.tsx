@@ -48,6 +48,9 @@ type DayBucket = {
     maxSeverity: "overdue" | "dueSoon" | "ok" | "never";
 };
 
+// ✅ NEW: filtre
+type DueFilter = "all" | "overdue" | "dueSoon" | "ok";
+
 /* -------------------- HELPERS -------------------- */
 function toDateSafe(v: any): Date | null {
     if (!v) return null;
@@ -118,15 +121,32 @@ function StatCard({
     value,
     bg,
     fg,
+    active,
+    onPress,
 }: {
     theme: ThemeUI;
     label: string;
     value: number;
     bg: string;
     fg: string;
+    active?: boolean;
+    onPress?: () => void;
 }) {
+    // ✅ tasarımı bozma: aynı kutu, sadece tıklanınca opacity + aktifken border biraz belirgin
     return (
-        <View style={[ui.statCard, { backgroundColor: bg, borderColor: theme.colors.border }]}>
+        <Pressable
+            onPress={onPress}
+            hitSlop={10}
+            style={({ pressed }) => [
+                ui.statCard,
+                {
+                    backgroundColor: bg,
+                    borderColor: active ? fg : theme.colors.border,
+                    borderWidth: active ? 2 : 1,
+                    opacity: pressed ? 0.92 : 1,
+                },
+            ]}
+        >
             <Text style={{ color: fg, fontWeight: "900", fontSize: theme.fontSize.title }}>{value}</Text>
             <Text
                 style={{
@@ -138,7 +158,7 @@ function StatCard({
             >
                 {label}
             </Text>
-        </View>
+        </Pressable>
     );
 }
 
@@ -151,6 +171,9 @@ export default function CalendarFollowUpScreen() {
     const [students, setStudents] = useState<Student[]>([]);
     const [records, setRecords] = useState<RecordDoc[]>([]);
     const [selectedDay, setSelectedDay] = useState<string>(ymd(new Date()));
+
+    // ✅ NEW: aktif filtre
+    const [filter, setFilter] = useState<DueFilter>("all");
 
     // ✅ FIX: ekran focus olunca Calendar'ı remount et (ilk açılışta beyaz kalma bug'ı)
     const [calKey, setCalKey] = useState(0);
@@ -211,7 +234,6 @@ export default function CalendarFollowUpScreen() {
             const last = lastByStudent.get(s.id) ?? null;
 
             if (!last) {
-                // ✅ kayıt yok ama listede görünecek
                 const dueDate = today; // “hemen” gelsin gibi
                 return {
                     studentId: s.id,
@@ -222,9 +244,9 @@ export default function CalendarFollowUpScreen() {
                     daysToDue: 0,
                 };
             }
+
             const period = typeof s.followUpDays === "number" ? s.followUpDays : 30;
             const dueDate = addDays(startOfDay(last), period);
-
             const diff = daysDiff(today, dueDate);
 
             let status: DueItem["status"] = "ok";
@@ -253,7 +275,6 @@ export default function CalendarFollowUpScreen() {
     }, [students, records]);
 
     const stats = useMemo(() => {
-        // ✅ 3 kart: overdue / dueSoon / ok
         let overdue = 0,
             dueSoon = 0,
             ok = 0;
@@ -269,7 +290,6 @@ export default function CalendarFollowUpScreen() {
         const buckets = new Map<string, DayBucket>();
 
         for (const item of dueItems) {
-            // ✅ “never” takvimde işaretlemesin (takvim kalabalık olmasın)
             if (item.status === "never") continue;
 
             const key = ymd(item.dueDate);
@@ -291,14 +311,22 @@ export default function CalendarFollowUpScreen() {
         return buckets;
     }, [dueItems]);
 
+    // ✅ markedDates sadece lib için (biz selected'ı dayComponent ile çiziyoruz)
     const markedDates = useMemo(() => {
-        return { [selectedDay]: { selected: true, selectedColor: theme.colors.accent } };
-    }, [selectedDay, theme]);
+        return { [selectedDay]: { selected: true } };
+    }, [selectedDay]);
 
+    // ✅ LIST: seçili gün + kart filtresi
     const selectedItems = useMemo(() => {
-        // ✅ seçilen güne ait olanlar (never dahil)
-        return dueItems.filter((x) => ymd(x.dueDate) === selectedDay);
-    }, [dueItems, selectedDay]);
+        // ✅ ALL: seçili gün listesi
+        if (filter === "all") {
+            return dueItems.filter((x) => ymd(x.dueDate) === selectedDay);
+        }
+
+        // ✅ Stat kartı seçiliyse: TÜM GÜNLERDEKİ o statü
+        return dueItems.filter((x) => x.status === filter);
+    }, [dueItems, selectedDay, filter]);
+
 
     if (!uid) {
         return (
@@ -328,7 +356,7 @@ export default function CalendarFollowUpScreen() {
                     </Text>
                 </View>
 
-                {/* 3 STAT */}
+                {/* 3 STAT (tıklanabilir filtre) */}
                 <View style={[ui.statsRow3, { paddingHorizontal: theme.spacing.lg }]}>
                     <StatCard
                         theme={theme}
@@ -336,6 +364,8 @@ export default function CalendarFollowUpScreen() {
                         value={stats.overdue}
                         bg={theme.colors.dangerSoft}
                         fg={theme.colors.danger}
+                        active={filter === "overdue"}
+                        onPress={() => setFilter((f) => (f === "overdue" ? "all" : "overdue"))}
                     />
                     <StatCard
                         theme={theme}
@@ -343,17 +373,21 @@ export default function CalendarFollowUpScreen() {
                         value={stats.dueSoon}
                         bg={"rgba(245,158,11,0.15)"}
                         fg={theme.colors.warning}
+                        active={filter === "dueSoon"}
+                        onPress={() => setFilter((f) => (f === "dueSoon" ? "all" : "dueSoon"))}
                     />
                     <StatCard
                         theme={theme}
-                        label="Normal"
+                        label="Gelecek"
                         value={stats.ok}
                         bg={theme.colors.successSoft}
                         fg={theme.colors.success}
+                        active={filter === "ok"}
+                        onPress={() => setFilter((f) => (f === "ok" ? "all" : "ok"))}
                     />
                 </View>
 
-                {/* CALENDAR (✅ biraz kısaltıldı) */}
+                {/* CALENDAR */}
                 <View style={{ paddingHorizontal: theme.spacing.lg, marginTop: theme.spacing.md }}>
                     <View
                         style={[
@@ -374,9 +408,12 @@ export default function CalendarFollowUpScreen() {
                             </View>
                         ) : (
                             <Calendar
-                                key={calKey} // ✅ focus olunca remount (beyaz kalma bug'ı)
-                                style={{ backgroundColor: theme.colors.surface }} // ✅ dış container beyazını ezer
-                                onDayPress={(day) => setSelectedDay(day.dateString)}
+                                key={calKey}
+                                style={{ backgroundColor: theme.colors.surface }}
+                                onDayPress={(day) => {
+                                    setSelectedDay(day.dateString);
+                                    setFilter("all"); // ✅ takvimden gün seçilince tekrar "o gün" moduna dön
+                                }}
                                 markedDates={markedDates}
                                 theme={{
                                     backgroundColor: theme.colors.surface,
@@ -384,8 +421,11 @@ export default function CalendarFollowUpScreen() {
                                     textSectionTitleColor: theme.colors.text.muted,
                                     dayTextColor: theme.colors.text.primary,
                                     monthTextColor: theme.colors.text.primary,
-                                    selectedDayBackgroundColor: theme.colors.accent,
-                                    selectedDayTextColor: theme.colors.text.onAccent,
+
+                                    // ✅ default selected boyamasını kapat
+                                    selectedDayBackgroundColor: "transparent",
+                                    selectedDayTextColor: theme.colors.text.primary,
+
                                     todayTextColor: theme.colors.primary,
                                     arrowColor: theme.colors.text.accent,
                                     textDisabledColor: theme.colors.text.muted,
@@ -398,55 +438,65 @@ export default function CalendarFollowUpScreen() {
                                     const isSelected = key === selectedDay;
                                     const isDisabled = state === "disabled";
 
-                                    const badgeBg =
+                                    const todayKey = ymd(new Date());
+                                    const isToday = key === todayKey;
+
+                                    // ✅ selected: mavi kare
+                                    const cellBg = isSelected ? theme.colors.accent : "transparent";
+
+                                    // ✅ text: selected beyaz, today mavi, normal beyaz
+                                    const textColor = isDisabled
+                                        ? theme.colors.text.muted
+                                        : isSelected
+                                            ? theme.colors.text.onAccent
+                                            : isToday
+                                                ? theme.colors.accent
+                                                : theme.colors.text.primary;
+
+                                    // ✅ dot rengi: severity'e göre
+                                    const dotColor =
                                         bucket?.maxSeverity === "overdue"
                                             ? theme.colors.danger
                                             : bucket?.maxSeverity === "dueSoon"
                                                 ? theme.colors.warning
                                                 : theme.colors.success;
 
-                                    const textColor = isDisabled
-                                        ? theme.colors.text.muted
-                                        : isSelected
-                                            ? theme.colors.text.onAccent
-                                            : theme.colors.text.primary;
-
-                                    const cellBg = isSelected ? theme.colors.accent : "transparent";
-
                                     return (
                                         <Pressable
-                                            onPress={() => key && setSelectedDay(key)}
-                                            hitSlop={12} // ✅ rahat tıklansın
+                                            onPress={() => {
+                                                if (!key) return;
+                                                setSelectedDay(key);
+                                                setFilter("all"); // ✅ gün basınca o günün verileri gelsin
+                                            }}
+                                            hitSlop={10}
                                             style={[
-                                                ui.dayCellCompact,
+                                                ui.dayCellSquare,
                                                 {
                                                     backgroundColor: cellBg,
-                                                    borderRadius: theme.radius.md,
+                                                    borderRadius: 12,
+
+                                                    // ✅ selected glow
+                                                    shadowColor: isSelected ? theme.colors.accent : "transparent",
+                                                    shadowOpacity: isSelected ? 0.25 : 0,
+                                                    shadowRadius: isSelected ? 12 : 0,
+                                                    shadowOffset: { width: 0, height: 8 },
+                                                    elevation: isSelected ? 3 : 0,
+
+                                                    borderWidth: isSelected ? 0 : 1,
+                                                    borderColor: isSelected ? "transparent" : "rgba(255,255,255,0.04)",
                                                 },
                                             ]}
                                         >
-                                            <Text style={{ color: textColor, fontWeight: "900", fontSize: 14 }}>{day}</Text>
+                                            <Text style={{ color: textColor, fontWeight: "900", fontSize: 14, lineHeight: 16 }}>
+                                                {day}
+                                            </Text>
 
+                                            {/* ✅ sayılar yok: sadece 1 nokta */}
                                             {bucket?.total ? (
-                                                <View
-                                                    style={[
-                                                        ui.countBadgeCompact,
-                                                        { backgroundColor: isSelected ? theme.colors.text.onAccent : badgeBg },
-                                                    ]}
-                                                >
-                                                    <Text
-                                                        style={{
-                                                            color: isSelected ? theme.colors.accent : theme.colors.text.onAccent,
-                                                            fontSize: 10,
-                                                            fontWeight: "900",
-                                                        }}
-                                                    >
-                                                        {bucket.total}
-                                                    </Text>
+                                                <View style={ui.dotsWrap}>
+                                                    <View style={[ui.dotMini, { backgroundColor: dotColor }]} />
                                                 </View>
-                                            ) : (
-                                                <View style={{ height: 16 }} />
-                                            )}
+                                            ) : null}
                                         </Pressable>
                                     );
                                 }}
@@ -467,8 +517,14 @@ export default function CalendarFollowUpScreen() {
                     <View style={ui.listHeaderRow}>
                         <Text style={[base.sectionTitle, { color: theme.colors.text.primary }]}>
                             {selectedDay} • Liste
+                            {filter !== "all"
+                                ? filter === "overdue"
+                                    ? " • Gecikmiş"
+                                    : filter === "dueSoon"
+                                        ? " • Yaklaşan"
+                                        : " • Gelecek"
+                                : ""}
                         </Text>
-
                         <Text style={{ color: theme.colors.text.secondary, fontWeight: "800" }}>
                             {selectedItems.length} kişi
                         </Text>
@@ -486,9 +542,7 @@ export default function CalendarFollowUpScreen() {
                                 },
                             ]}
                         >
-                            <Text style={{ color: theme.colors.text.secondary }}>
-                                Seçtiğin gün için planlı kayıt yok.
-                            </Text>
+                            <Text style={{ color: theme.colors.text.secondary }}>Seçtiğin gün için planlı kayıt yok.</Text>
                         </View>
                     ) : (
                         <View style={{ gap: 10 }}>
@@ -520,9 +574,7 @@ export default function CalendarFollowUpScreen() {
                                         ]}
                                     >
                                         <View style={{ flex: 1 }}>
-                                            <Text style={[base.rowTitle, { color: theme.colors.text.primary }]}>
-                                                {item.studentName}
-                                            </Text>
+                                            <Text style={[base.rowTitle, { color: theme.colors.text.primary }]}>{item.studentName}</Text>
 
                                             <Text style={[base.rowSub, { color: theme.colors.text.secondary }]}>
                                                 {formatHumanDiff(item.daysToDue, item.status)}
@@ -547,15 +599,7 @@ export default function CalendarFollowUpScreen() {
     );
 }
 
-function LegendDot({
-    label,
-    color,
-    theme,
-}: {
-    label: string;
-    color: string;
-    theme: ThemeUI;
-}) {
+function LegendDot({ label, color, theme }: { label: string; color: string; theme: ThemeUI }) {
     return (
         <View style={base.legendItem}>
             <View style={[base.dot, { backgroundColor: color }]} />
@@ -604,25 +648,30 @@ const ui = StyleSheet.create({
         flex: 1,
         paddingVertical: 12,
         paddingHorizontal: 12,
-        borderWidth: 1,
         borderRadius: 16,
     },
 
-    // ✅ takvim biraz kısaldı (height düşürüldü)
-    dayCellCompact: {
+    dayCellSquare: {
+        width: 44,
+        height: 44,
         alignItems: "center",
         justifyContent: "center",
-        height: 48,
-        marginVertical: 3,
+        marginVertical: 4,
+        position: "relative",
     },
-    countBadgeCompact: {
-        marginTop: 6,
-        minWidth: 22,
-        height: 16,
-        paddingHorizontal: 7,
-        borderRadius: 999,
+
+    dotsWrap: {
+        position: "absolute",
+        bottom: 6,
+        alignSelf: "center",
+        flexDirection: "row",
         alignItems: "center",
-        justifyContent: "center",
+    },
+
+    dotMini: {
+        width: 6,
+        height: 6,
+        borderRadius: 6,
     },
 
     listHeaderRow: {

@@ -586,5 +586,21 @@
         "desc": "Test sonuçlarını AI ile analiz et, anında içgörü al. Danışanları ihtiyaç ve performansa göre sınıflandır."
       }
     }
+  },
+  "summary": {
+    "stat": {
+      "measuredStudents": "Ölçüm yapan öğrenci",
+      "measuredStudents": {
+        "sub": "Seçili aralıkta en az 1 kaydı olan farklı öğrenci sayısı"
+      },
+      "followUpDue": "Takibi gelen",
+      "followUpDue": {
+        "sub": "Son kaydından sonra follow-up gün sayısı dolan (veya hiç kaydı olmayan) öğrenci"
+      },
+      "followUpOk": "Takibi iyi",
+      "followUpOk": {
+        "sub": "Son kaydı follow-up gün sınırı içinde olan öğrenci"
+      }
+    }
   }
 }

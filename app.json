@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "pt_react_native",
-    "slug": "pt_react_native",
+    "name": "AthleTrack AI",
+    "slug": "AthleTrack AI",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

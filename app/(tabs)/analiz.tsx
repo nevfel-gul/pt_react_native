@@ -1,6 +1,5 @@
 import { Activity, BarChart2, Users } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Animated,
   Easing,
@@ -37,12 +36,31 @@ type SummaryState = {
   activeStudents: number;
   measurementsInRange: number;
 
+  measuredStudentsInRange: number;
+
+  followUpDue: number;
+  followUpOk: number;
+
   segTwiceWeek: number;
   segThreeTimesWeek: number;
-  segOnlineHybrid: number; // şimdilik 0 (alan yok)
-  segBeginner: number; // trainingGoals’dan yakalamaya çalışıyoruz
+  segOnlineHybrid: number;
+  segBeginner: number;
 
-  bars: number[]; // 0..1 normalized
+  goalCounts: {
+    fatLoss: number;
+    muscleGain: number;
+    generalHealth: number;
+    other: number;
+  };
+  goalPercents: {
+    fatLoss: number;
+    muscleGain: number;
+    generalHealth: number;
+  };
+
+  // günlük sayım ham + normalize
+  dailyCounts: number[];
+  bars: number[];
   barLabels: string[];
 };
 
@@ -61,9 +79,9 @@ function toISOKey(d: Date) {
 
 /**
  * Range seçimi:
- * - 7g => 7 gün
- * - 30g => 30 gün
- * - all => grafikte son 14 gün (performans için), ama istersen full all da yaparız
+ * - 7g => son 7 gün
+ * - 30g => son 30 gün
+ * - all => grafik performans için son 14 gün
  */
 function buildWindow(range: RangeKey) {
   const end = startOfDay(new Date());
@@ -77,7 +95,6 @@ function buildWindow(range: RangeKey) {
     start.setDate(end.getDate() - 29);
     return { start, days: 30 };
   }
-  // "all": grafiği patlatmamak için son 14 gün
   const start = new Date(end);
   start.setDate(end.getDate() - 13);
   return { start, days: 14 };
@@ -89,11 +106,8 @@ function makeLabels(days: number, start: Date) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
 
-    if (days <= 7) {
-      labels.push(d.toLocaleDateString("tr-TR", { weekday: "short" })); // Pzt, Sal...
-    } else {
-      labels.push(i % 5 === 0 ? String(d.getDate()) : "");
-    }
+    if (days <= 7) labels.push(d.toLocaleDateString("tr-TR", { weekday: "short" }));
+    else labels.push(i % 5 === 0 ? `${d.getDate()}` : "");
   }
   return labels;
 }
@@ -111,6 +125,32 @@ function looksBeginner(trainingGoals: any) {
   });
 }
 
+function goalBucket(trainingGoals: any) {
+  const arr = Array.isArray(trainingGoals) ? trainingGoals : [];
+  const s = arr.map((x) => String(x || "").toLowerCase()).join(" | ");
+
+  const fat =
+    s.includes("yağ") ||
+    s.includes("kilo") ||
+    s.includes("zayıf") ||
+    s.includes("fat") ||
+    s.includes("lose") ||
+    s.includes("weight");
+  const muscle =
+    s.includes("kas") ||
+    s.includes("muscle") ||
+    s.includes("gain") ||
+    s.includes("hypertrophy");
+  const health =
+    s.includes("sağlık") ||
+    s.includes("health") ||
+    s.includes("form") ||
+    s.includes("fitness") ||
+    s.includes("genel");
+
+  return { fat, muscle, health };
+}
+
 function useSummaryData(range: RangeKey): SummaryState {
   const [state, setState] = useState<SummaryState>({
     loading: true,
@@ -119,12 +159,19 @@ function useSummaryData(range: RangeKey): SummaryState {
     activeStudents: 0,
     measurementsInRange: 0,
 
+    measuredStudentsInRange: 0,
+    followUpDue: 0,
+    followUpOk: 0,
+
     segTwiceWeek: 0,
     segThreeTimesWeek: 0,
     segOnlineHybrid: 0,
     segBeginner: 0,
 
-    // ✅ FIX: başlangıç boş (length mismatch olmasın)
+    goalCounts: { fatLoss: 0, muscleGain: 0, generalHealth: 0, other: 0 },
+    goalPercents: { fatLoss: 0, muscleGain: 0, generalHealth: 0 },
+
+    dailyCounts: [],
     bars: [],
     barLabels: [],
   });
@@ -136,31 +183,44 @@ function useSummaryData(range: RangeKey): SummaryState {
       return;
     }
 
-    // -----------------------------
+    let studentMap: Record<string, any> = {};
+
     // 1) STUDENTS canlı
-    // -----------------------------
     const qStudents = query(studentsColRef(uid));
     const unsubStudents = onSnapshot(qStudents, (snap) => {
       let total = 0;
       let active = 0;
 
-      let twice = 0;
-      let three = 0;
       let beginner = 0;
+
+      let fatLoss = 0;
+      let muscleGain = 0;
+      let generalHealth = 0;
+      let other = 0;
+
+      studentMap = {};
 
       snap.forEach((doc) => {
         total++;
         const s = doc.data() as any;
+        studentMap[doc.id] = s;
 
         if (s?.aktif === "Aktif") active++;
-
-        const planned =
-          typeof s?.plannedDaysPerWeek === "number" ? s.plannedDaysPerWeek : null;
-        if (planned === 2) twice++;
-        if (planned === 3) three++;
-
         if (looksBeginner(s?.trainingGoals)) beginner++;
+
+        const g = goalBucket(s?.trainingGoals);
+        const any = g.fat || g.muscle || g.health;
+
+        if (g.fat) fatLoss++;
+        if (g.muscle) muscleGain++;
+        if (g.health) generalHealth++;
+        if (!any) other++;
       });
+
+      const denom = Math.max(1, total);
+      const fatP = Math.round((fatLoss / denom) * 100);
+      const musP = Math.round((muscleGain / denom) * 100);
+      const heaP = Math.round((generalHealth / denom) * 100);
 
       setState((prev) => ({
         ...prev,
@@ -169,17 +229,16 @@ function useSummaryData(range: RangeKey): SummaryState {
         totalStudents: total,
         activeStudents: active,
 
-        segTwiceWeek: twice,
-        segThreeTimesWeek: three,
         segBeginner: beginner,
+
+        goalCounts: { fatLoss, muscleGain, generalHealth, other },
+        goalPercents: { fatLoss: fatP, muscleGain: musP, generalHealth: heaP },
 
         segOnlineHybrid: 0,
       }));
     });
 
-    // -----------------------------
-    // 2) RECORDS canlı + daily bars
-    // -----------------------------
+    // 2) RECORDS canlı
     const { start, days } = buildWindow(range);
 
     const dayCounts: Record<string, number> = {};
@@ -200,8 +259,19 @@ function useSummaryData(range: RangeKey): SummaryState {
       Object.keys(dayCounts).forEach((k) => (dayCounts[k] = 0));
       let inRange = 0;
 
+      const now = new Date();
+      const nowDay = startOfDay(now);
+
+      const measuredStudentSet = new Set<string>();
+      const lastRecordByStudent: Record<string, Date> = {};
+      const countLast7ByStudent: Record<string, number> = {};
+
+      const last7Start = new Date(nowDay);
+      last7Start.setDate(nowDay.getDate() - 6);
+
       snap.forEach((doc) => {
         const r = doc.data() as any;
+        const sid = String(r?.studentId || "");
         const ts: Timestamp | undefined = r?.createdAt;
         const dt = ts?.toDate ? ts.toDate() : null;
         if (!dt) return;
@@ -210,7 +280,46 @@ function useSummaryData(range: RangeKey): SummaryState {
         if (key in dayCounts) {
           dayCounts[key] += 1;
           inRange += 1;
+          if (sid) measuredStudentSet.add(sid);
         }
+
+        if (sid) {
+          const prev = lastRecordByStudent[sid];
+          if (!prev || dt > prev) lastRecordByStudent[sid] = dt;
+
+          if (dt >= last7Start) {
+            countLast7ByStudent[sid] = (countLast7ByStudent[sid] ?? 0) + 1;
+          }
+        }
+      });
+
+      let twice = 0;
+      let three = 0;
+      Object.keys(countLast7ByStudent).forEach((sid) => {
+        const c = countLast7ByStudent[sid] ?? 0;
+        if (c >= 2) twice++;
+        if (c >= 3) three++;
+      });
+
+      let followUpDue = 0;
+      let followUpOk = 0;
+
+      Object.keys(studentMap).forEach((sid) => {
+        const s = studentMap[sid] ?? {};
+        const fu = typeof s.followUpDays === "number" ? s.followUpDays : 30;
+
+        const last = lastRecordByStudent[sid] ?? null;
+        if (!last) {
+          followUpDue += 1;
+          return;
+        }
+
+        const diffDays = Math.floor(
+          (nowDay.getTime() - startOfDay(last).getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        if (diffDays >= fu) followUpDue += 1;
+        else followUpOk += 1;
       });
 
       const countsArr = Object.keys(dayCounts)
@@ -220,7 +329,17 @@ function useSummaryData(range: RangeKey): SummaryState {
       setState((prev) => ({
         ...prev,
         loading: false,
+
         measurementsInRange: inRange,
+        measuredStudentsInRange: measuredStudentSet.size,
+
+        segTwiceWeek: twice,
+        segThreeTimesWeek: three,
+
+        followUpDue,
+        followUpOk,
+
+        dailyCounts: countsArr,
         bars: normalizeBars(countsArr),
         barLabels: makeLabels(days, start),
       }));
@@ -235,26 +354,44 @@ function useSummaryData(range: RangeKey): SummaryState {
   return state;
 }
 
-/* -------------------- ANIMATED BAR CHART (FIXED) -------------------- */
+/* -------------------- CHART (DAHA ANLAŞILIR) -------------------- */
 
-function AnimatedBars({
-  ratios,
+function DailyActivityChart({
+  counts,
   labels,
   theme,
   height = 140,
 }: {
-  ratios: number[];
+  counts: number[];
   labels: string[];
   theme: ThemeUI;
   height?: number;
 }) {
   const animsRef = useRef<Animated.Value[]>([]);
 
-  // ✅ ratios.length değişince anim array’i senkronla (create/reuse)
+  const max = useMemo(() => Math.max(0, ...counts), [counts.join("|")]);
+  const sum = useMemo(() => counts.reduce((a, b) => a + b, 0), [counts.join("|")]);
+  const avg = useMemo(() => (counts.length ? sum / counts.length : 0), [sum, counts.length]);
+
+  const peakIndex = useMemo(() => {
+    if (!counts.length) return -1;
+    let best = 0;
+    for (let i = 1; i < counts.length; i++) if (counts[i] > counts[best]) best = i;
+    return best;
+  }, [counts.join("|")]);
+
+  const ratios = useMemo(() => {
+    const denom = Math.max(1, max);
+    return counts.map((c) => c / denom);
+  }, [counts.join("|"), max]);
+
   useEffect(() => {
     const prev = animsRef.current;
     if (prev.length === ratios.length) return;
-    animsRef.current = Array.from({ length: ratios.length }, (_, i) => prev[i] ?? new Animated.Value(0));
+    animsRef.current = Array.from(
+      { length: ratios.length },
+      (_, i) => prev[i] ?? new Animated.Value(0)
+    );
   }, [ratios.length]);
 
   useEffect(() => {
@@ -274,25 +411,37 @@ function AnimatedBars({
     Animated.stagger(14, runs).start();
   }, [ratios.join("|")]);
 
-  if (!ratios.length) {
-    return (
-      <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, marginTop: theme.spacing.sm }}>
-        {""}
-      </Text>
-    );
-  }
+  if (!counts.length) return null;
 
   const anims = animsRef.current;
 
+  const todayCount = counts[counts.length - 1] ?? 0;
+
   return (
     <View style={{ marginTop: theme.spacing.sm }}>
+      {/* ✅ ÜST ÖZET: tek bakışta anlaşılsın */}
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 10,
+          marginBottom: theme.spacing.sm - 2,
+        }}
+      >
+        <MiniStat title="Bugün" value={`${todayCount}`} theme={theme} />
+        <MiniStat title="Ortalama" value={`${avg.toFixed(1)}`} theme={theme} />
+        <MiniStat title="Zirve" value={`${max}`} theme={theme} />
+      </View>
+
+      {/* ✅ BARLAR: zirve gününü vurgula + alt label */}
       <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
         {ratios.map((_, i) => {
-          const av = anims[i] ?? new Animated.Value(0); // extra safety
+          const av = anims[i] ?? new Animated.Value(0);
           const h = av.interpolate({
             inputRange: [0, 1],
             outputRange: [10, height],
           });
+
+          const isPeak = i === peakIndex;
 
           return (
             <View
@@ -301,18 +450,33 @@ function AnimatedBars({
                 flex: 1,
                 alignItems: "center",
                 justifyContent: "flex-end",
-                height: height + 28,
+                height: height + 34,
               }}
             >
+              {/* sayı (sadece peak’te göster) */}
+              {isPeak && (
+                <Text
+                  style={{
+                    fontSize: theme.fontSize.xs,
+                    color: theme.colors.text.primary,
+                    marginBottom: 6,
+                    fontWeight: "700",
+                  }}
+                >
+                  {counts[i] ?? 0}
+                </Text>
+              )}
+
               <Animated.View
                 style={{
                   width: 10,
                   borderRadius: theme.radius.pill,
                   height: h,
-                  backgroundColor: theme.colors.primary,
-                  opacity: 0.95,
+                  backgroundColor: isPeak ? theme.colors.warning : theme.colors.primary,
+                  opacity: isPeak ? 1 : 0.92,
                 }}
               />
+
               <Text
                 style={{
                   marginTop: 8,
@@ -327,6 +491,48 @@ function AnimatedBars({
           );
         })}
       </View>
+
+      <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, marginTop: 6 }}>
+        Not: Çubuklar gün içindeki toplam kayıt sayısını gösterir. Zirve gün sarı renkle vurgulanır.
+      </Text>
+    </View>
+  );
+}
+
+function MiniStat({
+  title,
+  value,
+  theme,
+}: {
+  title: string;
+  value: string;
+  theme: ThemeUI;
+}) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: theme.radius.lg,
+        backgroundColor: theme.colors.surfaceElevated,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+      }}
+    >
+      <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs }}>
+        {title}
+      </Text>
+      <Text
+        style={{
+          color: theme.colors.text.primary,
+          fontSize: theme.fontSize.md,
+          fontWeight: "700",
+          marginTop: 2,
+        }}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -334,7 +540,6 @@ function AnimatedBars({
 /* -------------------- SCREEN -------------------- */
 
 export default function SummaryScreen() {
-  const { t } = useTranslation();
   const { theme } = useTheme();
 
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -345,17 +550,20 @@ export default function SummaryScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 64 }} // ✅ daha fazla boşluk
+          showsVerticalScrollIndicator={false}
+        >
           {/* HEADER */}
           <View style={styles.header}>
-            <Text style={styles.pageTitle}>{t("summary.title")}</Text>
-            <Text style={styles.pageSubtitle}>{t("summary.subtitle")}</Text>
+            <Text style={styles.pageTitle}>Özet</Text>
+            <Text style={styles.pageSubtitle}>Koç paneli için hızlı durum görüntüsü</Text>
 
             {/* RANGE CHIPS */}
             <View style={styles.rangeRow}>
               <View style={{ flex: 1 }}>
                 <RangeChip
-                  labelKey="summary.range.7d"
+                  label="7 gün"
                   active={selectedRange === "7g"}
                   onPress={() => setSelectedRange("7g")}
                   theme={theme}
@@ -364,7 +572,7 @@ export default function SummaryScreen() {
 
               <View style={{ flex: 1 }}>
                 <RangeChip
-                  labelKey="summary.range.30d"
+                  label="30 gün"
                   active={selectedRange === "30g"}
                   onPress={() => setSelectedRange("30g")}
                   theme={theme}
@@ -373,7 +581,7 @@ export default function SummaryScreen() {
 
               <View style={{ flex: 1 }}>
                 <RangeChip
-                  labelKey="filter.all"
+                  label="Tümü"
                   active={selectedRange === "all"}
                   onPress={() => setSelectedRange("all")}
                   theme={theme}
@@ -386,27 +594,45 @@ export default function SummaryScreen() {
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <BarChart2 size={18} color={theme.colors.primary} />
-              <Text style={styles.cardTitle}>{t("summary.card.generalStats")}</Text>
+              <Text style={styles.cardTitle}>Genel Durum</Text>
             </View>
 
-            <Text style={styles.cardHint}>{t("summary.card.generalStats.hint")}</Text>
+            <Text style={styles.cardHint}>Öğrenci sayıları ve takip görünümü</Text>
 
             <StatRow
-              labelKey="summary.stat.totalStudents"
+              label="Toplam öğrenci"
               value={String(summary.totalStudents)}
-              subKey="summary.stat.totalStudents.sub"
+              sub="Sistemde kayıtlı toplam kişi"
               theme={theme}
             />
             <StatRow
-              labelKey="summary.stat.activeStudents"
+              label="Aktif öğrenci"
               value={String(summary.activeStudents)}
-              subKey="summary.stat.activeStudents.sub"
+              sub="Durumu “Aktif” olanlar"
               theme={theme}
             />
             <StatRow
-              labelKey="summary.stat.thisWeekMeasurement"
+              label="Toplam kayıt"
               value={String(summary.measurementsInRange)}
-              subKey="summary.stat.thisWeekMeasurement.sub"
+              sub="Seçili aralıkta oluşan tüm ölçüm kayıtları"
+              theme={theme}
+            />
+            <StatRow
+              label="Ölçüm yapan (farklı)"
+              value={String(summary.measuredStudentsInRange)}
+              sub="Seçili aralıkta en az 1 kaydı olan öğrenci"
+              theme={theme}
+            />
+            <StatRow
+              label="Takip süresi dolan"
+              value={String(summary.followUpDue)}
+              sub="Follow-up günü geçen veya hiç kaydı olmayan"
+              theme={theme}
+            />
+            <StatRow
+              label="Takibi düzenli"
+              value={String(summary.followUpOk)}
+              sub="Son kaydı follow-up süresi içinde olan"
               theme={theme}
             />
           </View>
@@ -415,79 +641,46 @@ export default function SummaryScreen() {
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Activity size={18} color={theme.colors.success} />
-              <Text style={styles.cardTitle}>{t("summary.card.goalProgress")}</Text>
+              <Text style={styles.cardTitle}>Hedef Dağılımı</Text>
             </View>
 
-            <Text style={styles.cardHint}>{t("summary.card.goalProgress.hint")}</Text>
+            <Text style={styles.cardHint}>Öğrencilerin seçtiği hedeflere göre oran</Text>
 
-            <ProgressRow labelKey="summary.goal.fatLoss" percent={60} theme={theme} />
-            <ProgressRow labelKey="summary.goal.muscleGain" percent={45} theme={theme} />
-            <ProgressRow labelKey="summary.goal.generalHealth" percent={55} theme={theme} />
+            <ProgressRow label="Yağ yakımı / Kilo verme" percent={summary.goalPercents.fatLoss} theme={theme} />
+            <ProgressRow label="Kas kazanımı" percent={summary.goalPercents.muscleGain} theme={theme} />
+            <ProgressRow label="Genel sağlık / Fitness" percent={summary.goalPercents.generalHealth} theme={theme} />
           </View>
 
           {/* KART 3 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Users size={18} color={theme.colors.accent} />
-              <Text style={styles.cardTitle}>{t("summary.card.studentSegments")}</Text>
+              <Text style={styles.cardTitle}>Aktivite Segmentleri</Text>
             </View>
 
-            <TagRow
-              labelKey="summary.segment.twiceWeek"
-              value={t("summary.segment.people", { count: summary.segTwiceWeek })}
-              theme={theme}
-            />
-            <TagRow
-              labelKey="summary.segment.threeTimesWeek"
-              value={t("summary.segment.people", { count: summary.segThreeTimesWeek })}
-              theme={theme}
-            />
-            <TagRow
-              labelKey="summary.segment.onlineHybrid"
-              value={t("summary.segment.people", { count: summary.segOnlineHybrid })}
-              theme={theme}
-            />
-            <TagRow
-              labelKey="summary.segment.beginner"
-              value={t("summary.segment.people", { count: summary.segBeginner })}
-              theme={theme}
-            />
+            <TagRow label="Son 7 günde 2+ kayıt" value={`${summary.segTwiceWeek} kişi`} theme={theme} />
+            <TagRow label="Son 7 günde 3+ kayıt" value={`${summary.segThreeTimesWeek} kişi`} theme={theme} />
+            <TagRow label="Online / Hibrit" value={`${summary.segOnlineHybrid} kişi`} theme={theme} />
+            <TagRow label="Başlangıç seviyesi" value={`${summary.segBeginner} kişi`} theme={theme} />
           </View>
 
           {/* KART 4 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <BarChart2 size={18} color={theme.colors.warning} />
-              <Text style={styles.cardTitle}>{t("summary.card.dailySessionFill")}</Text>
+              <Text style={styles.cardTitle}>Günlük Ölçüm Yoğunluğu</Text>
             </View>
 
-            <Text style={styles.cardHint}>{t("summary.card.dailySessionFill.hint")}</Text>
+            <Text style={styles.cardHint}>
+              Gün gün kaç kayıt girildiğini gösterir (zirve gün otomatik vurgulanır)
+            </Text>
 
-            <AnimatedBars ratios={summary.bars} labels={summary.barLabels} theme={theme} height={140} />
-
-            <Text style={styles.chartFooterText}>{t("summary.dailyFill.todayEstimate")}</Text>
-          </View>
-
-          {/* KART 5 */}
-          <View style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <Activity size={18} color={theme.colors.premium} />
-              <Text style={styles.cardTitle}>{t("summary.card.recentActivities")}</Text>
-            </View>
-
-            {(
-              [
-                "summary.activity.tanitaAdded",
-                "summary.activity.strengthUpdated",
-                "summary.activity.postureSaved",
-                "summary.activity.programCreated",
-              ] as const
-            ).map((key, index) => (
-              <View key={key} style={[styles.activityRow, index > 0 && styles.activityRowBorder]}>
-                <View style={styles.activityDot} />
-                <Text style={styles.activityText}>{t(key)}</Text>
-              </View>
-            ))}
+            <DailyActivityChart
+              counts={summary.dailyCounts}
+              labels={summary.barLabels}
+              theme={theme}
+              height={140}
+            />
           </View>
         </ScrollView>
       </View>
@@ -498,45 +691,48 @@ export default function SummaryScreen() {
 /* COMPONENTS -------------------------------------------------- */
 
 function RangeChip({
-  labelKey,
+  label,
   active,
   onPress,
   theme,
 }: {
-  labelKey: string;
+  label: string;
   active: boolean;
   onPress: () => void;
   theme: ThemeUI;
 }) {
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.rangeChip, active && styles.rangeChipActive]}>
-      <Text style={[styles.rangeChipText, active && styles.rangeChipTextActive]}>{t(labelKey)}</Text>
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.rangeChip, active && styles.rangeChipActive]}
+    >
+      <Text style={[styles.rangeChipText, active && styles.rangeChipTextActive]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
 
 function StatRow({
-  labelKey,
+  label,
   value,
-  subKey,
+  sub,
   theme,
 }: {
-  labelKey: string;
+  label: string;
   value: string;
-  subKey?: string;
+  sub?: string;
   theme: ThemeUI;
 }) {
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <View style={styles.statRow}>
-      <View>
-        <Text style={styles.statLabel}>{t(labelKey)}</Text>
-        {subKey && <Text style={styles.statSub}>{t(subKey)}</Text>}
+      <View style={{ flex: 1, paddingRight: 12 }}>
+        <Text style={styles.statLabel}>{label}</Text>
+        {!!sub && <Text style={styles.statSub}>{sub}</Text>}
       </View>
       <Text style={styles.statValue}>{value}</Text>
     </View>
@@ -544,46 +740,45 @@ function StatRow({
 }
 
 function ProgressRow({
-  labelKey,
+  label,
   percent,
   theme,
 }: {
-  labelKey: string;
+  label: string;
   percent: number;
   theme: ThemeUI;
 }) {
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const clamped = Math.max(0, Math.min(100, Math.round(percent)));
 
   return (
     <View style={styles.progressRow}>
       <View style={styles.progressHeader}>
-        <Text style={styles.progressLabel}>{t(labelKey)}</Text>
-        <Text style={styles.progressLabel}>{percent}%</Text>
+        <Text style={styles.progressLabel}>{label}</Text>
+        <Text style={styles.progressLabel}>{clamped}%</Text>
       </View>
 
       <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${percent}%` }]} />
+        <View style={[styles.progressFill, { width: `${clamped}%` }]} />
       </View>
     </View>
   );
 }
 
 function TagRow({
-  labelKey,
+  label,
   value,
   theme,
 }: {
-  labelKey: string;
+  label: string;
   value: string;
   theme: ThemeUI;
 }) {
-  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <View style={styles.tagRow}>
-      <Text style={styles.tagLabel}>{t(labelKey)}</Text>
+      <Text style={styles.tagLabel}>{label}</Text>
       <View style={styles.tagPill}>
         <Text style={styles.tagPillText}>{value}</Text>
       </View>
@@ -671,10 +866,19 @@ function makeStyles(theme: ThemeUI) {
       paddingVertical: theme.spacing.sm - 2,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
+      alignItems: "center",
     },
     statLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm },
-    statSub: { color: theme.colors.text.muted, fontSize: theme.fontSize.xs, marginTop: 2 },
-    statValue: { color: theme.colors.text.primary, fontSize: theme.fontSize.md, fontWeight: "600" },
+    statSub: {
+      color: theme.colors.text.muted,
+      fontSize: theme.fontSize.xs,
+      marginTop: 2,
+    },
+    statValue: {
+      color: theme.colors.text.primary,
+      fontSize: theme.fontSize.md,
+      fontWeight: "600",
+    },
 
     progressRow: { marginTop: theme.spacing.sm - 2 },
     progressHeader: {
@@ -716,16 +920,5 @@ function makeStyles(theme: ThemeUI) {
       fontSize: theme.fontSize.xs,
       marginTop: theme.spacing.sm - 2,
     },
-
-    activityRow: { flexDirection: "row", alignItems: "center", paddingVertical: theme.spacing.sm - 2 },
-    activityRowBorder: { borderTopWidth: 1, borderTopColor: theme.colors.border },
-    activityDot: {
-      width: 6,
-      height: 6,
-      borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.success,
-      marginRight: theme.spacing.sm - 4,
-    },
-    activityText: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm, flex: 1 },
   });
 }
