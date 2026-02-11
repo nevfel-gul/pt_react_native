@@ -14,7 +14,7 @@ import { ThemeProvider as AppThemeProvider, useTheme } from "@/constants/usethem
 import { db } from "@/services/firebase";
 import { registerForPushNotificationsAsync } from "@/services/registerForPush";
 import * as Notifications from "expo-notifications";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 // 🔔 FOREGROUND BİLDİRİM HANDLER
 Notifications.setNotificationHandler({
@@ -51,21 +51,32 @@ function AppNav() {
   useEffect(() => {
     async function setupPush() {
       if (!user) return;
-      try {
-        const token = await registerForPushNotificationsAsync();
 
+      try {
+        // 🔎 Önce user doc’u çek
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+
+        const pushEnabled = snap.data()?.pushEnabled ?? false;
+
+        if (!pushEnabled) {
+          console.log("Push disabled → token alınmadı");
+          return;
+        }
+
+        const token = await registerForPushNotificationsAsync();
         if (!token) return;
 
-        // 🔥 Firestore user doc’a yaz
         await setDoc(
-          doc(db, "users", user.uid),
+          userRef,
           {
             pushToken: token,
             updatedAt: new Date(),
           },
-          { merge: true } // 🔥 varsa günceller, yoksa oluşturur
+          { merge: true }
         );
 
+        console.log("Push token kaydedildi");
       } catch (err) {
         console.log("Push setup error:", err);
       }
@@ -73,6 +84,7 @@ function AppNav() {
 
     setupPush();
   }, [user]);
+
 
   useEffect(() => {
     if (!loading && !user) {

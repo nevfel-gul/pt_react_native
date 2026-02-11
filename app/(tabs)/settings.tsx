@@ -26,11 +26,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { auth } from "../../services/firebase";
+import { auth, db } from "../../services/firebase";
 
 // ✅ THEME
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
+import { doc, setDoc } from "firebase/firestore";
 
 type TabKey = "preferences" | "security";
 
@@ -187,12 +188,36 @@ export default function SettingsScreen() {
   );
 
   const handlePushToggle = useCallback(
-    (newValue: boolean) => {
+    async (newValue: boolean) => {
       setIsPushEnabled(newValue);
-      if (settingsReady) persistSettings({ pushEnabled: newValue });
+
+      // AsyncStorage
+      if (settingsReady) {
+        await persistSettings({ pushEnabled: newValue });
+      }
+
+      // 🔥 Firestore update
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            pushEnabled: newValue,
+            updatedAt: new Date(),
+          },
+          { merge: true }
+        );
+
+        console.log("pushEnabled updated:", newValue);
+      } catch (err) {
+        console.log("pushEnabled update error:", err);
+      }
     },
     [settingsReady, persistSettings]
   );
+
 
   const handleEmailToggle = useCallback(
     (newValue: boolean) => {
