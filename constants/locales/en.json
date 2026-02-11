@@ -2,8 +2,10 @@
   "tabs.dashboard": "Dashboard",
   "tabs.kolpa": "Mock",
   "tabs.settings": "Settings",
+  "tabs.analiz": "Analysis",
   "tabs.premium": "Go Premium",
   "tabs.calendar": "Calendar",
+  "students.loading": "Students Loading...",
   "search.student.placeholder": "Search students...",
   "language.label": "Language",
   "language.turkish": "Turkish",
@@ -38,7 +40,7 @@
   "summary.segment.beginner": "Complete beginner",
   "summary.segment.people": "people",
   "summary.card.dailySessionFill": "Daily Session Capacity",
-  "summary.card.dailySessionFill.hint": "No backend yet — bars are for demo purposes 🙂",
+  "summary.card.dailySessionFill.hint": "Shows how many records were entered day by day (the peak day is highlighted automatically).",
   "summary.dailyFill.todayEstimate": "Estimated capacity for today: 72% (placeholder)",
   "summary.card.recentActivities": "Recent Activity",
   "summary.activity.tanitaAdded": "Tanita measurement added for Ayşe Y.",
@@ -585,21 +587,26 @@
       }
     }
   },
-  
   "summary": {
     "stat": {
-      "measuredStudents": "Students measured",
       "measuredStudents": {
+        "title": "Students measured",
         "sub": "Unique students with at least 1 record in the selected range"
       },
-      "followUpDue": "Follow-up due",
       "followUpDue": {
+        "title": "Follow-up due",
         "sub": "Students whose follow-up interval has passed (or have no records)"
       },
-      "followUpOk": "On track",
       "followUpOk": {
+        "title": "On track",
         "sub": "Students whose last record is within their follow-up interval"
       }
-    }
+    },
+    "chart": {
+      "today": "Today",
+      "average": "Average",
+      "peak": "Peak"
+    },
+    "hint": "Note: The bars represent the total number of records entered during the day. The peak day is highlighted in yellow."
   }
 }

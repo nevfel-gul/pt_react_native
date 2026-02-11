@@ -1,9 +1,14 @@
+import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import fetch from "node-fetch";
 import OpenAI from "openai";
 
 setGlobalOptions({ region: "europe-west1" });
+
+admin.initializeApp();
 
 // -------------------------
 // Types
@@ -99,6 +104,30 @@ function pickStringArray(v: any, max = 20): string[] {
 
 function makeTraceId() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function sendPush(
+    token: string,
+    title: string,
+    body: string
+) {
+    if (!token) return;
+
+    await fetch(
+        "https://exp.host/--/api/v2/push/send",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                to: token,
+                title,
+                body,
+                sound: "default",
+            }),
+        }
+    );
 }
 
 // -------------------------
@@ -446,3 +475,98 @@ ids must come from the list. Return up to 30 ids.`;
         }
     }
 );
+
+export const campaignPush = onCall(
+    { cors: true },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "Login required");
+        }
+
+        const { title, body } = request.data;
+
+        if (!title || !body) {
+            throw new HttpsError(
+                "invalid-argument",
+                "title & body required"
+            );
+        }
+
+        const db = admin.firestore();
+
+        const snap = await db
+            .collection("users")
+            .where("pushEnabled", "==", true)
+            .get();
+
+        const jobs: any[] = [];
+
+        snap.forEach((doc) => {
+            const u = doc.data();
+
+            if (u.pushToken) {
+                jobs.push(
+                    sendPush(u.pushToken, title, body)
+                );
+            }
+        });
+
+        await Promise.all(jobs);
+
+        return {
+            success: true,
+            count: jobs.length,
+        };
+    }
+);
+
+export const morningMotivation = onSchedule(
+    {
+        schedule: "every day 09:00",
+        timeZone: "Europe/Istanbul",
+    },
+    async () => {
+
+        const db = admin.firestore();
+
+        const snap = await db
+            .collection("users")
+            .where("pushEnabled", "==", true)
+            .get();
+
+        const messages = [
+            "Kalk kanka 💪 spor vakti!",
+            "Bugün antrenman günü 🔥",
+            "Hedefine 1 gün daha yaklaştın 🏋️",
+            "Erteleme, başla!",
+            "Salon seni bekliyor 👀",
+        ];
+
+        const random =
+            messages[Math.floor(Math.random() * messages.length)];
+
+        const jobs: any[] = [];
+
+        snap.forEach((doc) => {
+            const u = doc.data();
+
+            if (u.pushToken) {
+                jobs.push(
+                    sendPush(
+                        u.pushToken,
+                        "Günaydın ☀️",
+                        random
+                    )
+                );
+            }
+        });
+
+        await Promise.all(jobs);
+
+        logger.info("Morning push sent", {
+            count: jobs.length,
+        });
+    }
+);
+
+

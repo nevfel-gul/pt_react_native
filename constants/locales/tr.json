@@ -2,9 +2,11 @@
   "tabs.dashboard": "Kontrol Paneli",
   "tabs.kolpa": "Kolpa",
   "tabs.settings": "Ayarlar",
+  "tabs.analiz": "Analiz",
   "tabs.premium": "Premium Al",
   "tabs.calendar": "Takvim",
   "students.loading": "Öğrenciler yükleniyor...",
+  "filter.all": "Tümü",
   "search.student.placeholder": "Öğrenci ara...",
   "language.label": "Dil",
   "language.turkish": "Türkçe",
@@ -18,7 +20,6 @@
   "summary.subtitle": "Bu ekran tamamen kolpa verilerle taslak olarak hazır. Sonra backend’den gelen gerçek istatistikleri buraya bağlarız.",
   "summary.range.7d": "Son 7 gün",
   "summary.range.30d": "Son 30 gün",
-  "filter.all": "Tümü",
   "summary.card.generalStats": "Genel İstatistikler",
   "summary.card.generalStats.hint": "Rakamlar şimdilik uydurma, sadece yer tutucu.",
   "summary.stat.totalStudents": "Toplam öğrenci",
@@ -39,7 +40,7 @@
   "summary.segment.beginner": "Tam başlangıç seviyesi",
   "summary.segment.people": "kişi",
   "summary.card.dailySessionFill": "Günlük Seans Doluluk",
-  "summary.card.dailySessionFill.hint": "Backend yok, çubuklar demo amaçlı 🙂",
+  "summary.card.dailySessionFill.hint": "Gün gün kaç kayıt girildiğini gösterir (zirve gün otomatik vurgulanır)",
   "summary.dailyFill.todayEstimate": "Bugünün tahmini doluluk oranı: %72 (uydurma)",
   "summary.card.recentActivities": "Son Aktiviteler",
   "summary.activity.tanitaAdded": "Ayşe Y. için Tanita ölçümü eklendi",
@@ -589,18 +590,24 @@
   },
   "summary": {
     "stat": {
-      "measuredStudents": "Ölçüm yapan öğrenci",
       "measuredStudents": {
+        "title": "Ölçüm yapan öğrenci",
         "sub": "Seçili aralıkta en az 1 kaydı olan farklı öğrenci sayısı"
       },
-      "followUpDue": "Takibi gelen",
       "followUpDue": {
+        "title": "Takibi gelen",
         "sub": "Son kaydından sonra follow-up gün sayısı dolan (veya hiç kaydı olmayan) öğrenci"
       },
-      "followUpOk": "Takibi iyi",
       "followUpOk": {
+        "title": "Takibi iyi",
         "sub": "Son kaydı follow-up gün sınırı içinde olan öğrenci"
       }
-    }
+    },
+    "chart": {
+      "today": "Bugün",
+      "average": "Ortalama",
+      "peak": "Zirve"
+    },
+    "hint": "Not: Çubuklar gün içindeki toplam kayıt sayısını gösterir. Zirve gün sarı renkle vurgulanır."
   }
 }

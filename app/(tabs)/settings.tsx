@@ -62,6 +62,7 @@ const CustomSwitch = ({
   trackColorInactive,
   thumbColorActive,
   thumbColorInactive,
+  disabled = false,
 }: {
   id: string;
   value: boolean;
@@ -70,6 +71,7 @@ const CustomSwitch = ({
   trackColorInactive: string;
   thumbColorActive: string;
   thumbColorInactive: string;
+  disabled?: boolean;
 }) => {
   const [internalValue, setInternalValue] = useState(value);
 
@@ -89,6 +91,7 @@ const CustomSwitch = ({
     <Switch
       key={`switch-${id}-${internalValue ? "on" : "off"}`}
       value={internalValue}
+      disabled={disabled}
       onValueChange={handleChange}
       trackColor={{ false: trackColorInactive, true: trackColorActive }}
       thumbColor={internalValue ? thumbColorActive : thumbColorInactive}
@@ -505,6 +508,7 @@ export default function SettingsScreen() {
               <CustomSwitch
                 id="twofactor"
                 value={isTwoFactorEnabled}
+                disabled={true}
                 onToggle={handleTwoFactorToggle}
                 trackColorActive={colors.trackActive}
                 trackColorInactive={colors.trackInactive}

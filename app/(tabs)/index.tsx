@@ -104,6 +104,7 @@ function daysDiff(a: Date, b: Date): number {
 export default function KayitlarScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
+  const functions = getFunctions(undefined, "europe-west1");
   const tabBarH = useBottomTabBarHeight();
   const { theme, mode } = useTheme();
   const styles = useMemo(() => makeStyles(theme, mode), [theme, mode]);
@@ -333,6 +334,17 @@ export default function KayitlarScreen() {
   const handleAddStudent = () => {
     router.replace("/newstudent");
   };
+
+  async function sendTestCampaign() {
+    const fn = httpsCallable(functions, "campaignPush");
+
+    await fn({
+      title: "Kampanya 🎉",
+      body: "Premium %20 indirim başladı!",
+    });
+
+    console.log("Push gönderildi");
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -617,6 +629,9 @@ export default function KayitlarScreen() {
         <TouchableOpacity style={[styles.fab, { bottom: tabBarH - 12 }]} onPress={handleAddStudent}>
           <Plus size={24} color={theme.colors.surfaceDark} />
         </TouchableOpacity>
+        <TouchableOpacity style={[styles.fab2, { bottom: tabBarH - 12 }]} onPress={sendTestCampaign}>
+          <Plus size={24} color={theme.colors.surfaceDark} />
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -777,6 +792,22 @@ function makeStyles(theme: ThemeUI, mode: "light" | "dark") {
     fab: {
       position: "absolute",
       right: 20,
+      bottom: 20,
+      width: 56,
+      height: 56,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: theme.colors.black,
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 6,
+    },
+    fab2: {
+      position: "absolute",
+      right: 120,
       bottom: 20,
       width: 56,
       height: 56,

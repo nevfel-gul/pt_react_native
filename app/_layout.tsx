@@ -11,6 +11,21 @@ import { ActivityIndicator, Text, View } from "react-native";
 
 // ✅ SENİN THEME PROVIDER
 import { ThemeProvider as AppThemeProvider, useTheme } from "@/constants/usetheme";
+import { db } from "@/services/firebase";
+import { registerForPushNotificationsAsync } from "@/services/registerForPush";
+import * as Notifications from "expo-notifications";
+import { doc, setDoc } from "firebase/firestore";
+
+// 🔔 FOREGROUND BİLDİRİM HANDLER
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export const unstable_settings = {
   anchor: "/",
@@ -32,6 +47,32 @@ function AppNav() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    async function setupPush() {
+      if (!user) return;
+      try {
+        const token = await registerForPushNotificationsAsync();
+
+        if (!token) return;
+
+        // 🔥 Firestore user doc’a yaz
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            pushToken: token,
+            updatedAt: new Date(),
+          },
+          { merge: true } // 🔥 varsa günceller, yoksa oluşturur
+        );
+
+      } catch (err) {
+        console.log("Push setup error:", err);
+      }
+    }
+
+    setupPush();
+  }, [user]);
 
   useEffect(() => {
     if (!loading && !user) {
