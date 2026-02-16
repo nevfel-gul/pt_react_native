@@ -44,4 +44,4 @@ app-example
 
 package-lock.json
 GoogleService-Info.plist
-*.plist
+functions/serviceAccountKey.json

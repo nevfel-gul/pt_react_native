@@ -6,6 +6,7 @@ import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import { useFocusEffect } from "expo-router";
 import { onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
     Pressable,
@@ -48,7 +49,7 @@ type DayBucket = {
     maxSeverity: "overdue" | "dueSoon" | "ok" | "never";
 };
 
-// ✅ NEW: filtre
+// ✅ filtre
 type DueFilter = "all" | "overdue" | "dueSoon" | "ok";
 
 /* -------------------- HELPERS -------------------- */
@@ -92,13 +93,6 @@ function daysDiff(a: Date, b: Date): number {
     const A = startOfDay(a).getTime();
     const B = startOfDay(b).getTime();
     return Math.round((A - B) / (1000 * 60 * 60 * 24));
-}
-
-function formatHumanDiff(daysToDue: number, status: DueItem["status"]) {
-    if (status === "never") return "Kayıt eklenmemiş";
-    if (daysToDue === 0) return "Bugün gelmeli";
-    if (daysToDue > 0) return `${daysToDue} gün gecikti`;
-    return `${Math.abs(daysToDue)} gün kaldı`;
 }
 
 function severityRank(s: DueItem["status"]) {
@@ -147,7 +141,9 @@ function StatCard({
                 },
             ]}
         >
-            <Text style={{ color: fg, fontWeight: "900", fontSize: theme.fontSize.title }}>{value}</Text>
+            <Text style={{ color: fg, fontWeight: "900", fontSize: theme.fontSize.title }}>
+                {value}
+            </Text>
             <Text
                 style={{
                     color: theme.colors.text.secondary,
@@ -167,12 +163,14 @@ export default function CalendarFollowUpScreen() {
     const { theme } = useTheme();
     const uid = auth.currentUser?.uid;
 
+    const { t } = useTranslation();
+
     const [loading, setLoading] = useState(true);
     const [students, setStudents] = useState<Student[]>([]);
     const [records, setRecords] = useState<RecordDoc[]>([]);
     const [selectedDay, setSelectedDay] = useState<string>(ymd(new Date()));
 
-    // ✅ NEW: aktif filtre
+    // ✅ aktif filtre
     const [filter, setFilter] = useState<DueFilter>("all");
 
     // ✅ FIX: ekran focus olunca Calendar'ı remount et (ilk açılışta beyaz kalma bug'ı)
@@ -210,6 +208,17 @@ export default function CalendarFollowUpScreen() {
         };
     }, [uid]);
 
+    // ✅ i18n: insan dili fark metni
+    const formatHumanDiff = useCallback(
+        (daysToDue: number, status: DueItem["status"]) => {
+            if (status === "never") return t("calendar.diff.never");
+            if (daysToDue === 0) return t("calendar.diff.today");
+            if (daysToDue > 0) return t("calendar.diff.overdueDays", { days: daysToDue });
+            return t("calendar.diff.remainingDays", { days: Math.abs(daysToDue) });
+        },
+        [t]
+    );
+
     const dueItems = useMemo<DueItem[]>(() => {
         const today = startOfDay(new Date());
         const lastByStudent = new Map<string, Date>();
@@ -230,7 +239,7 @@ export default function CalendarFollowUpScreen() {
         }
 
         const items: DueItem[] = students.map((s) => {
-            const name = s.name ?? s.fullName ?? "İsimsiz Öğrenci";
+            const name = s.name ?? s.fullName ?? t("calendar.student.unnamed");
             const last = lastByStudent.get(s.id) ?? null;
 
             if (!last) {
@@ -272,7 +281,7 @@ export default function CalendarFollowUpScreen() {
         });
 
         return items;
-    }, [students, records]);
+    }, [students, records, t]);
 
     const stats = useMemo(() => {
         let overdue = 0,
@@ -327,14 +336,22 @@ export default function CalendarFollowUpScreen() {
         return dueItems.filter((x) => x.status === filter);
     }, [dueItems, selectedDay, filter]);
 
+    const filterLabel = useMemo(() => {
+        if (filter === "all") return "";
+        if (filter === "overdue") return ` • ${t("calendar.filters.overdue")}`;
+        if (filter === "dueSoon") return ` • ${t("calendar.filters.dueSoon")}`;
+        return ` • ${t("calendar.filters.ok")}`;
+    }, [filter, t]);
 
     if (!uid) {
         return (
             <SafeAreaView style={[base.safeArea, { backgroundColor: theme.colors.background }]}>
                 <View style={[base.center, { padding: theme.spacing.lg }]}>
-                    <Text style={[base.title, { color: theme.colors.text.primary }]}>Giriş gerekli</Text>
+                    <Text style={[base.title, { color: theme.colors.text.primary }]}>
+                        {t("calendar.auth.requiredTitle")}
+                    </Text>
                     <Text style={[base.sub, { color: theme.colors.text.secondary }]}>
-                        Takvimi görmek için giriş yapmalısın.
+                        {t("calendar.auth.requiredDesc")}
                     </Text>
                 </View>
             </SafeAreaView>
@@ -350,9 +367,9 @@ export default function CalendarFollowUpScreen() {
             >
                 {/* HEADER */}
                 <View style={[base.header, { paddingHorizontal: theme.spacing.lg }]}>
-                    <Text style={[base.h1, { color: theme.colors.text.primary }]}>Takip Takvimi</Text>
+                    <Text style={[base.h1, { color: theme.colors.text.primary }]}>{t("calendar.title")}</Text>
                     <Text style={[base.h2, { color: theme.colors.text.secondary }]}>
-                        Bir güne dokun → altta o günün listesi görünür.
+                        {t("calendar.subtitle")}
                     </Text>
                 </View>
 
@@ -360,7 +377,7 @@ export default function CalendarFollowUpScreen() {
                 <View style={[ui.statsRow3, { paddingHorizontal: theme.spacing.lg }]}>
                     <StatCard
                         theme={theme}
-                        label="Gecikmiş"
+                        label={t("calendar.filters.overdue")}
                         value={stats.overdue}
                         bg={theme.colors.dangerSoft}
                         fg={theme.colors.danger}
@@ -369,7 +386,7 @@ export default function CalendarFollowUpScreen() {
                     />
                     <StatCard
                         theme={theme}
-                        label="Yaklaşan"
+                        label={t("calendar.filters.dueSoon")}
                         value={stats.dueSoon}
                         bg={"rgba(245,158,11,0.15)"}
                         fg={theme.colors.warning}
@@ -378,7 +395,7 @@ export default function CalendarFollowUpScreen() {
                     />
                     <StatCard
                         theme={theme}
-                        label="Gelecek"
+                        label={t("calendar.filters.ok")}
                         value={stats.ok}
                         bg={theme.colors.successSoft}
                         fg={theme.colors.success}
@@ -403,7 +420,7 @@ export default function CalendarFollowUpScreen() {
                             <View style={[base.center, { padding: theme.spacing.lg }]}>
                                 <ActivityIndicator />
                                 <Text style={[base.sub, { marginTop: theme.spacing.sm, color: theme.colors.text.secondary }]}>
-                                    Yükleniyor...
+                                    {t("common.loading")}
                                 </Text>
                             </View>
                         ) : (
@@ -506,9 +523,13 @@ export default function CalendarFollowUpScreen() {
 
                     {/* Legend */}
                     <View style={[base.legendRow, { marginTop: theme.spacing.md }]}>
-                        <LegendDot label="Gecikmiş" color={theme.colors.danger} theme={theme} />
-                        <LegendDot label="Yaklaşıyor (≤7g)" color={theme.colors.warning} theme={theme} />
-                        <LegendDot label="Normal" color={theme.colors.success} theme={theme} />
+                        <LegendDot label={t("calendar.legend.overdue")} color={theme.colors.danger} theme={theme} />
+                        <LegendDot
+                            label={t("calendar.legend.dueSoon", { days: 7 })}
+                            color={theme.colors.warning}
+                            theme={theme}
+                        />
+                        <LegendDot label={t("calendar.legend.ok")} color={theme.colors.success} theme={theme} />
                     </View>
                 </View>
 
@@ -516,17 +537,11 @@ export default function CalendarFollowUpScreen() {
                 <View style={{ paddingHorizontal: theme.spacing.lg, marginTop: theme.spacing.lg }}>
                     <View style={ui.listHeaderRow}>
                         <Text style={[base.sectionTitle, { color: theme.colors.text.primary }]}>
-                            {selectedDay} • Liste
-                            {filter !== "all"
-                                ? filter === "overdue"
-                                    ? " • Gecikmiş"
-                                    : filter === "dueSoon"
-                                        ? " • Yaklaşan"
-                                        : " • Gelecek"
-                                : ""}
+                            {t("calendar.list.title", { date: selectedDay })}
+                            {filterLabel}
                         </Text>
                         <Text style={{ color: theme.colors.text.secondary, fontWeight: "800" }}>
-                            {selectedItems.length} kişi
+                            {t("calendar.list.count", { count: selectedItems.length })}
                         </Text>
                     </View>
 
@@ -542,19 +557,35 @@ export default function CalendarFollowUpScreen() {
                                 },
                             ]}
                         >
-                            <Text style={{ color: theme.colors.text.secondary }}>Seçtiğin gün için planlı kayıt yok.</Text>
+                            <Text style={{ color: theme.colors.text.secondary }}>{t("calendar.empty")}</Text>
                         </View>
                     ) : (
                         <View style={{ gap: 10 }}>
                             {selectedItems.map((item) => {
                                 const badge =
                                     item.status === "overdue"
-                                        ? { text: "GECİKTİ", bg: theme.colors.dangerSoft, fg: theme.colors.danger }
+                                        ? {
+                                            text: t("calendar.badge.overdue"),
+                                            bg: theme.colors.dangerSoft,
+                                            fg: theme.colors.danger,
+                                        }
                                         : item.status === "dueSoon"
-                                            ? { text: "YAKLAŞTI", bg: "rgba(245,158,11,0.15)", fg: theme.colors.warning }
+                                            ? {
+                                                text: t("calendar.badge.dueSoon"),
+                                                bg: "rgba(245,158,11,0.15)",
+                                                fg: theme.colors.warning,
+                                            }
                                             : item.status === "never"
-                                                ? { text: "KAYIT YOK", bg: theme.colors.surfaceSoft, fg: theme.colors.text.muted }
-                                                : { text: "OK", bg: theme.colors.successSoft, fg: theme.colors.success };
+                                                ? {
+                                                    text: t("calendar.badge.never"),
+                                                    bg: theme.colors.surfaceSoft,
+                                                    fg: theme.colors.text.muted,
+                                                }
+                                                : {
+                                                    text: t("calendar.badge.ok"),
+                                                    bg: theme.colors.successSoft,
+                                                    fg: theme.colors.success,
+                                                };
 
                                 return (
                                     <Pressable
@@ -574,12 +605,16 @@ export default function CalendarFollowUpScreen() {
                                         ]}
                                     >
                                         <View style={{ flex: 1 }}>
-                                            <Text style={[base.rowTitle, { color: theme.colors.text.primary }]}>{item.studentName}</Text>
+                                            <Text style={[base.rowTitle, { color: theme.colors.text.primary }]}>
+                                                {item.studentName}
+                                            </Text>
 
                                             <Text style={[base.rowSub, { color: theme.colors.text.secondary }]}>
                                                 {formatHumanDiff(item.daysToDue, item.status)}
                                                 {"  •  "}
-                                                Son kayıt: {item.lastRecordAt ? ymd(item.lastRecordAt) : "—"}
+                                                {t("calendar.lastRecord", {
+                                                    date: item.lastRecordAt ? ymd(item.lastRecordAt) : "—",
+                                                })}
                                             </Text>
                                         </View>
 
