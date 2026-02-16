@@ -18,6 +18,7 @@ import { useTheme } from "@/constants/usetheme";
 // ✅ FIREBASE
 import { auth } from "@/services/firebase";
 import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
+import i18n from "@/services/i18n";
 import {
   Timestamp,
   onSnapshot,
@@ -26,6 +27,7 @@ import {
   where,
   type QueryConstraint,
 } from "firebase/firestore";
+import { useTranslation } from "react-i18next";
 
 type RangeKey = "7g" | "30g" | "all";
 
@@ -100,13 +102,13 @@ function buildWindow(range: RangeKey) {
   return { start, days: 14 };
 }
 
-function makeLabels(days: number, start: Date) {
+function makeLabels(days: number, start: Date, lang: string) {
   const labels: string[] = [];
   for (let i = 0; i < days; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
 
-    if (days <= 7) labels.push(d.toLocaleDateString("tr-TR", { weekday: "short" }));
+    if (days <= 7) labels.push(d.toLocaleDateString(lang, { weekday: "short" }));
     else labels.push(i % 5 === 0 ? `${d.getDate()}` : "");
   }
   return labels;
@@ -341,7 +343,7 @@ function useSummaryData(range: RangeKey): SummaryState {
 
         dailyCounts: countsArr,
         bars: normalizeBars(countsArr),
-        barLabels: makeLabels(days, start),
+        barLabels: makeLabels(days, start, i18n.language),
       }));
     });
 
@@ -349,7 +351,7 @@ function useSummaryData(range: RangeKey): SummaryState {
       unsubStudents();
       unsubRecords();
     };
-  }, [range]);
+  }, [range, i18n.language]);
 
   return state;
 }
@@ -361,11 +363,19 @@ function DailyActivityChart({
   labels,
   theme,
   height = 140,
+  today,
+  average,
+  peak,
+  hint,
 }: {
   counts: number[];
   labels: string[];
   theme: ThemeUI;
   height?: number;
+  today: string;
+  average: string;
+  peak: string;
+  hint: string;
 }) {
   const animsRef = useRef<Animated.Value[]>([]);
 
@@ -427,9 +437,10 @@ function DailyActivityChart({
           marginBottom: theme.spacing.sm - 2,
         }}
       >
-        <MiniStat title="Bugün" value={`${todayCount}`} theme={theme} />
-        <MiniStat title="Ortalama" value={`${avg.toFixed(1)}`} theme={theme} />
-        <MiniStat title="Zirve" value={`${max}`} theme={theme} />
+        <MiniStat title={today} value={`${todayCount}`} theme={theme} />
+        <MiniStat title={average} value={`${avg.toFixed(1)}`} theme={theme} />
+        <MiniStat title={peak} value={`${max}`} theme={theme} />
+
       </View>
 
       {/* ✅ BARLAR: zirve gününü vurgula + alt label */}
@@ -493,7 +504,7 @@ function DailyActivityChart({
       </View>
 
       <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, marginTop: 6 }}>
-        Not: Çubuklar gün içindeki toplam kayıt sayısını gösterir. Zirve gün sarı renkle vurgulanır.
+        {hint}
       </Text>
     </View>
   );
@@ -541,6 +552,7 @@ function MiniStat({
 
 export default function SummaryScreen() {
   const { theme } = useTheme();
+  const { t, i18n } = useTranslation();
 
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [selectedRange, setSelectedRange] = useState<RangeKey>("7g");
@@ -556,14 +568,20 @@ export default function SummaryScreen() {
         >
           {/* HEADER */}
           <View style={styles.header}>
-            <Text style={styles.pageTitle}>Özet</Text>
-            <Text style={styles.pageSubtitle}>Koç paneli için hızlı durum görüntüsü</Text>
+            <Text style={styles.pageTitle}>
+              {t("summary.title")}
+            </Text>
+
+            <Text style={styles.pageSubtitle}>
+              {t("summary.subtitle")}
+            </Text>
+
 
             {/* RANGE CHIPS */}
             <View style={styles.rangeRow}>
               <View style={{ flex: 1 }}>
                 <RangeChip
-                  label="7 gün"
+                  label={t("summary.range.7d")}
                   active={selectedRange === "7g"}
                   onPress={() => setSelectedRange("7g")}
                   theme={theme}
@@ -572,7 +590,7 @@ export default function SummaryScreen() {
 
               <View style={{ flex: 1 }}>
                 <RangeChip
-                  label="30 gün"
+                  label={t("summary.range.30d")}
                   active={selectedRange === "30g"}
                   onPress={() => setSelectedRange("30g")}
                   theme={theme}
@@ -581,7 +599,7 @@ export default function SummaryScreen() {
 
               <View style={{ flex: 1 }}>
                 <RangeChip
-                  label="Tümü"
+                  label={t("filter.all")}
                   active={selectedRange === "all"}
                   onPress={() => setSelectedRange("all")}
                   theme={theme}
@@ -594,21 +612,24 @@ export default function SummaryScreen() {
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <BarChart2 size={18} color={theme.colors.primary} />
-              <Text style={styles.cardTitle}>Genel Durum</Text>
+              <Text style={styles.cardTitle}>
+                {t("summary.card.generalStats")}
+              </Text>
             </View>
 
-            <Text style={styles.cardHint}>Öğrenci sayıları ve takip görünümü</Text>
-
+            <Text style={styles.cardHint}>
+              {t("summary.card.generalStats.hint")}
+            </Text>
             <StatRow
-              label="Toplam öğrenci"
+              label={t("summary.stat.totalStudents")}
+              sub={t("summary.stat.totalStudents.sub")}
               value={String(summary.totalStudents)}
-              sub="Sistemde kayıtlı toplam kişi"
               theme={theme}
             />
             <StatRow
-              label="Aktif öğrenci"
+              label={t("summary.stat.activeStudents")}
+              sub={t("summary.stat.activeStudents.sub")}
               value={String(summary.activeStudents)}
-              sub="Durumu “Aktif” olanlar"
               theme={theme}
             />
             <StatRow
@@ -618,21 +639,21 @@ export default function SummaryScreen() {
               theme={theme}
             />
             <StatRow
-              label="Ölçüm yapan (farklı)"
+              label={t("summary.stat.measuredStudents.title")}
+              sub={t("summary.stat.measuredStudents.sub")}
               value={String(summary.measuredStudentsInRange)}
-              sub="Seçili aralıkta en az 1 kaydı olan öğrenci"
               theme={theme}
             />
             <StatRow
-              label="Takip süresi dolan"
+              label={t("summary.stat.followUpDue.title")}
+              sub={t("summary.stat.followUpDue.sub")}
               value={String(summary.followUpDue)}
-              sub="Follow-up günü geçen veya hiç kaydı olmayan"
               theme={theme}
             />
             <StatRow
-              label="Takibi düzenli"
+              label={t("summary.stat.followUpOk.title")}
+              sub={t("summary.stat.followUpOk.sub")}
               value={String(summary.followUpOk)}
-              sub="Son kaydı follow-up süresi içinde olan"
               theme={theme}
             />
           </View>
@@ -641,38 +662,78 @@ export default function SummaryScreen() {
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Activity size={18} color={theme.colors.success} />
-              <Text style={styles.cardTitle}>Hedef Dağılımı</Text>
+              <Text style={styles.cardTitle}>
+                {t("summary.card.goalProgress")}
+              </Text>
             </View>
 
-            <Text style={styles.cardHint}>Öğrencilerin seçtiği hedeflere göre oran</Text>
+            <Text style={styles.cardHint}>
+              {t("summary.card.goalProgress.hint")}
+            </Text>
+            <ProgressRow
+              label={t("summary.goal.fatLoss")}
+              percent={summary.goalPercents.fatLoss}
+              theme={theme}
+            />
 
-            <ProgressRow label="Yağ yakımı / Kilo verme" percent={summary.goalPercents.fatLoss} theme={theme} />
-            <ProgressRow label="Kas kazanımı" percent={summary.goalPercents.muscleGain} theme={theme} />
-            <ProgressRow label="Genel sağlık / Fitness" percent={summary.goalPercents.generalHealth} theme={theme} />
+            <ProgressRow
+              label={t("summary.goal.muscleGain")}
+              percent={summary.goalPercents.muscleGain}
+              theme={theme}
+            />
+
+            <ProgressRow
+              label={t("summary.goal.generalHealth")}
+              percent={summary.goalPercents.generalHealth}
+              theme={theme}
+            />
           </View>
 
           {/* KART 3 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Users size={18} color={theme.colors.accent} />
-              <Text style={styles.cardTitle}>Aktivite Segmentleri</Text>
+              <Text style={styles.cardTitle}>
+                {t("summary.card.studentSegments")}
+              </Text>
             </View>
 
-            <TagRow label="Son 7 günde 2+ kayıt" value={`${summary.segTwiceWeek} kişi`} theme={theme} />
-            <TagRow label="Son 7 günde 3+ kayıt" value={`${summary.segThreeTimesWeek} kişi`} theme={theme} />
-            <TagRow label="Online / Hibrit" value={`${summary.segOnlineHybrid} kişi`} theme={theme} />
-            <TagRow label="Başlangıç seviyesi" value={`${summary.segBeginner} kişi`} theme={theme} />
+            <TagRow
+              label={t("summary.segment.twiceWeek")}
+              value={`${summary.segTwiceWeek} ${t("summary.segment.people")}`}
+              theme={theme}
+            />
+
+            <TagRow
+              label={t("summary.segment.threeTimesWeek")}
+              value={`${summary.segThreeTimesWeek} ${t("summary.segment.people")}`}
+              theme={theme}
+            />
+
+            <TagRow
+              label={t("summary.segment.onlineHybrid")}
+              value={`${summary.segOnlineHybrid} ${t("summary.segment.people")}`}
+              theme={theme}
+            />
+
+            <TagRow
+              label={t("summary.segment.beginner")}
+              value={`${summary.segBeginner} ${t("summary.segment.people")}`}
+              theme={theme}
+            />
           </View>
 
           {/* KART 4 */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <BarChart2 size={18} color={theme.colors.warning} />
-              <Text style={styles.cardTitle}>Günlük Ölçüm Yoğunluğu</Text>
+              <Text style={styles.cardTitle}>
+                {t("summary.card.dailySessionFill")}
+              </Text>
             </View>
 
             <Text style={styles.cardHint}>
-              Gün gün kaç kayıt girildiğini gösterir (zirve gün otomatik vurgulanır)
+              {t("summary.card.dailySessionFill.hint")}
             </Text>
 
             <DailyActivityChart
@@ -680,6 +741,10 @@ export default function SummaryScreen() {
               labels={summary.barLabels}
               theme={theme}
               height={140}
+              today={t("summary.chart.today")}
+              average={t("summary.chart.average")}
+              peak={t("summary.chart.peak")}
+              hint={t("summary.hint")}
             />
           </View>
         </ScrollView>

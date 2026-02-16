@@ -43,3 +43,4 @@ app-example
 /android
 
 package-lock.json
+functions/serviceAccountKey.json

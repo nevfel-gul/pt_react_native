@@ -164,6 +164,7 @@ export default function LoginScreen() {
                     email: email.trim().toLowerCase(),
                     displayName: cleanName,
                     username: cleanUsername,
+                    pushEnabled: true,
                     createdAt: serverTimestamp(),
                 });
             }

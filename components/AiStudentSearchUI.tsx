@@ -17,6 +17,7 @@ type AiResultItem = {
     name: string;
     email?: string;
     aktif?: "Aktif" | "Pasif" | string;
+    note?: string;  // ✅ Backend'den gelen not bilgisi
 };
 
 type Props = {
@@ -33,11 +34,14 @@ type Props = {
 
     autoSendSearchTerm?: boolean;
 
-    // ✅ KayitlarScreen’den gelen AI sonuçları (chat içinde kart olarak göstereceğiz)
+    // ✅ KayitlarScreen'den gelen AI sonuçları (chat içinde kart olarak göstereceğiz)
     results?: AiResultItem[];
 
     // ✅ karta tıklayınca dışarıda navigate ettirmek için
     onOpenStudent?: (studentId: string) => void;
+
+    // ✅ NEW: üst header'a taşıdık; buradaki AI butonu gizlensin
+    hideAiTrigger?: boolean;
 };
 
 type ChatMsg = {
@@ -61,6 +65,7 @@ export default function AiStudentSearchUI({
     autoSendSearchTerm = false,
     results = [],
     onOpenStudent,
+    hideAiTrigger = false,
 }: Props) {
     const [open, setOpen] = useState(false);
     const [aiQuery, setAiQuery] = useState("");
@@ -167,7 +172,7 @@ export default function AiStudentSearchUI({
         if (open) setTimeout(() => scrollToEnd(false), 50);
     }, [open]);
 
-    // ✅ AI cevap geldiğinde chat’e bas (kartları ayrıca footer'da göstereceğiz)
+    // ✅ AI cevap geldiğinde chat'e bas (kartları ayrıca footer'da göstereceğiz)
     useEffect(() => {
         const p = pending.current;
         if (!p) return;
@@ -294,6 +299,22 @@ export default function AiStudentSearchUI({
                                     </Text>
                                 )}
 
+                                {/* ✅ YENİ: Note göster (kalp hastalığı notu vs.) */}
+                                {!!s.note && (
+                                    <Text
+                                        style={{
+                                            color: theme.colors.text.secondary,
+                                            fontWeight: "600",
+                                            fontSize: 12,
+                                            marginTop: 4,
+                                            fontStyle: "italic",
+                                        }}
+                                        numberOfLines={2}
+                                    >
+                                        📝 {s.note}
+                                    </Text>
+                                )}
+
                                 {!!s.aktif && (
                                     <View
                                         style={{
@@ -340,7 +361,7 @@ export default function AiStudentSearchUI({
 
                 {(results?.length ?? 0) > 20 && (
                     <Text style={{ color: theme.colors.text.muted, fontWeight: "800", marginTop: 2 }}>
-                        … +{(results.length - 20)} kişi daha
+                        … +{results.length - 20} kişi daha
                     </Text>
                 )}
             </View>
@@ -349,23 +370,24 @@ export default function AiStudentSearchUI({
 
     return (
         <>
-            {/* Trigger button */}
-            <TouchableOpacity
-                onPress={openChat}
-                disabled={aiSearchLoading}
-                style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: theme.radius.pill,
-                    backgroundColor: theme.colors.premium,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginLeft: 8,
-                    opacity: aiSearchLoading ? 0.55 : 1,
-                }}
-            >
-                <Sparkles size={18} color="#fff" />
-            </TouchableOpacity>
+            {/* ✅ Trigger button: artık header'da. Buradaki butonu isteğe göre tamamen gizle */}
+            {!hideAiTrigger && (
+                <TouchableOpacity
+                    onPress={openChat}
+                    disabled={aiSearchLoading}
+                    style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: theme.radius.pill,
+                        backgroundColor: theme.colors.premium,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        opacity: aiSearchLoading ? 0.55 : 1,
+                    }}
+                >
+                    <Sparkles size={18} color="#fff" />
+                </TouchableOpacity>
+            )}
 
             {/* FULL SCREEN CHAT MODAL */}
             <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
@@ -441,7 +463,11 @@ export default function AiStudentSearchUI({
                                 const box =
                                     item.role === "user" ? bubble.user : item.role === "assistant" ? bubble.assistant : bubble.system;
                                 const tx =
-                                    item.role === "user" ? bubble.userText : item.role === "assistant" ? bubble.assistantText : bubble.systemText;
+                                    item.role === "user"
+                                        ? bubble.userText
+                                        : item.role === "assistant"
+                                            ? bubble.assistantText
+                                            : bubble.systemText;
 
                                 return (
                                     <View style={box}>
@@ -486,8 +512,8 @@ export default function AiStudentSearchUI({
                                         }}
                                     >
                                         <Text style={{ color: theme.colors.text.primary, fontWeight: "900" }}>
-                                            Arama metnini sor: “{searchTerm.trim().slice(0, 42)}
-                                            {searchTerm.trim().length > 42 ? "…" : ""}”
+                                            Arama metnini sor: "{searchTerm.trim().slice(0, 42)}
+                                            {searchTerm.trim().length > 42 ? "…" : ""}"
                                         </Text>
                                     </TouchableOpacity>
                                 )}

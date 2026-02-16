@@ -1,12 +1,11 @@
-import { auth } from "@/services/firebase";
+import { auth, functions } from "@/services/firebase";
 import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
 import {
   ArrowLeft,
-  Bell,
   Calendar,
   Clipboard,
   Eye,
@@ -113,6 +112,7 @@ export default function KayitlarScreen() {
   const [aiReason, setAiReason] = useState("");
   const [aiSearchLoading, setAiSearchLoading] = useState(false);
   const [aiIds, setAiIds] = useState<Set<string> | null>(null);
+  const [aiDetails, setAiDetails] = useState<Array<{ id: string; name: string; note?: string; aktif?: string }>>([]); // ✅ YENİ
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchActive, setSearchActive] = useState(false);
@@ -128,8 +128,6 @@ export default function KayitlarScreen() {
   const totalCount = students.length;
   const activeCount = students.filter((s) => s.aktif === "Aktif").length;
   const passiveCount = students.filter((s) => s.aktif === "Pasif").length;
-
-  const [notifOpen, setNotifOpen] = useState(false);
 
   const openAnimatedSearch = () => {
     setSearchActive(true);
@@ -153,6 +151,7 @@ export default function KayitlarScreen() {
       setAiIds(null);
       setAiMode(false);
       setAiReason("");
+      setAiDetails([]); // ✅ YENİ
     });
   };
 
@@ -251,11 +250,23 @@ export default function KayitlarScreen() {
     return map;
   }, [records]);
 
-  // ✅ aiIds -> öğrenci listesi (SADECE chat içinde göstermek için)
+  // ✅ UPDATED: aiDetails -> öğrenci listesi (note bilgisi ile)
   const aiMatchedStudents = useMemo(() => {
+    // ✅ Eğer backend details gönderdiyse, onu kullan (note bilgisi var)
+    if (aiDetails.length > 0) {
+      return aiDetails.map((d) => ({
+        id: d.id,
+        name: d.name,
+        email: students.find((s) => s.id === d.id)?.email || "",
+        aktif: (d.aktif as "Aktif" | "Pasif") || "Aktif",
+        note: d.note, // ✅ Backend'den gelen not
+      }));
+    }
+
+    // ✅ Fallback: eski yöntem (sadece id'ler varsa)
     if (!aiIds) return [];
     return students.filter((s) => aiIds.has(s.id));
-  }, [aiIds, students]);
+  }, [aiDetails, aiIds, students]);
 
   async function runAiSearch(overrideQuery?: string) {
     const q = (overrideQuery ?? searchTerm ?? "").trim();
@@ -284,8 +295,12 @@ export default function KayitlarScreen() {
             lastRecordAtMs?: number | null;
           }>;
         },
-        { ids: string[]; reason?: string }
-      >(getFunctions(undefined, "europe-west1"), "aiStudentSearch");
+        {
+          ids: string[];
+          reason?: string;
+          details?: Array<{ id: string; name: string; note?: string; aktif?: string }>;
+        }
+      >(functions, "aiStudentSearch");
 
       const res = await fn({
         queryText: q,
@@ -295,20 +310,24 @@ export default function KayitlarScreen() {
 
       const idsArr = Array.isArray(res.data?.ids) ? res.data.ids : [];
       const reason = typeof res.data?.reason === "string" ? res.data.reason : "";
+      const details = Array.isArray(res.data?.details) ? res.data.details : [];
 
       setAiIds(new Set(idsArr));
       setAiReason(reason);
-      setAiMode(true); // sadece UI/chat bilgisi
+      setAiDetails(details); // ✅ YENİ
+      setAiMode(true);
     } catch (e: any) {
       const message = e?.message || "Unknown error";
       const details = e?.details || null;
       const traceId = details?.traceId ? String(details.traceId) : "";
 
-      const uiMsg = typeof details?.message === "string" && details.message ? details.message : message;
+      const uiMsg =
+        typeof details?.message === "string" && details.message ? details.message : message;
 
       setAiReason(`AI hata: ${uiMsg}${traceId ? ` (traceId: ${traceId})` : ""}`);
       setAiMode(false);
       setAiIds(null);
+      setAiDetails([]); // ✅ YENİ
     } finally {
       setAiSearchLoading(false);
     }
@@ -363,16 +382,6 @@ export default function KayitlarScreen() {
             </Animated.View>
 
             <View style={styles.rightHeaderArea}>
-              <Animated.View style={{ opacity: iconsOpacity }}>
-                <TouchableOpacity
-                  onPress={() => setNotifOpen(!notifOpen)}
-                  style={styles.titleIconWrapper}
-                  disabled={searchActive}
-                >
-                  <Bell size={22} color={theme.colors.text.primary} />
-                </TouchableOpacity>
-              </Animated.View>
-
               {!searchActive && (
                 <TouchableOpacity
                   onPress={openAnimatedSearch}
@@ -389,6 +398,22 @@ export default function KayitlarScreen() {
                   <Search size={22} color={theme.colors.text.primary} />
                 </TouchableOpacity>
               )}
+              <Animated.View style={{ opacity: iconsOpacity }} pointerEvents={searchActive ? "none" : "auto"}>
+                <View style={styles.titleIconWrapper}>
+                  <AiStudentSearchUI
+                    theme={theme}
+                    searchTerm={searchTerm}
+                    aiMode={aiMode}
+                    aiReason={aiReason}
+                    aiSearchLoading={aiSearchLoading}
+                    runAiSearch={runAiSearch}
+                    searchActive={searchActive}
+                    autoSendSearchTerm={false}
+                    results={aiMatchedStudents}
+                    onOpenStudent={(id) => handleViewDetails(id)}
+                  />
+                </View>
+              </Animated.View>
 
               <Animated.View style={{ opacity: iconsOpacity }}>
                 <TouchableOpacity
@@ -439,11 +464,12 @@ export default function KayitlarScreen() {
               onChangeText={(txt) => {
                 setSearchTerm(txt);
 
-                // kullanıcı yeni arama yazınca AI state'i temizle (listeyi etkilemiyor ama chat için mantıklı)
+                // kullanıcı yeni arama yazınca AI state'i temizle
                 if (aiMode) {
                   setAiMode(false);
                   setAiIds(null);
                   setAiReason("");
+                  setAiDetails([]); // ✅ YENİ
                 }
               }}
               style={{
@@ -455,21 +481,6 @@ export default function KayitlarScreen() {
               }}
             />
 
-            {/* ✅ AI UI: sonuçlar SADECE modal chat içinde gösterilecek */}
-            <AiStudentSearchUI
-              theme={theme}
-              searchTerm={searchTerm}
-              aiMode={aiMode}
-              aiReason={aiReason}
-              aiSearchLoading={aiSearchLoading}
-              runAiSearch={runAiSearch}
-              searchActive={searchActive}
-              autoSendSearchTerm={false}
-              results={aiMatchedStudents}
-              onOpenStudent={(id) => handleViewDetails(id)}
-
-            />
-
             {searchTerm.length > 0 && (
               <TouchableOpacity
                 onPress={() => {
@@ -477,6 +488,7 @@ export default function KayitlarScreen() {
                   setAiIds(null);
                   setAiMode(false);
                   setAiReason("");
+                  setAiDetails([]); // ✅ YENİ
                 }}
                 style={{ marginLeft: 8 }}
               >
@@ -512,7 +524,12 @@ export default function KayitlarScreen() {
                 filterDurum === "Aktif" && styles.filterBoxActiveA,
               ]}
             >
-              <Text style={[styles.filterBoxNumber, filterDurum === "Aktif" && styles.filterBoxNumberActive]}>
+              <Text
+                style={[
+                  styles.filterBoxNumber,
+                  filterDurum === "Aktif" && styles.filterBoxNumberActive,
+                ]}
+              >
                 {activeCount}
               </Text>
               <Text style={[styles.filterBoxText, filterDurum === "Aktif" && styles.filterBoxTextActive]}>
@@ -528,7 +545,12 @@ export default function KayitlarScreen() {
                 filterDurum === "Pasif" && styles.filterBoxActiveP,
               ]}
             >
-              <Text style={[styles.filterBoxNumber, filterDurum === "Pasif" && styles.filterBoxNumberActive]}>
+              <Text
+                style={[
+                  styles.filterBoxNumber,
+                  filterDurum === "Pasif" && styles.filterBoxNumberActive,
+                ]}
+              >
                 {passiveCount}
               </Text>
               <Text style={[styles.filterBoxText, filterDurum === "Pasif" && styles.filterBoxTextActive]}>

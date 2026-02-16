@@ -11,6 +11,21 @@ import { ActivityIndicator, Text, View } from "react-native";
 
 // ✅ SENİN THEME PROVIDER
 import { ThemeProvider as AppThemeProvider, useTheme } from "@/constants/usetheme";
+import { db } from "@/services/firebase";
+import { registerForPushNotificationsAsync } from "@/services/registerForPush";
+import * as Notifications from "expo-notifications";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+
+// 🔔 FOREGROUND BİLDİRİM HANDLER
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export const unstable_settings = {
   anchor: "/",
@@ -32,6 +47,44 @@ function AppNav() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    async function setupPush() {
+      if (!user) return;
+
+      try {
+        // 🔎 Önce user doc’u çek
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+
+        const pushEnabled = snap.data()?.pushEnabled ?? false;
+
+        if (!pushEnabled) {
+          console.log("Push disabled → token alınmadı");
+          return;
+        }
+
+        const token = await registerForPushNotificationsAsync();
+        if (!token) return;
+
+        await setDoc(
+          userRef,
+          {
+            pushToken: token,
+            updatedAt: new Date(),
+          },
+          { merge: true }
+        );
+
+        console.log("Push token kaydedildi");
+      } catch (err) {
+        console.log("Push setup error:", err);
+      }
+    }
+
+    setupPush();
+  }, [user]);
+
 
   useEffect(() => {
     if (!loading && !user) {
