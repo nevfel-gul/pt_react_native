@@ -569,4 +569,8 @@ export const morningMotivation = onSchedule(
     }
 );
 
+export { followUpReminderJob } from "./jobs/followUpReminderJob";
+
+export { noRecordReminderJob } from "./jobs/noRecordReminderJob";
+
 
