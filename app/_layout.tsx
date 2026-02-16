@@ -11,6 +11,21 @@ import { ActivityIndicator, Text, View } from "react-native";
 
 // ✅ SENİN THEME PROVIDER
 import { ThemeProvider as AppThemeProvider, useTheme } from "@/constants/usetheme";
+import { db } from "@/services/firebase";
+import { registerForPushNotificationsAsync } from "@/services/registerForPush";
+import * as Notifications from "expo-notifications";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+
+// 🔔 FOREGROUND BİLDİRİM HANDLER
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export const unstable_settings = {
   anchor: "/",
@@ -34,6 +49,41 @@ function AppNav() {
   }, []);
 
   useEffect(() => {
+    async function setupPush() {
+      if (!user) return;
+
+      try {
+        // 🔎 Önce user doc’u çek
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+
+        const pushEnabled = snap.data()?.pushEnabled ?? false;
+
+        if (!pushEnabled) {
+          return;
+        }
+
+        const token = await registerForPushNotificationsAsync();
+        if (!token) return;
+
+        await setDoc(
+          userRef,
+          {
+            pushToken: token,
+            updatedAt: new Date(),
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.log("Push setup error:", err);
+      }
+    }
+
+    setupPush();
+  }, [user]);
+
+
+  useEffect(() => {
     if (!loading && !user) {
       router.replace("/landing");
     }
@@ -47,7 +97,6 @@ function AppNav() {
         await initI18n();
         if (mounted) setI18nReady(true);
       } catch (e) {
-        console.log("i18n init error:", e);
         if (mounted) setI18nReady(true);
       }
     })();

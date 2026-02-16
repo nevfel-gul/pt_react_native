@@ -26,11 +26,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { auth } from "../../services/firebase";
+import { auth, db } from "../../services/firebase";
 
 // ✅ THEME
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
+import { doc, setDoc } from "firebase/firestore";
 
 type TabKey = "preferences" | "security";
 
@@ -62,6 +63,7 @@ const CustomSwitch = ({
   trackColorInactive,
   thumbColorActive,
   thumbColorInactive,
+  disabled = false,
 }: {
   id: string;
   value: boolean;
@@ -70,6 +72,7 @@ const CustomSwitch = ({
   trackColorInactive: string;
   thumbColorActive: string;
   thumbColorInactive: string;
+  disabled?: boolean;
 }) => {
   const [internalValue, setInternalValue] = useState(value);
 
@@ -89,6 +92,7 @@ const CustomSwitch = ({
     <Switch
       key={`switch-${id}-${internalValue ? "on" : "off"}`}
       value={internalValue}
+      disabled={disabled}
       onValueChange={handleChange}
       trackColor={{ false: trackColorInactive, true: trackColorActive }}
       thumbColor={internalValue ? thumbColorActive : thumbColorInactive}
@@ -184,12 +188,34 @@ export default function SettingsScreen() {
   );
 
   const handlePushToggle = useCallback(
-    (newValue: boolean) => {
+    async (newValue: boolean) => {
       setIsPushEnabled(newValue);
-      if (settingsReady) persistSettings({ pushEnabled: newValue });
+
+      // AsyncStorage
+      if (settingsReady) {
+        await persistSettings({ pushEnabled: newValue });
+      }
+
+      // 🔥 Firestore update
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            pushEnabled: newValue,
+            updatedAt: new Date(),
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.log("pushEnabled update error:", err);
+      }
     },
     [settingsReady, persistSettings]
   );
+
 
   const handleEmailToggle = useCallback(
     (newValue: boolean) => {
@@ -505,6 +531,7 @@ export default function SettingsScreen() {
               <CustomSwitch
                 id="twofactor"
                 value={isTwoFactorEnabled}
+                disabled={true}
                 onToggle={handleTwoFactorToggle}
                 trackColorActive={colors.trackActive}
                 trackColorInactive={colors.trackInactive}

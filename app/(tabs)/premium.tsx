@@ -274,27 +274,6 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
           disabled={continueDisabled}
           style={[styles.ctaInner, continueDisabled && styles.ctaDisabled]}
         >
-          {/* ✅ CTA Gradient Background (kalsın) */}
-          <LinearGradient
-            colors={ctaGrad as any}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            locations={[0, 0.38, 0.72, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-
-          {/* ✅ SADECE üstte mavi flow (beyazlığı kısık) */}
-          <LinearGradient
-            colors={[
-              "rgba(120,190,255,0.18)", // üstte hafif mavi
-              "rgba(120,190,255,0.08)", // orta daha az
-              "rgba(255,255,255,0.00)", // aşağı doğru sıfır
-            ]}
-            locations={[0, 0.45, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
           <Text style={[styles.ctaText, { color: "#ffffff" }]}>
             {busy ? "Processing..." : "Continue"}
           </Text>

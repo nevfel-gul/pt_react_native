@@ -42,22 +42,10 @@ export async function fetchActivePlans(): Promise<PlanDoc[]> {
     const col = collection(db, "plans");
     const allSnap = await getDocs(col);
 
-    console.log("🟦 plans total:", allSnap.size);
-    if (allSnap.size > 0) {
-        console.log("🟦 sample plan:", allSnap.docs[0].id, allSnap.docs[0].data());
-    }
-
     // ✅ Asıl query: sadece active olanlar
     const qy = query(col, where("active", "==", true), orderBy("sortOrder", "asc"));
     const snap = await getDocs(qy);
 
-    console.log("🟩 active plans:", snap.size);
-    if (snap.size > 0) {
-        console.log(
-            "🟩 active ids:",
-            snap.docs.map((d) => d.id)
-        );
-    }
 
     return snap.docs.map((d) => {
         const data = d.data() as any;
