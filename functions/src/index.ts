@@ -573,4 +573,6 @@ export { followUpReminderJob } from "./jobs/followUpReminderJob";
 
 export { noRecordReminderJob } from "./jobs/noRecordReminderJob";
 
+export { noStudentReminderJob } from "./jobs/noStudentReminderJob";
 
+export { weeklyAnalyticsReminderJob } from "./jobs/weeklyAnalyticsReminderJob";
