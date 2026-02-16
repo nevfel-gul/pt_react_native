@@ -209,8 +209,6 @@ export default function SettingsScreen() {
           },
           { merge: true }
         );
-
-        console.log("pushEnabled updated:", newValue);
       } catch (err) {
         console.log("pushEnabled update error:", err);
       }

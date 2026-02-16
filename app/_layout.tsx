@@ -60,7 +60,6 @@ function AppNav() {
         const pushEnabled = snap.data()?.pushEnabled ?? false;
 
         if (!pushEnabled) {
-          console.log("Push disabled → token alınmadı");
           return;
         }
 
@@ -75,8 +74,6 @@ function AppNav() {
           },
           { merge: true }
         );
-
-        console.log("Push token kaydedildi");
       } catch (err) {
         console.log("Push setup error:", err);
       }
@@ -100,7 +97,6 @@ function AppNav() {
         await initI18n();
         if (mounted) setI18nReady(true);
       } catch (e) {
-        console.log("i18n init error:", e);
         if (mounted) setI18nReady(true);
       }
     })();

@@ -3,7 +3,6 @@ import * as Notifications from 'expo-notifications';
 
 export async function registerForPushNotificationsAsync() {
     if (!Device.isDevice) {
-        console.log("Fiziksel cihaz gerekli");
         return;
     }
 
@@ -20,7 +19,6 @@ export async function registerForPushNotificationsAsync() {
     }
 
     if (finalStatus !== 'granted') {
-        console.log('Bildirim izni verilmedi');
         return;
     }
 
@@ -29,8 +27,6 @@ export async function registerForPushNotificationsAsync() {
         await Notifications.getExpoPushTokenAsync();
 
     const token = tokenData.data;
-
-    console.log("🔥 PUSH TOKEN:", token);
 
     return token;
 }

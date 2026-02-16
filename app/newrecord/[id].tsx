@@ -2,7 +2,7 @@ import { auth } from "@/services/firebase";
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { ResizeMode, Video } from "expo-av";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { addDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { addDoc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import {
     ArrowLeft,
     BicepsFlexed,
@@ -844,6 +844,10 @@ export default function NewRecordScreen() {
                 ...formData,
                 analysis,
                 createdAt: serverTimestamp(),
+            });
+
+            await updateDoc(studentDocRef(auth.currentUser?.uid!, id!), {
+                lastRecordedAt: serverTimestamp(),
             });
 
             Alert.alert("Tamamdır", "Değerlendirme kaydedildi.");

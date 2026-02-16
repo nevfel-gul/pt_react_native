@@ -332,6 +332,7 @@ const YeniOgrenciScreen = () => {
                     ...form,
                     ownerUid: auth.currentUser?.uid,
                     createdAt: serverTimestamp(),
+                    followUpDays: 30,
                 });
             }
 
