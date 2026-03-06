@@ -381,7 +381,6 @@ export default function ProfileScreen() {
                 </View>
               </View>
             </View>
-
             {/* USER INFO */}
             <View style={styles.card}>
               <SettingRow
