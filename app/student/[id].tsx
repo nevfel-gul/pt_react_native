@@ -2,54 +2,54 @@ import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
 import {
-    recordsColRef,
-    studentDocRef,
-    studentNotesColRef,
+  recordsColRef,
+  studentDocRef,
+  studentNotesColRef,
 } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-    addDoc,
-    getDoc,
-    onSnapshot,
-    orderBy,
-    query,
-    serverTimestamp,
-    updateDoc,
-    where,
+  addDoc,
+  getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
 } from "firebase/firestore";
 import {
-    ArrowLeft,
-    Calendar,
-    ChevronDown,
-    Edit,
-    Eye,
-    Mail,
-    Phone,
-    User,
+  ArrowLeft,
+  Calendar,
+  ChevronDown,
+  Edit,
+  Eye,
+  Mail,
+  Phone,
+  User,
 } from "lucide-react-native";
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Easing,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -633,8 +633,8 @@ export default function StudentDetailScreen() {
                                 {d === 7
                                   ? t("studentDetail.followUp.week1")
                                   : t("studentDetail.followUp.days", {
-                                      count: d,
-                                    })}
+                                    count: d,
+                                  })}
                               </Text>
                             </TouchableOpacity>
                           );
@@ -691,6 +691,7 @@ export default function StudentDetailScreen() {
                     label={t("studentDetail.label.height")}
                     value={student.boy || "-"}
                     icon={<User size={16} color={theme.colors.primary} />}
+                    lastRow
                   />
                 </>
               </View>
@@ -730,6 +731,7 @@ export default function StudentDetailScreen() {
                       question={t(q.labelKey)}
                       answer={answer}
                       note={note}
+                      lastItem={idx === parqQuestions.length - 1}
                     />
                   );
                 })}
@@ -1113,14 +1115,16 @@ function InfoRow({
   icon,
   label,
   value,
+  lastRow,
 }: {
   styles: ReturnType<typeof makeStyles>;
   icon?: React.ReactNode;
   label: string;
   value: string;
+  lastRow?: boolean;
 }) {
   return (
-    <View style={styles.infoRow}>
+    <View style={lastRow ? styles.infoRowLast : styles.infoRow}>
       <View style={styles.infoLabelRow}>
         {icon}
         <Text style={styles.infoLabel}>{label}</Text>
@@ -1136,12 +1140,14 @@ function QAItem({
   question,
   answer,
   note,
+  lastItem,
 }: {
   styles: ReturnType<typeof makeStyles>;
   index: number;
   question: string;
   answer: Bool;
   note?: string;
+  lastItem?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -1155,7 +1161,7 @@ function QAItem({
   const isYes = answer === true;
 
   return (
-    <View style={styles.qaItem}>
+    <View style={lastItem ? styles.qaItemLast : styles.qaItem}>
       <View style={styles.qaTop}>
         <Text style={styles.qaQuestion}>
           {index}. {question}
@@ -1972,16 +1978,16 @@ function AnalyticsCard({
 
     const selectedPeriodRecords = selectedPointKey
       ? records
-          .filter((r) => {
-            const dt = getRecordDate(r);
-            if (!dt) return false;
-            return getBucketKeyForDate(dt, chart.mode) === selectedPointKey;
-          })
-          .sort((a, b) => {
-            const da = getRecordDate(a)?.getTime() ?? 0;
-            const db = getRecordDate(b)?.getTime() ?? 0;
-            return db - da;
-          })
+        .filter((r) => {
+          const dt = getRecordDate(r);
+          if (!dt) return false;
+          return getBucketKeyForDate(dt, chart.mode) === selectedPointKey;
+        })
+        .sort((a, b) => {
+          const da = getRecordDate(a)?.getTime() ?? 0;
+          const db = getRecordDate(b)?.getTime() ?? 0;
+          return db - da;
+        })
       : [];
 
     const weight = getMetricSnapshot(records, "weight", " kg");
@@ -2759,6 +2765,12 @@ function makeStyles(theme: ThemeUI) {
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
+    /* INFO ROW */
+    infoRowLast: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: theme.spacing.sm - 2,
+    },
     infoLabelRow: { flexDirection: "row", alignItems: "center" },
     infoLabel: {
       color: theme.colors.text.secondary,
@@ -2777,6 +2789,9 @@ function makeStyles(theme: ThemeUI) {
       paddingVertical: theme.spacing.sm - 2,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+    },
+    qaItemLast: {
+      paddingVertical: theme.spacing.sm - 2,
     },
     qaTop: {
       flexDirection: "row",
