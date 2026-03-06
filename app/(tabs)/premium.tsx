@@ -17,7 +17,9 @@ import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 
 import type { BillingCycle, PlanDoc } from "@/constants/paywall";
+import { useTranslation } from "react-i18next";
 import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
+
 
 type Props = {
   onContinue?: (args: { plan: PlanDoc; billing: BillingCycle; intentId: string }) => Promise<void> | void;
@@ -25,6 +27,7 @@ type Props = {
 
 export default function PaywallMonthlyScreen({ onContinue }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { theme, mode, toggleTheme } = useTheme();
 
   const [loading, setLoading] = useState(true);
@@ -41,8 +44,8 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
         active: true,
         sortOrder: 1,
         tier: "core",
-        title: "Core",
-        subtitle: "Up to 15 Students",
+        title: t("paywall.plan.core.title"),
+        subtitle: t("paywall.plan.core.subtitle"),
         studentLimit: 15,
         isUnlimited: false,
         topPick: false,
@@ -58,8 +61,8 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
         active: true,
         sortOrder: 2,
         tier: "pro",
-        title: "Pro",
-        subtitle: "Up to 50 Students",
+        title: t("paywall.plan.pro.title"),
+        subtitle: t("paywall.plan.pro.subtitle"),
         studentLimit: 50,
         isUnlimited: false,
         topPick: true,
@@ -75,8 +78,8 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
         active: true,
         sortOrder: 3,
         tier: "studio",
-        title: "Studio",
-        subtitle: "Unlimited Students",
+        title: t("paywall.plan.studio.title"),
+        subtitle: t("paywall.plan.studio.subtitle"),
         studentLimit: null,
         isUnlimited: true,
         topPick: false,
@@ -84,11 +87,11 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
         monthlyPrice: 149.9,
         annualDiscountPercent: 25,
         perClientNoteMode: "auto",
-        footnote: "* decreases as you add",
+        footnote: t("paywall.plan.unlimited_note"),
         features: [],
       },
     ],
-    []
+    [t]
   );
 
   useEffect(() => {
@@ -123,8 +126,8 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
 
   const saveText = useMemo(() => {
     const d = plans[0]?.annualDiscountPercent ?? 0;
-    return d ? `Save %${d}` : null;
-  }, [plans]);
+    return d ? t("paywall.billing.save", { percent: d }) : null;
+  }, [plans, t]);
 
   const accent = billing === "annual" ? theme.colors.premium : theme.colors.primary;
 
@@ -206,15 +209,18 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <Text style={[styles.h1, { color: accent }]}>Become{"\n"}Premium</Text>
+          <Text style={[styles.h1, { color: accent }]}>
+            {t("paywall.hero.title")}
+          </Text>
 
           <Text style={styles.desc}>
-            Unleash all features of app{"\n"}and grow your personal{"\n"}training business
+            {t("paywall.hero.description")}
           </Text>
 
           <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Annual</Text>
-
+            <Text style={styles.toggleLabel}>
+              {t("paywall.billing.annual")}
+            </Text>
             <Switch
               value={billing === "annual"}
               onValueChange={onToggleBilling}
@@ -238,7 +244,11 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
           </View>
         ) : plans.length === 0 ? (
           <View style={styles.centerBox}>
-            <Text style={styles.emptyText}>{error ? `Error: ${error}` : "No plans available."}</Text>
+            <Text style={styles.emptyText}>
+              {error
+                ? t("paywall.loading.error_prefix", { message: error })
+                : t("paywall.loading.no_plans")}
+            </Text>
           </View>
         ) : (
           <View style={styles.planList}>
@@ -258,12 +268,14 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
         )}
 
         <View style={styles.featuresRow}>
-          <FeatureMini title="AI Detection" theme={theme} mode={mode} muted={false} />
-          <FeatureMini title="AI Detection" theme={theme} mode={mode} muted />
-          <FeatureMini title="AI Detection" theme={theme} mode={mode} muted />
+          <FeatureMini title={t("paywall.features.ai_detection.title")} theme={theme} mode={mode} muted={false} />
+          <FeatureMini title={t("paywall.features.ai_detection.title")} theme={theme} mode={mode} muted={false} />
+          <FeatureMini title={t("paywall.features.ai_detection.title")} theme={theme} mode={mode} muted={false} />
         </View>
 
-        <Text style={styles.cancelText}>Change plans or cancel anytime.</Text>
+        <Text style={styles.cancelText}>
+          {t("paywall.cancel_text")}
+        </Text>
       </ScrollView>
 
       {/* FIXED CTA */}
@@ -275,7 +287,7 @@ export default function PaywallMonthlyScreen({ onContinue }: Props) {
           style={[styles.ctaInner, continueDisabled && styles.ctaDisabled]}
         >
           <Text style={[styles.ctaText, { color: "#ffffff" }]}>
-            {busy ? "Processing..." : "Continue"}
+            {busy ? t("paywall.cta.processing") : t("paywall.cta.continue")}
           </Text>
           <Text style={[styles.ctaArrow, { color: "#ffffff" }]}>→</Text>
 
@@ -309,12 +321,12 @@ const PlanCard = memo(function PlanCard({
     const m = plan.perClientNoteMode ?? "auto";
     if (plan.isUnlimited) return null;
     if (m === "custom") return plan.footnote ?? null;
-    return calcPerClientText(plan);
-  }, [plan]);
+    return calcPerClientText(plan, billing);
+  }, [plan, billing]);
 
   const cardBg = mode === "light" ? theme.colors.surface : "rgba(255,255,255,0.03)";
   const border = mode === "light" ? "rgba(15,23,42,0.10)" : "rgba(255,255,255,0.06)";
-
+  const { t } = useTranslation();
   return (
     <TouchableOpacity
       activeOpacity={0.92}
@@ -356,7 +368,7 @@ const PlanCard = memo(function PlanCard({
           }}
         >
           <Text style={{ color: theme.colors.surfaceDark, fontWeight: "900", fontSize: 13 }}>
-            Top Pick
+            {t("paywall.plan.top_pick")}
           </Text>
         </View>
       ) : null}
@@ -432,7 +444,7 @@ function FeatureMini({
 }) {
   const chipBg = mode === "dark" ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.04)";
   const chipBorder = mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.10)";
-
+  const { t } = useTranslation();
   return (
     <View style={{ width: "31%", alignItems: "center", opacity: muted ? 0.28 : 1 }}>
       <View
@@ -464,7 +476,7 @@ function FeatureMini({
       </Text>
 
       <Text style={{ color: theme.colors.text.muted, fontSize: 10, lineHeight: 12, textAlign: "center" }}>
-        Uses advanced{"\n"}algorithms to analyze{"\n"}patterns and detect{"\n"}whether content is AI{"\n"}generated.
+        {t("paywall.features.ai_detection.description")}
       </Text>
     </View>
   );

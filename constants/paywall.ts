@@ -100,7 +100,7 @@ export function calcDisplayedPrice(plan: PlanDoc, billing: BillingCycle) {
     };
 }
 
-export function calcPerClientText(plan: PlanDoc) {
+export function calcPerClientText(plan: PlanDoc, billing: BillingCycle) {
     if (plan.isUnlimited) {
         return plan.footnote ? plan.footnote : "* decreases as you add";
     }
@@ -108,7 +108,7 @@ export function calcPerClientText(plan: PlanDoc) {
     const limit = Number(plan.studentLimit || 0);
     if (!limit) return null;
 
-    const perClient = Number(plan.monthlyPrice || 0) / limit;
+    const perClient = Number(billing === "monthly" ? plan.monthlyPrice : (plan.monthlyPrice * (1 - (plan.annualDiscountPercent || 0) / 100))) / limit;
     return `$ ${perClient.toFixed(2)} Each Client`;
 }
 
