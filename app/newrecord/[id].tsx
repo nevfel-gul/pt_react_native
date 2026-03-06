@@ -19,7 +19,8 @@ import {
     SquareActivity,
     User,
 } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
     Alert,
@@ -36,7 +37,6 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 // ✅ NEW
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
@@ -148,17 +148,12 @@ type FormData = {
     assessmentDate: string;
 };
 
-const STEPS = [
-    "Fiziksel Ölçümler",
-    "Aerobik Uygunluk",
-    "Hareket & Esneklik",
-    "Kuvvet Testleri",
-];
 
 export default function NewRecordScreen() {
+    const { t } = useTranslation();
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
-
+    const scrollRef = useRef<ScrollView>(null);
     // ✅ theme
     const { theme } = useTheme();
     const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -169,6 +164,12 @@ export default function NewRecordScreen() {
     const [submitting, setSubmitting] = useState(false);
     const [step, setStep] = useState(0);
 
+    const STEPS = [
+        t("recordNew.steps.physical"),
+        t("recordNew.steps.aerobic"),
+        t("recordNew.steps.mobility"),
+        t("recordNew.steps.strength"),
+    ];
     const isLastStep = step === STEPS.length - 1;
 
     const [formData, setFormData] = useState<FormData>({
@@ -263,9 +264,16 @@ export default function NewRecordScreen() {
     const handleChange = (field: keyof FormData, value: string | boolean) => {
         setFormData((prev) => ({ ...prev, [field]: value as any }));
     };
-
     const handleNextStep = () => {
-        setStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+        setStep((prev) => {
+            const next = Math.min(prev + 1, STEPS.length - 1);
+
+            setTimeout(() => {
+                scrollRef.current?.scrollTo({ y: 0, animated: true });
+            }, 0);
+
+            return next;
+        });
     };
 
     const handlePrevStep = () => {
@@ -273,7 +281,16 @@ export default function NewRecordScreen() {
             router.back();
             return;
         }
-        setStep((prev) => prev - 1);
+
+        setStep((prev) => {
+            const next = prev - 1;
+
+            setTimeout(() => {
+                scrollRef.current?.scrollTo({ y: 0, animated: true });
+            }, 0);
+
+            return next;
+        });
     };
 
     useEffect(() => {
@@ -309,7 +326,7 @@ export default function NewRecordScreen() {
     const InfoNote = ({ children }: { children: React.ReactNode }) =>
         showTips ? (
             <View style={{ marginTop: 4 }}>
-                <Text style={styles.infoNoteLabel}>İpucu:</Text>
+                <Text style={styles.infoNoteLabel}>{t("recordNew.hint")}:</Text>
                 <Text style={styles.infoNoteText}>{children}</Text>
             </View>
         ) : null;
@@ -407,12 +424,12 @@ export default function NewRecordScreen() {
 
     const getBasalMetabolismStatus = (bmr: number, gender?: string) => {
         if (!bmr || !gender) return "";
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (bmr < 1500) return "Düşük";
             if (bmr < 1900) return "Normal";
             return "Yüksek";
         }
-        if (gender === "Kadın") {
+        if (gender === "F") {
             if (bmr < 1200) return "Düşük";
             if (bmr < 1600) return "Normal";
             return "Yüksek";
@@ -422,7 +439,7 @@ export default function NewRecordScreen() {
 
     const getBodyFatStatus = (bodyFat: number, age: number, gender?: string) => {
         if (!bodyFat || !age || !gender) return "";
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (age >= 20 && age <= 29) {
                 if (bodyFat < 11) return "Çok Düşük";
                 if (bodyFat < 14) return "Düşük";
@@ -458,7 +475,7 @@ export default function NewRecordScreen() {
                 if (bodyFat < 28) return "Yüksek";
                 return "Çok Yüksek";
             }
-        } else if (gender === "Kadın") {
+        } else if (gender === "F") {
             if (age >= 20 && age <= 29) {
                 if (bodyFat < 16) return "Çok Düşük";
                 if (bodyFat < 20) return "Düşük";
@@ -506,11 +523,11 @@ export default function NewRecordScreen() {
         if (!leanBodyMass || !weight || !gender) return "";
         const bodyMassOran = (leanBodyMass / weight) * 100;
 
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (bodyMassOran < 75) return "Düşük";
             if (bodyMassOran < 90) return "Normal";
             if (bodyMassOran < 100) return "Yüksek";
-        } else if (gender === "Kadın") {
+        } else if (gender === "F") {
             if (bodyMassOran < 65) return "Düşük";
             if (bodyMassOran < 80) return "Normal";
             if (bodyMassOran < 100) return "Yüksek";
@@ -520,12 +537,12 @@ export default function NewRecordScreen() {
 
     const getBodyWaterMassStatus = (bodyWaterMass: number, gender?: string) => {
         if (!bodyWaterMass || !gender) return "";
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (bodyWaterMass < 50) return "Düşük";
             if (bodyWaterMass < 65) return "Normal";
             return "Yüksek";
         }
-        if (gender === "Kadın") {
+        if (gender === "F") {
             if (bodyWaterMass < 45) return "Düşük";
             if (bodyWaterMass < 60) return "Normal";
             return "Yüksek";
@@ -542,12 +559,12 @@ export default function NewRecordScreen() {
 
     const getImpedanceStatus = (impedance: number, gender?: string) => {
         if (!impedance || !gender) return "";
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (impedance < 300) return "Düşük - Daha fazla sıvı/kas oranı";
             if (impedance < 500) return "Normal";
             return "Yüksek - Daha fazla yağ/düşük kas oranı";
         }
-        if (gender === "Kadın") {
+        if (gender === "F") {
             if (impedance < 450) return "Düşük - Daha fazla sıvı/kas oranı";
             if (impedance < 600) return "Normal";
             return "Yüksek - Daha fazla yağ/düşük kas oranı";
@@ -560,14 +577,14 @@ export default function NewRecordScreen() {
         const ratio = bel / kalca;
         const r = ratio.toFixed(2);
 
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (ratio < 0.85) return "Mükemmel";
             if (ratio < 0.9) return "Düşük Risk " + r;
             if (ratio < 0.95) return "Orta Risk " + r;
             if (ratio <= 1.0) return "Yüksek Risk " + r;
             return "Çok Yüksek Risk " + r;
         }
-        if (gender === "Kadın") {
+        if (gender === "F") {
             if (ratio < 0.75) return "Mükemmel";
             if (ratio < 0.8) return "Düşük Risk " + r;
             if (ratio < 0.85) return "Orta Risk " + r;
@@ -588,7 +605,7 @@ export default function NewRecordScreen() {
 
     const getYMCAResult = (pulse: number, age: number, gender?: string) => {
         if (!pulse || !age || !gender) return "";
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (age <= 25) {
                 if (pulse <= 79) return "Mükemmel";
                 if (pulse <= 89) return "İyi";
@@ -598,7 +615,7 @@ export default function NewRecordScreen() {
                 if (pulse <= 120) return "Kötü";
                 return "Çok Kötü";
             }
-        } else if (gender === "Kadın") {
+        } else if (gender === "F") {
             if (age <= 25) {
                 if (pulse <= 81) return "Mükemmel";
                 if (pulse <= 93) return "İyi";
@@ -614,12 +631,12 @@ export default function NewRecordScreen() {
 
     const getBruceTestVO2 = (time: number, gender?: string) => {
         if (!time || time < 0 || !gender) return "";
-        if (gender === "Erkek") {
+        if (gender === "M") {
             const vo2 =
                 14.8 - 1.379 * time + 0.451 * time * time - 0.012 * time * time * time;
             return vo2.toFixed(2);
         }
-        if (gender === "Kadın") {
+        if (gender === "F") {
             const vo2 = 4.38 * time - 3.9;
             return vo2.toFixed(2);
         }
@@ -628,7 +645,7 @@ export default function NewRecordScreen() {
 
     const getVO2Status = (vo2: number, age: number, gender?: string) => {
         if (!vo2 || !age || !gender) return "";
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (age >= 20 && age <= 29) {
                 if (vo2 < 42) return "Zayıf";
                 if (vo2 < 45) return "Ortalama Altı";
@@ -636,7 +653,7 @@ export default function NewRecordScreen() {
                 if (vo2 < 55) return "Ortalama Üstü";
                 return "Mükemmel";
             }
-        } else if (gender === "Kadın") {
+        } else if (gender === "F") {
             if (age >= 20 && age <= 29) {
                 if (vo2 < 35) return "Zayıf";
                 if (vo2 < 39) return "Ortalama Altı";
@@ -650,7 +667,7 @@ export default function NewRecordScreen() {
 
     const getSitAndReachStatus = (value: number, gender?: string) => {
         if (!gender) return "";
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (value >= 27) return "Mükemmel";
             if (value >= 17) return "İyi";
             if (value >= 6) return "Ortanın Üstü";
@@ -659,7 +676,7 @@ export default function NewRecordScreen() {
             if (value >= -20) return "Kötü";
             return "Çok Kötü";
         }
-        if (gender === "Kadın") {
+        if (gender === "F") {
             if (value >= 30) return "Mükemmel";
             if (value >= 21) return "İyi";
             if (value >= 11) return "Ortanın Üstü";
@@ -687,7 +704,7 @@ export default function NewRecordScreen() {
     ) => {
         if (!reps || reps < 0 || !gender || !age) return "";
 
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (!isModified) {
                 if (age >= 20 && age <= 29) {
                     if (reps > 54) return "Mükemmel";
@@ -699,7 +716,7 @@ export default function NewRecordScreen() {
             }
         }
 
-        if (gender === "Kadın") {
+        if (gender === "F") {
             if (isModified) {
                 if (age >= 20 && age <= 29) {
                     if (reps > 48) return "Mükemmel";
@@ -717,14 +734,14 @@ export default function NewRecordScreen() {
     const getWallSitScore = (seconds: number, gender?: string) => {
         if (!seconds || seconds < 0 || !gender) return "";
         const time = Number(seconds);
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (time > 102) return "Mükemmel";
             if (time >= 76) return "Ortalama Üstü";
             if (time >= 58) return "Ortalama";
             if (time >= 30) return "Ortalama Altı";
             return "Zayıf";
         }
-        if (gender === "Kadın") {
+        if (gender === "F") {
             if (time > 60) return "Mükemmel";
             if (time >= 46) return "Ortalama Üstü";
             if (time >= 36) return "Ortalama";
@@ -737,13 +754,13 @@ export default function NewRecordScreen() {
     const getPlankScore = (seconds: number, gender?: string) => {
         if (!seconds || seconds < 0 || !gender) return "";
         const time = Number(seconds);
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (time > 128) return "Mükemmel";
             if (time >= 106) return "Ortalama Üstü";
             if (time >= 77) return "Ortalama";
             return "Ortalama Altı";
         }
-        if (gender === "Kadın") {
+        if (gender === "F") {
             if (time > 90) return "Mükemmel";
             if (time >= 71) return "Ortalama Üstü";
             if (time >= 41) return "Ortalama";
@@ -755,14 +772,14 @@ export default function NewRecordScreen() {
     const getMekikScore = (seconds: number, gender?: string) => {
         if (!seconds || seconds < 0 || !gender) return "";
         const time = Number(seconds);
-        if (gender === "Erkek") {
+        if (gender === "M") {
             if (time > 41) return "Mükemmel";
             if (time >= 35) return "Ortalama Üstü";
             if (time >= 29) return "Ortalama";
             if (time >= 22) return "Ortalama Altı";
             return "Zayıf";
         }
-        if (gender === "Kadın") {
+        if (gender === "F") {
             if (time > 25) return "Mükemmel";
             if (time >= 21) return "Ortalama Üstü";
             if (time >= 15) return "Ortalama";
@@ -774,7 +791,7 @@ export default function NewRecordScreen() {
 
     const handleSubmit = async () => {
         if (!id) {
-            Alert.alert("Hata", "Öğrenci ID bulunamadı.");
+            Alert.alert("Hata", " " + t("recordNew.alert.noStudentId") + " ");
             return;
         }
 
@@ -871,11 +888,11 @@ export default function NewRecordScreen() {
                 lastRecordedAt: serverTimestamp(),
             });
 
-            Alert.alert("Tamamdır", "Değerlendirme kaydedildi.");
+            Alert.alert(t("recordNew.alert.okTitle"), t("recordNew.alert.saved"));
             router.back();
         } catch (err) {
             console.error("Kayıt hata:", err);
-            Alert.alert("Hata", "Kayıt sırasında bir hata oluştu.");
+            Alert.alert("Hata", t("recordNew.alert.saveError"));
         } finally {
             setSubmitting(false);
         }
@@ -962,7 +979,7 @@ export default function NewRecordScreen() {
                 <Text style={styles.label}>{label}</Text>
                 {hint && showTips ? (
                     <HintImageButton
-                        label="İpucu için tıklayın"
+                        label={t("recordNew.hint.tap")}
                         videoSource={require("@/assets/videos/belOlcum.mp4")}
                     />
                 ) : null}
@@ -1054,50 +1071,56 @@ export default function NewRecordScreen() {
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <HandHeart size={18} color={theme.colors.accent} />
-                                <Text style={styles.cardTitle}>Fiziksel Ölçümler (Tanita)</Text>
+                                <Text style={styles.cardTitle}>{t("recordNew.card.tanita.title")}</Text>
                             </View>
 
                             <InfoNote>
-                                Bu bölümde yer alan tüm değerler Tanita vücut analiz cihazından alınan objektif
-                                ölçümlerdir. Ölçümün doğru olması için danışanın aç karnına, benzer saatlerde ve
-                                mümkünse aynı koşullarda ölçülmesi önerilir. Değerler zaman içindeki değişimle
-                                birlikte değerlendirilmelidir.
+                                {t("recordNew.card.tanita.tip")}
                             </InfoNote>
 
-                            {renderNumericInput("weight", "Kilo (kg)")}
-                            {renderNumericInput("bodyMassIndex", "Vücut Kitle İndeksi (VKİ)")}
+                            {renderNumericInput("weight", t("recordNew.field.weight"))}
+                            {renderNumericInput("bodyMassIndex", t("recordNew.field.bmi"))}
+
                             <InfoNote>
-                                Bu değer doğrudan Tanita cihazında görünen BMI/VKİ değeridir. Manuel hesaplama
-                                yapmanıza gerek yoktur.
+                                {t("recordNew.card.tanita.bmi.tip")}
                             </InfoNote>
+
                             {formData.bodyMassIndex ? (
                                 <Text style={styles.infoText}>
-                                    Durum: {getBMIStatus(Number(formData.bodyMassIndex || 0))}
+                                    {t("recordNew.statusLabel")}{" "}
+                                    {getBMIStatus(Number(formData.bodyMassIndex || 0))}
                                 </Text>
                             ) : null}
 
-                            {renderNumericInput("basalMetabolism", "Bazal Metabolizma Hızı")}
+                            {renderNumericInput("basalMetabolism", t("recordNew.field.bmr"))}
                             {formData.basalMetabolism ? (
                                 <Text style={styles.infoText}>
-                                    Durum:{" "}
-                                    {getBasalMetabolismStatus(Number(formData.basalMetabolism || 0), student?.gender)}
+                                    {t("recordNew.statusLabel")}{" "}
+                                    {getBasalMetabolismStatus(
+                                        Number(formData.basalMetabolism || 0),
+                                        student?.gender
+                                    )}
                                 </Text>
                             ) : null}
 
-                            {renderNumericInput("bodyFat", "Vücut Yağ Oranı (%)")}
+                            {renderNumericInput("bodyFat", t("recordNew.field.bodyFat"))}
                             {formData.bodyFat ? (
                                 <Text style={styles.infoText}>
-                                    Durum:{" "}
-                                    {getBodyFatStatus(Number(formData.bodyFat || 0), getAge(), student?.gender)}
+                                    {t("recordNew.statusLabel")}{" "}
+                                    {getBodyFatStatus(
+                                        Number(formData.bodyFat || 0),
+                                        getAge(),
+                                        student?.gender
+                                    )}
                                 </Text>
                             ) : null}
 
-                            {renderNumericInput("totalMuscleMass", "Toplam Kas Kütlesi (kg)")}
+                            {renderNumericInput("totalMuscleMass", t("recordNew.field.totalMuscle"))}
 
-                            {renderNumericInput("leanBodyMass", "Yağsız Kütle (kg)")}
+                            {renderNumericInput("leanBodyMass", t("recordNew.field.leanBodyMass"))}
                             {formData.leanBodyMass ? (
                                 <Text style={styles.infoText}>
-                                    Durum:{" "}
+                                    {t("recordNew.statusLabel")}{" "}
                                     {getLeanBodyMassStatus(
                                         Number(formData.leanBodyMass || 0),
                                         Number(formData.weight || 0),
@@ -1106,25 +1129,29 @@ export default function NewRecordScreen() {
                                 </Text>
                             ) : null}
 
-                            {renderNumericInput("bodyWaterMass", "Vücut Sıvı Oranı (%)")}
+                            {renderNumericInput("bodyWaterMass", t("recordNew.field.bodyWater"))}
                             {formData.bodyWaterMass ? (
                                 <Text style={styles.infoText}>
-                                    Durum:{" "}
-                                    {getBodyWaterMassStatus(Number(formData.bodyWaterMass || 0), student?.gender)}
+                                    {t("recordNew.statusLabel")}{" "}
+                                    {getBodyWaterMassStatus(
+                                        Number(formData.bodyWaterMass || 0),
+                                        student?.gender
+                                    )}
                                 </Text>
                             ) : null}
 
-                            {renderNumericInput("impedance", "Empedans (Ω - Ohm)")}
+                            {renderNumericInput("impedance", t("recordNew.field.impedance"))}
                             {formData.impedance ? (
                                 <Text style={styles.infoText}>
-                                    Durum: {getImpedanceStatus(Number(formData.impedance || 0), student?.gender)}
+                                    {t("recordNew.statusLabel")}{" "}
+                                    {getImpedanceStatus(Number(formData.impedance || 0), student?.gender)}
                                 </Text>
                             ) : null}
 
-                            {renderNumericInput("metabolicAge", "Metabolik Yaş")}
+                            {renderNumericInput("metabolicAge", t("recordNew.field.metabolicAge"))}
                             {formData.metabolicAge ? (
                                 <Text style={styles.infoText}>
-                                    Durum:{" "}
+                                    {t("recordNew.statusLabel")}{" "}
                                     {getMetabolicAgeStatus(Number(formData.metabolicAge || 0), getAge())}
                                 </Text>
                             ) : null}
@@ -1133,20 +1160,55 @@ export default function NewRecordScreen() {
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <Ruler size={18} color={theme.colors.success} />
-                                <Text style={styles.cardTitle}>Çevre Ölçümleri (Mezura)</Text>
+                                <Text style={styles.cardTitle}>{t("recordNew.card.tape.title")}</Text>
                             </View>
 
-                            {renderNumericInput("boyun", "Boyun", "Boyun Çevresi", true)}
-                            {renderNumericInput("omuz", "Omuz", "Omuz Genişliği", true)}
-                            {renderNumericInput("gogus", "Göğüs", "Göğüs Çevresi", true)}
-                            {renderNumericInput("sagKol", "Sağ Kol", "Kol Çevresi", true)}
-                            {renderNumericInput("solKol", "Sol Kol", "Kol Çevresi", true)}
-                            {renderNumericInput("bel", "Bel", "Bel Çevresi", true)}
-                            {renderNumericInput("kalca", "Kalça", "Kalça Çevresi", true)}
+                            {renderNumericInput(
+                                "boyun",
+                                t("recordNew.field.neck"),
+                                t("recordNew.placeholder.neck"),
+                                true
+                            )}
+                            {renderNumericInput(
+                                "omuz",
+                                t("recordNew.field.shoulder"),
+                                t("recordNew.placeholder.shoulder"),
+                                true
+                            )}
+                            {renderNumericInput(
+                                "gogus",
+                                t("recordNew.field.chest"),
+                                t("recordNew.placeholder.chest"),
+                                true
+                            )}
+                            {renderNumericInput(
+                                "sagKol",
+                                t("recordNew.field.rightArm"),
+                                t("recordNew.placeholder.rightArm"),
+                                true
+                            )}
+                            {renderNumericInput(
+                                "solKol",
+                                t("recordNew.field.leftArm"),
+                                t("recordNew.placeholder.leftArm"),
+                                true
+                            )}
+                            {renderNumericInput(
+                                "bel",
+                                t("recordNew.field.waist"),
+                                t("recordNew.placeholder.waist"),
+                                true
+                            )}
+                            {renderNumericInput(
+                                "kalca",
+                                t("recordNew.field.hip"),
+                                t("recordNew.placeholder.hip"),
+                                true
+                            )}
 
                             {formData.bel && formData.kalca ? (
                                 <Text style={styles.infoText}>
-                                    Bel/Kalça:{" "}
+                                    {t("recordNew.label.waistHip")}{" "}
                                     {getBellyHipRatio(
                                         Number(formData.bel || 0),
                                         Number(formData.kalca || 0),
@@ -1155,11 +1217,31 @@ export default function NewRecordScreen() {
                                 </Text>
                             ) : null}
 
-                            {renderNumericInput("sagBacak", "Sağ Bacak", "Bacak Çevresi", true)}
-                            {renderNumericInput("solBacak", "Sol Bacak", "Bacak Çevresi", true)}
-                            {renderNumericInput("sagKalf", "Sağ Kalf", "Kalf Çevresi", true)}
-                            {renderNumericInput("solKalf", "Sol Kalf", "Kalf Çevresi", true)}
-                            {renderTextArea("mezuraNote", "Mezura Notu")}
+                            {renderNumericInput(
+                                "sagBacak",
+                                t("recordNew.field.rightLeg"),
+                                t("recordNew.placeholder.rightLeg"),
+                                true
+                            )}
+                            {renderNumericInput(
+                                "solBacak",
+                                t("recordNew.field.leftLeg"),
+                                t("recordNew.placeholder.leftLeg"),
+                                true
+                            )}
+                            {renderNumericInput(
+                                "sagKalf",
+                                t("recordNew.field.rightCalf"),
+                                t("recordNew.placeholder.rightCalf"),
+                                true
+                            )}
+                            {renderNumericInput(
+                                "solKalf",
+                                t("recordNew.field.leftCalf"),
+                                t("recordNew.placeholder.leftCalf"),
+                                true
+                            )}
+                            {renderTextArea("mezuraNote", t("recordNew.field.tapeNote"))}
                         </View>
                     </>
                 );
@@ -1170,37 +1252,30 @@ export default function NewRecordScreen() {
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <SquareActivity size={18} color={theme.colors.warning} />
-                                <Text style={styles.cardTitle}>Aerobik Uygunluk / Hedef KAH</Text>
+                                <Text style={styles.cardTitle}>{t("recordNew.card.aerobic.title")}</Text>
                             </View>
 
                             <InfoNote>
-                                Dinlenik nabız sabah uyanır uyanmaz, yataktan kalkmadan ölçülmelidir. Düzenli
-                                egzersiz yapan bireylerde zamanla düşmesi beklenir ve kardiyovasküler uygunluğun
-                                önemli bir göstergesidir.
+                                {t("recordNew.tip.restingHr")}
                             </InfoNote>
-                            {renderNumericInput("dinlenikNabiz", "Dinlenik Nabız")}
+                            {renderNumericInput("dinlenikNabiz", t("recordNew.field.restingHr"))}
 
                             <InfoNote>
-                                Carvonen yöntemi, dinlenik nabız ve yaşa göre hedef egzersiz nabzını hesaplamak
-                                için kullanılır. Seçilen zone, egzersizin şiddetini belirler (yağ yakımı,
-                                dayanıklılık, performans gibi).
+                                {t("recordNew.tip.carvonen")}
                             </InfoNote>
-                            {renderRadioRow("carvonenMultiplier", "Carvonen Egzersiz Şiddeti (Zone)", [
-                                "0.55",
-                                "0.65",
-                                "0.75",
-                                "0.85",
-                                "0.95",
-                            ])}
+                            {renderRadioRow(
+                                "carvonenMultiplier",
+                                t("recordNew.field.carvonenZone"),
+                                ["0.55", "0.65", "0.75", "0.85", "0.95"]
+                            )}
 
                             {formData.carvonenMultiplier ? (
                                 <>
                                     <InfoNote>
-                                        Hesaplanan hedef nabız, egzersiz sırasında ulaşılması önerilen kalp atım sayısını
-                                        ifade eder.
+                                        {t("recordNew.tip.targetHr")}
                                     </InfoNote>
                                     <Text style={styles.infoText}>
-                                        Hedef Nabız:{" "}
+                                        {t("recordNew.label.targetHr")}{" "}
                                         {getCarvonenTargetHR(
                                             Number(formData.dinlenikNabiz || formData.restingHeartRate || 0),
                                             Number(formData.carvonenMultiplier || 0),
@@ -1211,45 +1286,53 @@ export default function NewRecordScreen() {
                             ) : null}
 
                             <InfoNote>
-                                YMCA 3 dk basamak testi sonrası ölçülen toparlanma nabzı, bireyin aerobik kapasitesi
-                                ve kalbin egzersiz sonrası normale dönme hızını değerlendirmek için kullanılır.
-                                {"\n"}
-                                <Strong>Basamak bir:</Strong> 3 dakika boyunca dakikada 24 basamaklık tempoyla 30 cm
-                                basamağa çık-in.{"\n"}
-                                <Strong>Basamak iki:</Strong> Egzersizden 5 sn sonra 60 sn nabız say.{"\n"}
-                                <Strong>Basamak üç:</Strong> Kategoriye yerleştir.{"\n"}
-                                <Strong>Basamak dört:</Strong> Başlangıç programını seç.{"\n"}
-                                <Strong>Basamak beş:</Strong> Max VO2 bulunur.
+                                <Text>
+                                    {t("recordNew.tip.ymca.longIntro")}
+                                    {"\n"}
+                                    <Strong>{t("recordNew.tip.ymca.step1Label")}</Strong> {t("recordNew.tip.ymca.step1")}
+                                    {"\n"}
+                                    <Strong>{t("recordNew.tip.ymca.step2Label")}</Strong> {t("recordNew.tip.ymca.step2")}
+                                    {"\n"}
+                                    <Strong>{t("recordNew.tip.ymca.step3Label")}</Strong> {t("recordNew.tip.ymca.step3")}
+                                    {"\n"}
+                                    <Strong>{t("recordNew.tip.ymca.step4Label")}</Strong> {t("recordNew.tip.ymca.step4")}
+                                    {"\n"}
+                                    <Strong>{t("recordNew.tip.ymca.step5Label")}</Strong> {t("recordNew.tip.ymca.step5")}
+                                </Text>
                             </InfoNote>
-                            {renderNumericInput("toparlanmaNabzi", "YMCA 3 dk Basamak Testi – Toparlanma Nabzı")}
+
+                            {renderNumericInput("toparlanmaNabzi", t("recordNew.field.ymcaPulse"))}
 
                             {formData.toparlanmaNabzi ? (
                                 <>
                                     <InfoNote>
-                                        Daha düşük toparlanma nabzı, daha iyi kardiyovasküler kondisyonu ifade eder.
+                                        {t("recordNew.tip.ymcaResult")}
                                     </InfoNote>
                                     <Text style={styles.infoText}>
-                                        YMCA Sonuç:{" "}
-                                        {getYMCAResult(Number(formData.toparlanmaNabzi || 0), getAge(), student?.gender)}
+                                        {t("recordNew.label.ymcaResult")}{" "}
+                                        {getYMCAResult(
+                                            Number(formData.toparlanmaNabzi || 0),
+                                            getAge(),
+                                            student?.gender
+                                        )}
                                     </Text>
                                 </>
                             ) : null}
 
                             <View style={[styles.field, { marginTop: 16 }]}>
-                                <Text style={styles.label}>Bruce Testi - Süre (dk)</Text>
+                                <Text style={styles.label}>{t("recordNew.field.bruceTime")}</Text>
 
                                 <InfoNote>
-                                    Bruce testi maksimal bir egzersiz testidir. Koşu bandında her 3 dakikada bir hız
-                                    ve eğim artırılır. Dayanabildiği toplam süre kaydedilir.
+                                    {t("recordNew.tip.bruceProtocol")}
                                 </InfoNote>
 
                                 {showTips ? (
                                     <View style={styles.table}>
                                         <View style={[styles.tr, styles.thRow]}>
-                                            <Text style={[styles.th, { flex: 1.1 }]}>Aşama</Text>
-                                            <Text style={[styles.th, { flex: 1.2 }]}>Süre (dk)</Text>
-                                            <Text style={[styles.th, { flex: 1.6 }]}>Hız</Text>
-                                            <Text style={[styles.th, { flex: 1.2 }]}>Eğim</Text>
+                                            <Text style={[styles.th, { flex: 1.1 }]}>{t("recordNew.table.stage")}</Text>
+                                            <Text style={[styles.th, { flex: 1.2 }]}>{t("recordNew.table.duration")}</Text>
+                                            <Text style={[styles.th, { flex: 1.6 }]}>{t("recordNew.table.speed")}</Text>
+                                            <Text style={[styles.th, { flex: 1.2 }]}>{t("recordNew.table.incline")}</Text>
                                         </View>
 
                                         {[
@@ -1267,40 +1350,49 @@ export default function NewRecordScreen() {
                                             <View key={r.stage} style={styles.tr}>
                                                 <Text style={[styles.td, { flex: 1.1 }]}>{r.stage}</Text>
                                                 <Text style={[styles.td, { flex: 1.2 }]}>{r.min}</Text>
-                                                <Text style={[styles.td, { flex: 1.6 }]}>{r.speed} km/sa</Text>
+                                                <Text style={[styles.td, { flex: 1.6 }]}>
+                                                    {r.speed} {t("common.unit.kmh")}
+                                                </Text>
                                                 <Text style={[styles.td, { flex: 1.2 }]}>{r.grade}</Text>
                                             </View>
                                         ))}
                                     </View>
                                 ) : null}
 
-                                <InfoNote>Not: Koşu bandı “km/sa” ayarında olmalı; eğim % olarak girilir.</InfoNote>
+                                <InfoNote>
+                                    {t("recordNew.tip.bruceNote")}
+                                </InfoNote>
 
                                 <TextInput
-                                    placeholder="Test süresi (dk)"
+                                    placeholder={t("recordNew.placeholder.bruceTime")}
                                     placeholderTextColor={theme.colors.text.muted}
                                     value={formData.testSuresi}
-                                    onChangeText={(t) => handleChange("testSuresi", t)}
+                                    onChangeText={(tValue) => handleChange("testSuresi", tValue)}
                                     style={styles.input}
                                     keyboardType="numeric"
                                 />
 
                                 <Text style={styles.helpText}>
-                                    Bruce testi protokolü: Koşu bandında her 3 dakikada bir hız ve eğim artar,
-                                    dayanabildiği son süre kaydedilir.
+                                    {t("recordNew.help.bruce")}
                                 </Text>
 
                                 {formData.testSuresi ? (
                                     <>
                                         <InfoNote>
-                                            VO₂max, vücudun maksimal oksijen kullanma kapasitesini ifade eder.
+                                            {t("recordNew.tip.vo2max")}
                                         </InfoNote>
 
                                         <Text style={styles.infoText}>
-                                            VO₂max:{" "}
-                                            {getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender)} ml/kg/dk —{" "}
+                                            {t("recordNew.label.vo2max")}{" "}
+                                            {getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender)}{" "}
+                                            {t("common.unit.vo2")} —{" "}
                                             {getVO2Status(
-                                                Number(getBruceTestVO2(Number(formData.testSuresi || 0), student?.gender) || 0),
+                                                Number(
+                                                    getBruceTestVO2(
+                                                        Number(formData.testSuresi || 0),
+                                                        student?.gender
+                                                    ) || 0
+                                                ),
                                                 getAge(),
                                                 student?.gender
                                             )}
@@ -1318,102 +1410,113 @@ export default function NewRecordScreen() {
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <PersonStanding size={18} color={theme.colors.premium} />
-                                <Text style={styles.cardTitle}>Statik Postür Analizi</Text>
+                                <Text style={styles.cardTitle}>{t("recordNew.card.posture.title")}</Text>
                             </View>
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Amaç:</Strong> Postür analizi ile kişinin duruşu değerlendirilir.{"\n\n"}
-                                    <Strong>Uygulama:</Strong> Önden–yandan–arkadan gözlem yap.{"\n\n"}
-                                    <Strong>İpucu:</Strong> Çıplak ayak, nötr duruş.
+                                    <Strong>{t("recordNew.info.goal")}</Strong> {t("recordNew.tip.posture.goal")}
+                                    {"\n\n"}
+                                    <Strong>{t("recordNew.info.application")}</Strong> {t("recordNew.tip.posture.application")}
+                                    {"\n\n"}
+                                    <Strong>{t("recordNew.info.hint")}</Strong> {t("recordNew.tip.posture.hint")}
                                 </Text>
                             </InfoNote>
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Ayak & Ayak Bileği:</Strong> Aşırı pronasyon/supinasyon vb.
+                                    <Strong>{t("recordNew.tip.posture.ankleTitle")}</Strong> {t("recordNew.tip.posture.ankleDesc")}
                                 </Text>
                             </InfoNote>
-                            {renderTextArea("ayakveayakbilegionden", "Ayak & Ayak Bileği (Önden)")}
-                            {renderTextArea("ayakveayakbilegiyandan", "Ayak & Ayak Bileği (Yandan)")}
-                            {renderTextArea("ayakveayakbilegiarkadan", "Ayak & Ayak Bileği (Arkadan)")}
+                            {renderTextArea("ayakveayakbilegionden", t("recordNew.field.ankle.front"))}
+                            {renderTextArea("ayakveayakbilegiyandan", t("recordNew.field.ankle.side"))}
+                            {renderTextArea("ayakveayakbilegiarkadan", t("recordNew.field.ankle.back"))}
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Diz:</Strong> Valgus/varus vb.
+                                    <Strong>{t("recordNew.tip.posture.kneeTitle")}</Strong> {t("recordNew.tip.posture.kneeDesc")}
                                 </Text>
                             </InfoNote>
-                            {renderTextArea("dizonden", "Diz (Önden)")}
-                            {renderTextArea("dizyandan", "Diz (Yandan)")}
-                            {renderTextArea("dizarkadan", "Diz (Arkadan)")}
+                            {renderTextArea("dizonden", t("recordNew.field.knee.front"))}
+                            {renderTextArea("dizyandan", t("recordNew.field.knee.side"))}
+                            {renderTextArea("dizarkadan", t("recordNew.field.knee.back"))}
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>LPHK:</Strong> Pelvis tilt/lordoz vb.
+                                    <Strong>{t("recordNew.tip.posture.lphkTitle")}</Strong> {t("recordNew.tip.posture.lphkDesc")}
                                 </Text>
                             </InfoNote>
-                            {renderTextArea("lphkonden", "Lumbo-Pelvic-Hip Kompleksi (Önden)")}
-                            {renderTextArea("lphkyandan", "Lumbo-Pelvic-Hip Kompleksi (Yandan)")}
-                            {renderTextArea("lphkarkadan", "Lumbo-Pelvic-Hip Kompleksi (Arkadan)")}
+                            {renderTextArea("lphkonden", t("recordNew.field.lphk.front"))}
+                            {renderTextArea("lphkyandan", t("recordNew.field.lphk.side"))}
+                            {renderTextArea("lphkarkadan", t("recordNew.field.lphk.back"))}
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Omuzlar:</Strong> Skapula/öne düşme vb.
+                                    <Strong>{t("recordNew.tip.posture.shouldersTitle")}</Strong> {t("recordNew.tip.posture.shouldersDesc")}
                                 </Text>
                             </InfoNote>
-                            {renderTextArea("omuzlaronden", "Omuzlar (Önden)")}
-                            {renderTextArea("omuzlaryandan", "Omuzlar (Yandan)")}
-                            {renderTextArea("omuzlararkadan", "Omuzlar (Arkadan)")}
+                            {renderTextArea("omuzlaronden", t("recordNew.field.shoulders.front"))}
+                            {renderTextArea("omuzlaryandan", t("recordNew.field.shoulders.side"))}
+                            {renderTextArea("omuzlararkadan", t("recordNew.field.shoulders.back"))}
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Baş & Boyun:</Strong> Forward head vb.
+                                    <Strong>{t("recordNew.tip.posture.headNeckTitle")}</Strong> {t("recordNew.tip.posture.headNeckDesc")}
                                 </Text>
                             </InfoNote>
-                            {renderTextArea("basboyunonden", "Baş & Boyun Omurları (Önden)")}
-                            {renderTextArea("basboyunyandan", "Baş & Boyun Omurları (Yandan)")}
-                            {renderTextArea("basboyunarkadan", "Baş & Boyun Omurları (Arkadan)")}
+                            {renderTextArea("basboyunonden", t("recordNew.field.headNeck.front"))}
+                            {renderTextArea("basboyunyandan", t("recordNew.field.headNeck.side"))}
+                            {renderTextArea("basboyunarkadan", t("recordNew.field.headNeck.back"))}
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Pronation Distortion Syndrome:</Strong> vb.
+                                    <Strong>{t("recordNew.field.pronation")}</Strong> {t("recordNew.tip.posture.pronationDesc")}
                                 </Text>
                             </InfoNote>
-                            {renderRadioRow("pronation", "Pronation Distortion Syndrome", ["Evet", "Hayır"])}
+                            {renderRadioRow("pronation", t("recordNew.field.pronation"), [
+                                t("recordNew.option.yes"),
+                                t("recordNew.option.no"),
+                            ])}
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Lower Crossed Syndrome:</Strong> vb.
+                                    <Strong>{t("recordNew.field.lowerCrossed")}</Strong> {t("recordNew.tip.posture.lowerDesc")}
                                 </Text>
                             </InfoNote>
-                            {renderRadioRow("lower", "Lower Crossed Syndrome", ["Evet", "Hayır"])}
+                            {renderRadioRow("lower", t("recordNew.field.lowerCrossed"), [
+                                t("recordNew.option.yes"),
+                                t("recordNew.option.no"),
+                            ])}
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Upper Crossed Syndrome:</Strong> vb.
+                                    <Strong>{t("recordNew.field.upperCrossed")}</Strong> {t("recordNew.tip.posture.upperDesc")}
                                 </Text>
                             </InfoNote>
-                            {renderRadioRow("upper", "Upper Crossed Syndrome", ["Evet", "Hayır"])}
+                            {renderRadioRow("upper", t("recordNew.field.upperCrossed"), [
+                                t("recordNew.option.yes"),
+                                t("recordNew.option.no"),
+                            ])}
 
-                            {renderTextArea("posturNotes", "Genel Not / Gözlem", "")}
+                            {renderTextArea("posturNotes", t("recordNew.field.postureNotes"), "")}
                         </View>
 
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <HeartPulse size={18} color={theme.colors.accent} />
-                                <Text style={styles.cardTitle}>Overhead Squat Testi</Text>
+                                <Text style={styles.cardTitle}>{t("recordNew.card.ohs.title")}</Text>
                             </View>
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Amaç:</Strong> Kompansasyonları gözlemek.
+                                    <Strong>{t("recordNew.info.goal")}</Strong> {t("recordNew.tip.ohs.goal")}
                                 </Text>
                             </InfoNote>
 
                             <View style={styles.switchRow}>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={styles.label}>Ağrı var mı?</Text>
-                                    <Text style={styles.helpText}>Bel, diz, omuz gibi bölgelerde düzenli ağrı?</Text>
+                                    <Text style={styles.label}>{t("recordNew.field.hasPain")}</Text>
+                                    <Text style={styles.helpText}>{t("recordNew.help.hasPain")}</Text>
                                 </View>
                                 <Switch
                                     value={formData.hasPain}
@@ -1427,8 +1530,8 @@ export default function NewRecordScreen() {
 
                             <View style={styles.switchRow}>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={styles.label}>Ameliyat geçmişi?</Text>
-                                    <Text style={styles.helpText}>Son yıllarda ortopedik veya başka bir ameliyat.</Text>
+                                    <Text style={styles.label}>{t("recordNew.field.hadSurgery")}</Text>
+                                    <Text style={styles.helpText}>{t("recordNew.help.hadSurgery")}</Text>
                                 </View>
                                 <Switch
                                     value={formData.hadSurgery}
@@ -1440,35 +1543,59 @@ export default function NewRecordScreen() {
                                 />
                             </View>
 
-                            {renderTextArea("ohsNotes", "Overhead Squat Notları (Gözlemler)", "")}
-                            {renderRadioRow("ohsFeetTurnOut", "Ayaklar dışa döner mi?", ["Evet", "Hayır"])}
-                            {renderRadioRow("ohsKneesIn", "Dizler içe kaçar mı (valgus)?", ["Evet", "Hayır"])}
-                            {renderRadioRow("ohsForwardLean", "Gövde aşırı öne düşer mi?", ["Evet", "Hayır"])}
-                            {renderRadioRow("ohsLowBackArch", "Bel aşırı kavislenir mi?", ["Evet", "Hayır"])}
-                            {renderRadioRow("ohsArmsFallForward", "Kollar öne düşer mi?", ["Evet", "Hayır"])}
+                            {renderTextArea("ohsNotes", t("recordNew.field.ohsNotes"), "")}
+                            {renderRadioRow("ohsFeetTurnOut", t("recordNew.field.ohsFeetTurnOut"), [
+                                t("recordNew.option.yes"),
+                                t("recordNew.option.no"),
+                            ])}
+                            {renderRadioRow("ohsKneesIn", t("recordNew.field.ohsKneesIn"), [
+                                t("recordNew.option.yes"),
+                                t("recordNew.option.no"),
+                            ])}
+                            {renderRadioRow("ohsForwardLean", t("recordNew.field.ohsForwardLean"), [
+                                t("recordNew.option.yes"),
+                                t("recordNew.option.no"),
+                            ])}
+                            {renderRadioRow("ohsLowBackArch", t("recordNew.field.ohsLowBackArch"), [
+                                t("recordNew.option.yes"),
+                                t("recordNew.option.no"),
+                            ])}
+                            {renderRadioRow("ohsArmsFallForward", t("recordNew.field.ohsArmsFallForward"), [
+                                t("recordNew.option.yes"),
+                                t("recordNew.option.no"),
+                            ])}
                         </View>
 
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <HeartPulse size={18} color={theme.colors.success} />
-                                <Text style={styles.cardTitle}>Sit and Reach Testi</Text>
+                                <Text style={styles.cardTitle}>{t("recordNew.card.sitReach.title")}</Text>
                             </View>
 
                             <InfoNote>
                                 <Text>
-                                    <Strong>Uygulama:</Strong> 3 deneme; en iyi değer alınır (cm).
+                                    <Strong>{t("recordNew.info.application")}</Strong> {t("recordNew.tip.sitReach.application")}
                                 </Text>
                             </InfoNote>
 
-                            {renderNumericInput("sitandreach1", "1. Ölçüm (cm)")}
-                            {renderNumericInput("sitandreach2", "2. Ölçüm (cm)")}
-                            {renderNumericInput("sitandreach3", "3. Ölçüm (cm)")}
+                            {renderNumericInput("sitandreach1", t("recordNew.field.sitReach1"))}
+                            {renderNumericInput("sitandreach2", t("recordNew.field.sitReach2"))}
+                            {renderNumericInput("sitandreach3", t("recordNew.field.sitReach3"))}
 
                             {formData.sitandreach1 && formData.sitandreach2 && formData.sitandreach3 ? (
                                 <Text style={styles.infoText}>
-                                    En İyi Değer: {getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3)} | Durum:{" "}
-                                    {getMaxOfThree(formData.sitandreach1, formData.sitandreach2, formData.sitandreach3) != null &&
-                                        student?.gender
+                                    {t("recordNew.label.bestValue")}{" "}
+                                    {getMaxOfThree(
+                                        formData.sitandreach1,
+                                        formData.sitandreach2,
+                                        formData.sitandreach3
+                                    )}{" "}
+                                    | {t("recordNew.statusLabel")}{" "}
+                                    {getMaxOfThree(
+                                        formData.sitandreach1,
+                                        formData.sitandreach2,
+                                        formData.sitandreach3
+                                    ) != null && student?.gender
                                         ? getSitAndReachStatus(
                                             Number(
                                                 getMaxOfThree(
@@ -1483,65 +1610,74 @@ export default function NewRecordScreen() {
                                 </Text>
                             ) : null}
 
-                            {renderTextArea("sitandreachnotes", "Hangi bölgelerde gerginlik hissedildi?", "")}
+                            {renderTextArea("sitandreachnotes", t("recordNew.field.sitReachNotes"), "")}
                         </View>
                     </>
                 );
+
             case 3:
                 return (
                     <>
-                        {/* KUVVET TESTLERİ */}
                         <View style={styles.card}>
                             <View style={styles.cardTitleRow}>
                                 <BicepsFlexed size={18} color={theme.colors.warning} />
-                                <Text style={[styles.cardTitle, { color: theme.colors.warning }]}>Kuvvet Testleri</Text>
+                                <Text style={[styles.cardTitle, { color: theme.colors.warning }]}>
+                                    {t("recordNew.card.strength.title")}
+                                </Text>
                             </View>
 
-                            {renderNumericInput("pushup", "1 dk'da yapılan push up sayısı")}
-                            {renderRadioRow(
-                                "modifiedpushup",
-                                "Push up dizlerin üstünde mi?",
-                                ["Evet", "Hayır"]
-                            )}
+                            {renderNumericInput("pushup", t("recordNew.field.pushup"))}
+                            {renderRadioRow("modifiedpushup", t("recordNew.field.modifiedPushup"), [
+                                t("recordNew.option.yes"),
+                                t("recordNew.option.no"),
+                            ])}
+
                             {formData.pushup && (
                                 <Text style={styles.infoText}>
-                                    Push Up Skoru:{" "}
+                                    {t("recordNew.label.pushupScore")}{" "}
                                     {getPushUpScore(
                                         Number(formData.pushup || 0),
                                         getAge(),
                                         student?.gender,
-                                        formData.modifiedpushup === "Evet"
+                                        formData.modifiedpushup === t("recordNew.option.yes")
                                     )}
-                                </Text>)}
+                                </Text>
+                            )}
 
-                            {renderNumericInput("wallsit", "Wall Sit – Maks Saniye")}
+                            {renderNumericInput("wallsit", t("recordNew.field.wallSit"))}
                             {formData.wallsit && (
                                 <Text style={styles.infoText}>
-                                    Wall Sit Skoru:{" "}
+                                    {t("recordNew.label.wallSitScore")}{" "}
                                     {getWallSitScore(Number(formData.wallsit || 0), student?.gender)}
-                                </Text>)}
+                                </Text>
+                            )}
 
-                            {renderNumericInput("plank", "Plank – Maks Saniye")}
+                            {renderNumericInput("plank", t("recordNew.field.plank"))}
                             {formData.plank && (
                                 <Text style={styles.infoText}>
-                                    Plank Skoru:{" "}
+                                    {t("recordNew.label.plankScore")}{" "}
                                     {getPlankScore(Number(formData.plank || 0), student?.gender)}
-                                </Text>)}
+                                </Text>
+                            )}
 
-                            {renderNumericInput("mekik", "1 dk Mekik – Maks Tekrar")}
+                            {renderNumericInput("mekik", t("recordNew.field.situp"))}
                             {formData.mekik && (
                                 <Text style={styles.infoText}>
-                                    Mekik Skoru:{" "}
+                                    {t("recordNew.label.situpScore")}{" "}
                                     {getMekikScore(Number(formData.mekik || 0), student?.gender)}
-                                </Text>)}
-                            {renderTextArea("kuvvetnotes", "Kuvvet Notları")}
-                            {renderTextArea("note", "Kayıt Notları")}
+                                </Text>
+                            )}
+
+                            {renderTextArea("kuvvetnotes", t("recordNew.field.strengthNotes"))}
+                            {renderTextArea("note", t("recordNew.field.recordNotes"))}
+
                             <InfoNote>
-                                Öğrenci bilgi ekranında gösterilir.
+                                {t("recordNew.tip.recordNotes")}
                             </InfoNote>
                         </View>
                     </>
                 );
+
             default:
                 return null;
         }
@@ -1560,6 +1696,7 @@ export default function NewRecordScreen() {
 
                     {/* FORM */}
                     <ScrollView
+                        ref={scrollRef}
                         style={styles.formWrapper}
                         contentContainerStyle={{ paddingBottom: 32 }}
                         showsVerticalScrollIndicator={false}
@@ -1597,7 +1734,7 @@ export default function NewRecordScreen() {
                                                 showTips ? { color: "#38bdf8" } : { color: "#94a3b8" },
                                             ]}
                                         >
-                                            İpuçları {showTips ? "Açık" : "Kapalı"}
+                                            {showTips ? t("recordNew.tips.on") : t("recordNew.tips.off")}
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
@@ -1627,7 +1764,7 @@ export default function NewRecordScreen() {
                                     {student.gender && (
                                         <View style={styles.metaItem}>
                                             <User size={14} color="#9ca3af" />
-                                            <Text style={styles.metaText}>{student.gender}</Text>
+                                            <Text style={styles.metaText}>{t(`newstudent.gender.${student.gender === "F" ? "female" : "male"}`)}</Text>
                                         </View>
                                     )}
                                     {student.dateOfBirth && (
@@ -1651,12 +1788,12 @@ export default function NewRecordScreen() {
                                 style={[styles.navButton]}
                                 onPress={handlePrevStep}
                             >
-                                <Text style={styles.navButtonText}>Geri</Text>
+                                <Text style={styles.navButtonText}>{t("recordNew.nav.prev")}</Text>
                             </TouchableOpacity>
 
                             {!isLastStep ? (
                                 <TouchableOpacity style={styles.navButtonPrimary} onPress={handleNextStep}>
-                                    <Text style={styles.navButtonPrimaryText}>İleri</Text>
+                                    <Text style={styles.navButtonPrimaryText}>{t("recordNew.nav.next")}</Text>
                                 </TouchableOpacity>
                             ) : (
                                 <TouchableOpacity
@@ -1670,7 +1807,7 @@ export default function NewRecordScreen() {
                                         <>
                                             <Calendar size={18} color="#0f172a" />
                                             <Text style={styles.saveButtonText}>
-                                                Değerlendirmeyi Kaydet
+                                                {t("recordNew.submit")}
                                             </Text>
                                         </>
                                     )}

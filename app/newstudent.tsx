@@ -26,7 +26,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type Gender = "Kadın" | "Erkek" | "";
+type Gender = "F" | "M" | "";
 type Status = "Aktif" | "Pasif";
 type Bool = boolean | null;
 
@@ -508,15 +508,15 @@ const YeniOgrenciScreen = () => {
                                             theme={theme}
                                             styles={styles}
                                             label={t("newstudent.gender.female")}
-                                            active={form.gender === "Kadın"}
-                                            onPress={() => updateField("gender", "Kadın")}
+                                            active={form.gender === "F"}
+                                            onPress={() => updateField("gender", "F")}
                                         />
                                         <Chip
                                             theme={theme}
                                             styles={styles}
                                             label={t("newstudent.gender.male")}
-                                            active={form.gender === "Erkek"}
-                                            onPress={() => updateField("gender", "Erkek")}
+                                            active={form.gender === "M"}
+                                            onPress={() => updateField("gender", "M")}
                                         />
                                     </View>
 
