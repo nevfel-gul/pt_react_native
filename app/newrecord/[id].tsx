@@ -1,7 +1,8 @@
 import { auth } from "@/services/firebase";
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
-import { ResizeMode, Video } from "expo-av";
+import { Asset } from "expo-asset";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { addDoc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import {
     ArrowLeft,
@@ -322,9 +323,29 @@ export default function NewRecordScreen() {
         videoSource,
     }: {
         label: string;
-        videoSource: any;
+        videoSource: number;
     }) => {
         const [visible, setVisible] = useState(false);
+        const [videoUri, setVideoUri] = useState<string | null>(null);
+
+        useEffect(() => {
+            Asset.fromModule(videoSource).downloadAsync().then((asset) => {
+                setVideoUri(asset.localUri ?? asset.uri);
+            });
+        }, [videoSource]);
+
+        const player = useVideoPlayer(videoUri, (player) => {
+            player.loop = true;
+            player.muted = true;
+        });
+
+        useEffect(() => {
+            if (visible) {
+                player.play();
+            } else {
+                player.pause();
+            }
+        }, [visible]);
 
         return (
             <>
@@ -340,14 +361,14 @@ export default function NewRecordScreen() {
                 >
                     <View style={styles.modalBackdrop}>
                         <View style={styles.modalContent}>
-                            <Video
-                                source={videoSource}
-                                style={styles.hintVideo}
-                                resizeMode={ResizeMode.CONTAIN}
-                                isLooping
-                                shouldPlay={visible}
-                                isMuted
-                            />
+                            {videoUri && (
+                                <VideoView
+                                    player={player}
+                                    style={styles.hintVideo}
+                                    contentFit="contain"
+                                    nativeControls={false}
+                                />
+                            )}
                             <Pressable
                                 style={styles.modalCloseButton}
                                 onPress={() => setVisible(false)}
