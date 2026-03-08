@@ -668,5 +668,28 @@
   "paywall.features.ai_detection.description": "Gelişmiş algoritmalar\nkullanarak içerik\nanalizi yapar ve\nAI tarafından\nüretilip üretilmediğini\nbelirler.",
   "paywall.cancel_text": "Planı istediğin zaman değiştirebilir veya iptal edebilirsin.",
   "paywall.cta.processing": "İşleniyor...",
-  "paywall.cta.continue": "Devam Et"
+  "paywall.cta.continue": "Devam Et",
+  "paywall.billing.monthly": "Aylık",
+  "paywall.cta.buy": "Satın Al",
+  "paywall.cta.restore": "Satın Alımları Geri Yükle",
+
+  "paywall.plan.core.limit": "5 öğrenciye kadar",
+  "paywall.plan.pro.limit": "10 öğrenciye kadar",
+  "paywall.plan.studio.limit": "15 öğrenciye kadar",
+
+  "paywall.features.ai_filter.title": "AI Destekli Filtreleme",
+  "paywall.features.ai_filter.description": "AI ile sorulara göre öğrencileri filtrele ve hızlıca bul.",
+
+  "paywall.features.analytics.title": "Gelişmiş Analiz",
+  "paywall.features.analytics.description": "Analiz ekranında öğrenci verilerini ve gelişimi detaylı incele.",
+
+  "paywall.features.records.title": "Öğrenci Kayıt Yönetimi",
+  "paywall.features.records.description": "Öğrenci detay ekranından kayıt oluştur, güncelle ve takip et.",
+
+  "paywall.alert.apple_ready_title": "Apple ödeme hazır",
+  "paywall.alert.apple_ready_message": "Seçilen plan: {{plan}}\nÖdeme tipi: {{billing}}\nÜrün ID: {{productId}}\n\nGerçek StoreKit / RevenueCat bağlantısı eklendiğinde burada Apple ödeme sayfası açılacak.",
+  "paywall.alert.restore_title": "Geri yükleme hazır",
+  "paywall.alert.restore_message": "Store bağlantısı eklendiğinde önceki satın alımlar burada geri yüklenecek.",
+  "paywall.alert.purchase_error": "Satın alma başlatılamadı.",
+  "paywall.alert.restore_error": "Satın alımlar geri yüklenemedi."
 }
