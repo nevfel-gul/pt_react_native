@@ -868,11 +868,11 @@ export default function NewRecordScreen() {
         pushupStatus:
           pushupReps && age && gender
             ? getPushUpScore(
-                pushupReps,
-                age,
-                gender,
-                formData.modifiedpushup === "Evet",
-              )
+              pushupReps,
+              age,
+              gender,
+              formData.modifiedpushup === "Evet",
+            )
             : "",
         wallSitStatus:
           wallSitSec && gender ? getWallSitScore(wallSitSec, gender) : "",
@@ -942,10 +942,10 @@ export default function NewRecordScreen() {
                   borderColor: theme.colors.success,
                 },
                 active &&
-                  !done && {
-                    backgroundColor: theme.colors.accent,
-                    borderColor: theme.colors.accent,
-                  },
+                !done && {
+                  backgroundColor: theme.colors.accent,
+                  borderColor: theme.colors.accent,
+                },
               ]}
             >
               <Text
@@ -1323,8 +1323,8 @@ export default function NewRecordScreen() {
                     {getCarvonenTargetHR(
                       Number(
                         formData.dinlenikNabiz ||
-                          formData.restingHeartRate ||
-                          0,
+                        formData.restingHeartRate ||
+                        0,
                       ),
                       Number(formData.carvonenMultiplier || 0),
                       getAge(),
@@ -1717,8 +1717,8 @@ export default function NewRecordScreen() {
               )}
 
               {formData.sitandreach1 &&
-              formData.sitandreach2 &&
-              formData.sitandreach3 ? (
+                formData.sitandreach2 &&
+                formData.sitandreach3 ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.label.bestValue")}{" "}
                   {getMaxOfThree(
@@ -1733,15 +1733,15 @@ export default function NewRecordScreen() {
                     formData.sitandreach3,
                   ) != null && student?.gender
                     ? getSitAndReachStatus(
-                        Number(
-                          getMaxOfThree(
-                            formData.sitandreach1,
-                            formData.sitandreach2,
-                            formData.sitandreach3,
-                          ) || 0,
-                        ),
-                        student.gender,
-                      )
+                      Number(
+                        getMaxOfThree(
+                          formData.sitandreach1,
+                          formData.sitandreach2,
+                          formData.sitandreach3,
+                        ) || 0,
+                      ),
+                      student.gender,
+                    )
                     : ""}
                 </Text>
               ) : null}
