@@ -665,5 +665,28 @@
   "paywall.features.ai_detection.description": "Uses advanced\nalgorithms to analyze\npatterns and detect\nwhether content is AI\ngenerated.",
   "paywall.cancel_text": "Change plans or cancel anytime.",
   "paywall.cta.processing": "Processing...",
-  "paywall.cta.continue": "Continue"
+  "paywall.cta.continue": "Continue",
+  "paywall.billing.monthly": "Monthly",
+  "paywall.cta.buy": "Buy Now",
+  "paywall.cta.restore": "Restore Purchases",
+
+  "paywall.plan.core.limit": "Up to 5 students",
+  "paywall.plan.pro.limit": "Up to 10 students",
+  "paywall.plan.studio.limit": "Up to 15 students",
+
+  "paywall.features.ai_filter.title": "AI-Powered Filtering",
+  "paywall.features.ai_filter.description": "Filter and find students quickly using AI-powered questions.",
+
+  "paywall.features.analytics.title": "Advanced Analytics",
+  "paywall.features.analytics.description": "Analyze student data and progress in detail on the analytics screen.",
+
+  "paywall.features.records.title": "Student Record Management",
+  "paywall.features.records.description": "Create, update, and track records from the student detail screen.",
+
+  "paywall.alert.apple_ready_title": "Apple payment ready",
+  "paywall.alert.apple_ready_message": "Selected plan: {{plan}}\nBilling: {{billing}}\nProduct ID: {{productId}}\n\nThe Apple payment sheet will appear here once StoreKit / RevenueCat is connected.",
+  "paywall.alert.restore_title": "Restore ready",
+  "paywall.alert.restore_message": "Previous purchases will be restored here once the store connection is added.",
+  "paywall.alert.purchase_error": "Purchase could not be started.",
+  "paywall.alert.restore_error": "Purchases could not be restored."
 }
