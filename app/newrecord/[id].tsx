@@ -3,37 +3,37 @@ import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { addDoc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import {
-    ArrowLeft,
-    BicepsFlexed,
-    Calendar,
-    Eye,
-    EyeOff,
-    HandHeart,
-    HeartPulse,
-    Mail,
-    PersonStanding,
-    Phone,
-    Ruler,
-    SquareActivity,
-    User,
+  ArrowLeft,
+  BicepsFlexed,
+  Calendar,
+  Eye,
+  EyeOff,
+  HandHeart,
+  HeartPulse,
+  Mail,
+  PersonStanding,
+  Phone,
+  Ruler,
+  SquareActivity,
+  User,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // ✅ NEW
@@ -359,11 +359,15 @@ export default function NewRecordScreen() {
         >
           <View style={styles.modalBackdrop}>
             <View style={styles.modalContent}>
-              <Image
-                source={imageSource}
-                style={styles.hintImage}
-                resizeMode="contain"
-              />
+
+              <View style={styles.imageWrapper}>
+                <Image
+                  source={imageSource}
+                  style={styles.hintImage}
+                  resizeMode="contain"
+                />
+                <Text style={styles.hintImageLabel}>Ogito tesasadt</Text>
+              </View>
 
               <Pressable
                 style={styles.modalCloseButton}
@@ -2352,11 +2356,6 @@ const makeStyles = (theme: ThemeUI) =>
       padding: 16,
       alignItems: "center",
     },
-    hintImage: {
-      width: "100%",
-      height: 360,
-      marginBottom: 12,
-    },
     modalCloseButton: {
       marginTop: 4,
       paddingHorizontal: 16,
@@ -2426,5 +2425,22 @@ const makeStyles = (theme: ThemeUI) =>
     },
     td: {
       color: theme.colors.text.primary,
+    },
+    hintImageLabel: {
+      color: theme.colors.text.primary,
+      fontSize: 16,
+      fontWeight: "600",
+      textAlign: "center",
+      marginBottom: theme.spacing.md,
+    },
+    hintImage: {
+      width: 250,
+      height: 150,
+      borderBlockColor: theme.colors.border,
+      borderWidth: 1,
+      borderRadius: 12,
+    },
+    imageWrapper: {
+      alignItems: "center",
     },
   });
