@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ArrowLeft, Check, Edit3, User, X } from "lucide-react-native";
+import { ArrowLeft, Check, Edit3, Trash2, User, X } from "lucide-react-native";
 import React from "react";
 import {
   ActivityIndicator,
@@ -19,8 +19,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 
-import { onAuthStateChanged, updateProfile } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import {
+  deleteUser,
+  onAuthStateChanged,
+  signOut,
+  updateProfile,
+} from "firebase/auth";
+import {
+  deleteDoc,
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { auth, db } from "../services/firebase"; // ✅ sende db export olmalı
 
 type ProfileState = {
@@ -53,6 +65,7 @@ export default function ProfileScreen() {
   const [profile, setProfile] = React.useState<ProfileState>(emptyProfile);
   const [editKey, setEditKey] = React.useState<keyof ProfileState | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [deletingAccount, setDeletingAccount] = React.useState(false);
 
   // ✅ input klavyeden ne kadar yukarıda dursun?
   const KEYBOARD_GAP = 130;
@@ -60,7 +73,10 @@ export default function ProfileScreen() {
   const startEdit = (key: keyof ProfileState) => {
     // ✅ email'i şimdilik kilitli (reauth gerekir)
     if (key === "email") {
-      Alert.alert("Bilgi", "E-posta değiştirmek için yeniden doğrulama gerekir. İstersen ekleyelim.");
+      Alert.alert(
+        "Bilgi",
+        "E-posta değiştirmek için yeniden doğrulama gerekir. İstersen ekleyelim.",
+      );
       return;
     }
     setEditKey(key);
@@ -72,7 +88,11 @@ export default function ProfileScreen() {
     const node = findNodeHandle(input);
     if (!node) return;
     const responder = scrollRef.current?.getScrollResponder?.();
-    responder?.scrollResponderScrollNativeHandleToKeyboard(node, KEYBOARD_GAP, true);
+    responder?.scrollResponderScrollNativeHandleToKeyboard(
+      node,
+      KEYBOARD_GAP,
+      true,
+    );
   };
 
   // ✅ Auth + Firestore'dan profili otomatik doldur
@@ -114,7 +134,7 @@ export default function ProfileScreen() {
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             },
-            { merge: true }
+            { merge: true },
           );
 
           setProfile(base);
@@ -125,7 +145,11 @@ export default function ProfileScreen() {
 
         const rawUsername = (data?.username ?? "").toString().trim();
         const uiUsername =
-          rawUsername.length > 0 ? (rawUsername.startsWith("@") ? rawUsername : `@${rawUsername}`) : "";
+          rawUsername.length > 0
+            ? rawUsername.startsWith("@")
+              ? rawUsername
+              : `@${rawUsername}`
+            : "";
 
         setProfile({
           name: (data?.displayName ?? authName ?? "").toString(),
@@ -146,7 +170,76 @@ export default function ProfileScreen() {
     return () => unsub();
   }, []);
 
-  const Section = ({ title, icon }: { title: string; icon?: React.ReactNode }) => (
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Hesabı Sil",
+      "Bu işlem geri alınamaz. Hesabın, profil bilgilerin ve kullanıcı kaydın kalıcı olarak silinecek. Devam etmek istiyor musun?",
+      [
+        {
+          text: "Vazgeç",
+          style: "cancel",
+        },
+        {
+          text: "Evet, sil",
+          style: "destructive",
+          onPress: async () => {
+            const user = auth.currentUser;
+            if (!user) {
+              Alert.alert("Hata", "Aktif kullanıcı bulunamadı.");
+              return;
+            }
+
+            try {
+              setDeletingAccount(true);
+
+              const uid = user.uid;
+              const userRef = doc(db, "users", uid);
+
+              // 1) Firestore kullanıcı dokümanını sil
+              await deleteDoc(userRef);
+
+              // 2) Firebase Auth hesabını sil
+              await deleteUser(user);
+
+              // 3) Güvenli olması için local oturumu da kapat
+              try {
+                await signOut(auth);
+              } catch {
+                // deleteUser sonrası token zaten düşebilir, sessiz geç
+              }
+
+              Alert.alert("Hesap Silindi", "Hesabın başarıyla silindi.");
+            } catch (e: any) {
+              // Eğer Auth silme başarısız olduysa kullanıcıyı oturumdan çıkar
+              // ama kullanıcıya gerçek nedeni açık göster
+              try {
+                await signOut(auth);
+              } catch {}
+
+              if (e?.code === "auth/requires-recent-login") {
+                Alert.alert(
+                  "Yeniden Giriş Gerekli",
+                  "Güvenlik nedeniyle hesabı silmek için yeniden giriş yapman gerekiyor. Uygulamadan çıkış yapıp tekrar giriş yaptıktan sonra yeniden deneyebilirsin.",
+                );
+              } else {
+                Alert.alert("Hata", e?.message ?? "Hesap silinemedi");
+              }
+            } finally {
+              setDeletingAccount(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const Section = ({
+    title,
+    icon,
+  }: {
+    title: string;
+    icon?: React.ReactNode;
+  }) => (
     <View style={styles.sectionHeader}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         {icon}
@@ -272,7 +365,9 @@ export default function ProfileScreen() {
                   returnKeyType="done"
                   blurOnSubmit
                   onSubmitEditing={saveField}
-                  autoCapitalize={fieldKey === "username" || isPhone ? "none" : "sentences"}
+                  autoCapitalize={
+                    fieldKey === "username" || isPhone ? "none" : "sentences"
+                  }
                   autoCorrect={fieldKey === "username" ? false : true}
                   keyboardType={isPhone ? "number-pad" : "default"}
                   maxLength={isPhone ? 11 : undefined}
@@ -307,9 +402,20 @@ export default function ProfileScreen() {
   if (loading && !profile.email && !profile.name) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
+        <View
+          style={[
+            styles.container,
+            { alignItems: "center", justifyContent: "center" },
+          ]}
+        >
           <ActivityIndicator />
-          <Text style={{ marginTop: 10, color: theme.colors.text.secondary, fontWeight: "600" }}>
+          <Text
+            style={{
+              marginTop: 10,
+              color: theme.colors.text.secondary,
+              fontWeight: "600",
+            }}
+          >
             Profil yükleniyor...
           </Text>
         </View>
@@ -328,7 +434,10 @@ export default function ProfileScreen() {
           {/* HEADER */}
           <View style={styles.header}>
             <View style={styles.headerTopRow}>
-              <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+              >
                 <ArrowLeft size={18} color={theme.colors.text.primary} />
                 <Text style={styles.backButtonText}>Geri</Text>
               </TouchableOpacity>
@@ -344,9 +453,14 @@ export default function ProfileScreen() {
               paddingBottom: editKey ? 260 : theme.spacing.xl,
             }}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            keyboardDismissMode={
+              Platform.OS === "ios" ? "interactive" : "on-drag"
+            }
           >
-            <Section title="Profil" icon={<User size={18} color={theme.colors.primary} />} />
+            <Section
+              title="Profil"
+              icon={<User size={18} color={theme.colors.primary} />}
+            />
 
             {/* PROFILE CARD */}
             <View style={styles.card}>
@@ -359,9 +473,12 @@ export default function ProfileScreen() {
 
                 <View style={{ flex: 1 }}>
                   <Text style={styles.profileName}>{profile.name || "—"}</Text>
-                  <Text style={styles.profileEmail}>{profile.email || "—"}</Text>
+                  <Text style={styles.profileEmail}>
+                    {profile.email || "—"}
+                  </Text>
                   <Text style={styles.profileTag}>
-                    {profile.username ? `${profile.username} • ` : ""}PT • Reformer Pilates • Online Coaching
+                    {profile.username ? `${profile.username} • ` : ""}PT •
+                    Reformer Pilates • Online Coaching
                   </Text>
                 </View>
               </View>
@@ -381,6 +498,7 @@ export default function ProfileScreen() {
                 </View>
               </View>
             </View>
+
             {/* USER INFO */}
             <View style={styles.card}>
               <SettingRow
@@ -438,6 +556,34 @@ export default function ProfileScreen() {
                 placeholder="Örn: PT Lab"
                 isLast
               />
+            </View>
+
+            {/* HESAP SİLME */}
+            <View style={styles.card}>
+              <Text style={styles.dangerTitle}>Hesap Silme</Text>
+              <Text style={styles.dangerSubtitle}>
+                Hesabını sildiğinde profil bilgilerin kalıcı olarak kaldırılır
+                ve uygulamadan çıkış yapılır.
+              </Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.deleteButton,
+                  deletingAccount && { opacity: 0.7 },
+                ]}
+                onPress={handleDeleteAccount}
+                activeOpacity={0.85}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? (
+                  <ActivityIndicator color={theme.colors.surface} />
+                ) : (
+                  <>
+                    <Trash2 size={18} color={theme.colors.surface} />
+                    <Text style={styles.deleteButtonText}>Hesabımı Sil</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
@@ -520,7 +666,11 @@ const createStyles = (themeui: ThemeUI) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    avatarText: { color: themeui.colors.surface, fontSize: 22, fontWeight: "800" },
+    avatarText: {
+      color: themeui.colors.surface,
+      fontSize: 22,
+      fontWeight: "800",
+    },
     profileName: {
       color: themeui.colors.text.primary,
       fontSize: themeui.fontSize.xl,
@@ -530,7 +680,11 @@ const createStyles = (themeui: ThemeUI) =>
       color: themeui.colors.text.secondary,
       fontSize: themeui.fontSize.sm,
     },
-    profileTag: { color: themeui.colors.primary, fontSize: themeui.fontSize.xs, marginTop: 2 },
+    profileTag: {
+      color: themeui.colors.primary,
+      fontSize: themeui.fontSize.xs,
+      marginTop: 2,
+    },
 
     profileMetaRow: {
       flexDirection: "row",
@@ -538,7 +692,10 @@ const createStyles = (themeui: ThemeUI) =>
       justifyContent: "space-between",
     },
     profileMetaItem: { flex: 1, alignItems: "center" },
-    profileMetaLabel: { color: themeui.colors.text.muted, fontSize: themeui.fontSize.xs },
+    profileMetaLabel: {
+      color: themeui.colors.text.muted,
+      fontSize: themeui.fontSize.xs,
+    },
     profileMetaValue: {
       color: themeui.colors.text.primary,
       fontSize: themeui.fontSize.sm,
@@ -618,5 +775,32 @@ const createStyles = (themeui: ThemeUI) =>
     actionBtnPrimary: {
       backgroundColor: themeui.colors.primary,
       borderColor: themeui.colors.primary,
+    },
+
+    dangerTitle: {
+      color: themeui.colors.text.primary,
+      fontSize: themeui.fontSize.md,
+      fontWeight: "700",
+      marginBottom: 6,
+    },
+    dangerSubtitle: {
+      color: themeui.colors.text.secondary,
+      fontSize: themeui.fontSize.sm,
+      lineHeight: 20,
+      marginBottom: themeui.spacing.md,
+    },
+    deleteButton: {
+      height: 46,
+      borderRadius: themeui.radius.md,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+      backgroundColor: "#D92D20",
+    },
+    deleteButtonText: {
+      color: themeui.colors.surface,
+      fontSize: themeui.fontSize.sm,
+      fontWeight: "700",
     },
   });
