@@ -16,6 +16,7 @@ workflows:
           npm install
       - name: Install CocoaPods
         script: |
+          ls -R 
           cd ios && pod install
       - name: Set up code signing
         script: |
