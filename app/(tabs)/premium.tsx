@@ -21,8 +21,8 @@ import type { BillingCycle, PlanDoc } from "@/constants/paywall";
 import { useTranslation } from "react-i18next";
 import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
 
-import { useIAP } from 'react-native-iap';
 import type { Purchase } from 'react-native-iap';
+import { useIAP } from 'react-native-iap';
 
 const ITEM_SKUS = [
   'athletrack_core_monthly',
@@ -86,14 +86,30 @@ export default function PaywallMonthlyScreen({
         Alert.alert("Hata", err.message || "Ödeme başlatılamadı.");
       }
     }, []),
+    onError: useCallback((err: Error) => {
+      console.error('[IAP] onError:', err.message);
+      setError(err.message);
+      setLoading(false);
+    }, []),
   });
+
+  // Debug: bağlantı ve abonelik durumunu logla
+  useEffect(() => {
+    console.log('[IAP] connected:', connected);
+  }, [connected]);
+
+  useEffect(() => {
+    console.log('[IAP] subscriptions updated:', subscriptions.length, subscriptions.map(s => s.id));
+  }, [subscriptions]);
 
   // Bağlantı kurulunca abonelikleri çek
   useEffect(() => {
     if (!connected) return;
+    console.log('[IAP] fetchSubs starting...');
     setLoading(true);
     fetchSubs({ skus: ITEM_SKUS, type: 'subs' })
-      .catch(() => setError("Paketler yüklenemedi."))
+      .then(() => console.log('[IAP] fetchSubs done, subscriptions count:', subscriptions.length))
+      .catch((e) => { console.error('[IAP] fetchSubs error:', e); setError("Paketler yüklenemedi."); })
       .finally(() => setLoading(false));
   }, [connected]);
 
