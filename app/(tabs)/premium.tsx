@@ -24,10 +24,11 @@ import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
 import {
   clearTransactionIOS,
   endConnection,
-  getSubscriptions,
+  fetchProducts,
   initConnection,
-  requestSubscription,
+  requestPurchase,
 } from 'react-native-iap';
+import type { ProductSubscription } from 'react-native-iap';
 
 const ITEM_SKUS = [
   'athletrack_core_monthly',
@@ -92,33 +93,35 @@ export default function PaywallMonthlyScreen({
         await initConnection();
         await clearTransactionIOS(); // Bekleyen işlemleri temizle
 
-        const products = await getSubscriptions({ skus: ITEM_SKUS });
+        const products = await fetchProducts({ skus: ITEM_SKUS, type: 'subs' });
 
         if (!products || products.length === 0) {
           if (mounted) setLoading(false);
           return;
         }
 
-        const formatted: PlanDoc[] = products.map((prod, index) => {
-          const pId = prod.productId;
+        const formatted: PlanDoc[] = (products as ProductSubscription[]).map(
+          (prod: ProductSubscription, index: number) => {
+            const pId = prod.id;
 
-          return {
-            id: pId,
-            active: true,
-            sortOrder: index + 1,
-            tier: pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro',
-            title: prod.title || "Plan",
-            subtitle: prod.description || "",
-            currency: prod.currency || "USD",
-            monthlyPrice: Number(prod.price) || 0,
-            topPick: pId.includes('pro'),
-            features: [],
-            annualDiscountPercent: 25,
-            isUnlimited: pId.includes('studio'),
-            perClientNoteMode: 'auto',
-            footnote: null,
-          };
-        });
+            return {
+              id: pId,
+              active: true,
+              sortOrder: index + 1,
+              tier: pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro',
+              title: prod.title || "Plan",
+              subtitle: prod.description || "",
+              currency: prod.currency || "USD",
+              monthlyPrice: prod.price ?? 0,
+              topPick: pId.includes('pro'),
+              features: [],
+              annualDiscountPercent: 25,
+              isUnlimited: pId.includes('studio'),
+              perClientNoteMode: 'auto',
+              footnote: null,
+            };
+          }
+        );
 
         if (mounted) {
           setAllProducts(formatted);
@@ -165,7 +168,7 @@ export default function PaywallMonthlyScreen({
     setBusy(true);
 
     try {
-      await requestSubscription({ sku: productId });
+      await requestPurchase({ request: { apple: { sku: productId } }, type: 'subs' });
 
       if (onPurchase) {
         await onPurchase({ plan: selectedPlan, billing, productId });
