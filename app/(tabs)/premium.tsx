@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
 
 import { useIAP } from 'react-native-iap';
+import type { Purchase } from 'react-native-iap';
 
 const ITEM_SKUS = [
   'athletrack_core_monthly',
@@ -68,7 +69,7 @@ export default function PaywallMonthlyScreen({
     fetchProducts: fetchSubs,
     requestPurchase,
   } = useIAP({
-    onPurchaseSuccess: useCallback(async (purchase) => {
+    onPurchaseSuccess: useCallback(async (purchase: Purchase) => {
       setBusy(false);
       if (onPurchase) {
         const planId = selectedPlanRef.current;
