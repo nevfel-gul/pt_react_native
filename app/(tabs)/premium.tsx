@@ -29,6 +29,15 @@ import {
   requestSubscription,
 } from 'react-native-iap';
 
+const ITEM_SKUS = [
+  'athletrack_core_monthly',
+  'athletrack_pro_monthly',
+  'athletrack_studio_monthly',
+  'athletrack_core_yearly',
+  'athletrack_pro_yearly',
+  'athletrack_studio_yearly',
+];
+
 type Props = {
   onPurchase?: (args: {
     plan: PlanDoc;
@@ -64,16 +73,6 @@ export default function PaywallMonthlyScreen({
     [plans, selectedPlanId],
   );
 
-  const itemSkus = [
-    'athletrack_core_monthly',
-    'athletrack_pro_monthly',
-    'athletrack_studio_monthly',
-    'athletrack_core_yearly',
-    'athletrack_pro_yearly',
-    'athletrack_studio_yearly'
-  ];
-
-
   const getAppleProductId = useCallback(
     (plan: PlanDoc, cycle: BillingCycle) => {
       const tier = (plan.tier ?? "pro").toLowerCase();
@@ -93,7 +92,7 @@ export default function PaywallMonthlyScreen({
         await initConnection();
         await clearTransactionIOS(); // Bekleyen işlemleri temizle
 
-        const products = await getSubscriptions({ skus: itemSkus });
+        const products = await getSubscriptions({ skus: ITEM_SKUS });
 
         if (!products || products.length === 0) {
           if (mounted) setLoading(false);
@@ -101,8 +100,7 @@ export default function PaywallMonthlyScreen({
         }
 
         const formatted: PlanDoc[] = products.map((prod, index) => {
-          // Hata Çözümü: productId mülkünü güvenli bir şekilde alıyoruz
-          const pId = 'productId' in prod ? prod.productId : (prod as any).id;
+          const pId = prod.productId;
 
           return {
             id: pId,
@@ -112,7 +110,7 @@ export default function PaywallMonthlyScreen({
             title: prod.title || "Plan",
             subtitle: prod.description || "",
             currency: prod.currency || "USD",
-            monthlyPrice: (prod.price) || 0,
+            monthlyPrice: Number(prod.price) || 0,
             topPick: pId.includes('pro'),
             features: [],
             annualDiscountPercent: 25,
@@ -158,7 +156,7 @@ export default function PaywallMonthlyScreen({
       allProducts.find((p) => p.id.includes(suffix) && p.id.includes(currentTier)) ||
       allProducts.find((p) => p.id.includes(suffix));
     setSelectedPlanId(next?.id ?? null);
-  }, [billing]);
+  }, [billing, allProducts, selectedPlanId]);
 
   const handlePurchase = useCallback(async () => {
     if (!selectedPlan || busy) return;
