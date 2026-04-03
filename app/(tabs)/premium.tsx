@@ -25,7 +25,8 @@ import {
   clearTransactionIOS,
   endConnection,
   getSubscriptions,
-  initConnection
+  initConnection,
+  requestSubscription,
 } from 'react-native-iap';
 
 type Props = {
@@ -46,11 +47,17 @@ export default function PaywallMonthlyScreen({
   const { theme, mode } = useTheme();
 
   const [loading, setLoading] = useState(true);
-  const [plans, setPlans] = useState<PlanDoc[]>([]);
+  const [allProducts, setAllProducts] = useState<PlanDoc[]>([]);
   const [billing, setBilling] = useState<BillingCycle>("monthly");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // billing'e göre filtrele: monthly → "_monthly", annual → "_yearly"
+  const plans = useMemo(() => {
+    const suffix = billing === "annual" ? "yearly" : "monthly";
+    return allProducts.filter((p) => p.id.includes(suffix));
+  }, [allProducts, billing]);
 
   const selectedPlan = useMemo(
     () => plans.find((p) => p.id === selectedPlanId) ?? null,
@@ -116,12 +123,16 @@ export default function PaywallMonthlyScreen({
         });
 
         if (mounted) {
-          setPlans(formatted);
-          const initial = formatted.find(p => p.id.includes(billing)) || formatted[0];
+          setAllProducts(formatted);
+          // İlk seçim: monthly pro
+          const initial =
+            formatted.find((p) => p.id.includes("monthly") && p.id.includes("pro")) ||
+            formatted.find((p) => p.id.includes("monthly")) ||
+            formatted[0];
           setSelectedPlanId(initial?.id ?? null);
         }
       } catch (err) {
-        setError("Paketler yüklenemedi.");
+        if (mounted) setError("Paketler yüklenemedi.");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -132,6 +143,21 @@ export default function PaywallMonthlyScreen({
       mounted = false;
       endConnection();
     };
+  }, []); // Sadece bir kez çalış
+
+  // Billing değişince seçili planı aynı tier'da tut
+  useEffect(() => {
+    if (allProducts.length === 0) return;
+    const suffix = billing === "annual" ? "yearly" : "monthly";
+    const currentTier = selectedPlanId?.includes("core")
+      ? "core"
+      : selectedPlanId?.includes("studio")
+        ? "studio"
+        : "pro";
+    const next =
+      allProducts.find((p) => p.id.includes(suffix) && p.id.includes(currentTier)) ||
+      allProducts.find((p) => p.id.includes(suffix));
+    setSelectedPlanId(next?.id ?? null);
   }, [billing]);
 
   const handlePurchase = useCallback(async () => {
@@ -141,14 +167,12 @@ export default function PaywallMonthlyScreen({
     setBusy(true);
 
     try {
-      // Sadece iOS odaklı abonelik isteği
-      await new PushSubscription();
+      await requestSubscription({ sku: productId });
 
       if (onPurchase) {
         await onPurchase({ plan: selectedPlan, billing, productId });
       }
     } catch (e: any) {
-
       if (e.code !== 'E_USER_CANCELLED') {
         Alert.alert("Hata", e.message || "Ödeme başlatılamadı.");
       }
