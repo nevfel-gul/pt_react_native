@@ -971,17 +971,17 @@ export default function NewRecordScreen() {
     </View>
   );
   const measurementHintImages: Partial<Record<keyof FormData, any>> = {
-    boyun: require("@/assets/images/ölçüm/boyun.jpg"),
-    omuz: require("@/assets/images/ölçüm/omuz.jpg"),
-    gogus: require("@/assets/images/ölçüm/gogus.jpg"),
-    sagKol: require("@/assets/images/ölçüm/kol.jpg"),
-    solKol: require("@/assets/images/ölçüm/kol.jpg"),
-    bel: require("@/assets/images/ölçüm/bel.jpg"),
-    kalca: require("@/assets/images/ölçüm/kalça.jpg"),
-    sagBacak: require("@/assets/images/ölçüm/bacak.jpg"),
-    solBacak: require("@/assets/images/ölçüm/bacak.jpg"),
-    sagKalf: require("@/assets/images/ölçüm/baldir.jpg"),
-    solKalf: require("@/assets/images/ölçüm/baldir.jpg"),
+    boyun: require("@/assets/images/olcum/boyun.jpg"),
+    omuz: require("@/assets/images/olcum/omuz.jpg"),
+    gogus: require("@/assets/images/olcum/gogus.jpg"),
+    sagKol: require("@/assets/images/olcum/kol.jpg"),
+    solKol: require("@/assets/images/olcum/kol.jpg"),
+    bel: require("@/assets/images/olcum/bel.jpg"),
+    kalca: require("@/assets/images/olcum/kalca.jpg"),
+    sagBacak: require("@/assets/images/olcum/bacak.jpg"),
+    solBacak: require("@/assets/images/olcum/bacak.jpg"),
+    sagKalf: require("@/assets/images/olcum/baldir.jpg"),
+    solKalf: require("@/assets/images/olcum/baldir.jpg"),
   };
   const renderNumericInput = (
     field: keyof FormData,
