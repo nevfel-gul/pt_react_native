@@ -21,12 +21,23 @@ import type { BillingCycle, PlanDoc } from "@/constants/paywall";
 import { useTranslation } from "react-i18next";
 import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
 
+import type { ProductSubscription } from 'react-native-iap';
 import {
   clearTransactionIOS,
   endConnection,
   fetchProducts,
-  initConnection
+  initConnection,
+  requestPurchase,
 } from 'react-native-iap';
+
+const ITEM_SKUS = [
+  'athletrack_core_monthly',
+  'athletrack_pro_monthly',
+  'athletrack_studio_monthly',
+  'athletrack_core_yearly',
+  'athletrack_pro_yearly',
+  'athletrack_studio_yearly',
+];
 
 type Props = {
   onPurchase?: (args: {
@@ -46,26 +57,22 @@ export default function PaywallMonthlyScreen({
   const { theme, mode } = useTheme();
 
   const [loading, setLoading] = useState(true);
-  const [plans, setPlans] = useState<PlanDoc[]>([]);
+  const [allProducts, setAllProducts] = useState<PlanDoc[]>([]);
   const [billing, setBilling] = useState<BillingCycle>("monthly");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // billing'e göre filtrele: monthly → "_monthly", annual → "_yearly"
+  const plans = useMemo(() => {
+    const suffix = billing === "annual" ? "yearly" : "monthly";
+    return allProducts.filter((p) => p.id.includes(suffix));
+  }, [allProducts, billing]);
+
   const selectedPlan = useMemo(
     () => plans.find((p) => p.id === selectedPlanId) ?? null,
     [plans, selectedPlanId],
   );
-
-  const itemSkus = [
-    'athletrack_core_monthly',
-    'athletrack_pro_monthly',
-    'athletrack_studio_monthly',
-    'athletrack_core_yearly',
-    'athletrack_pro_yearly',
-    'athletrack_studio_yearly'
-  ];
-
 
   const getAppleProductId = useCallback(
     (plan: PlanDoc, cycle: BillingCycle) => {
@@ -86,42 +93,47 @@ export default function PaywallMonthlyScreen({
         await initConnection();
         await clearTransactionIOS(); // Bekleyen işlemleri temizle
 
-        const products = await fetchProducts({ skus: itemSkus });
+        const products = await fetchProducts({ skus: ITEM_SKUS, type: 'subs' });
 
         if (!products || products.length === 0) {
           if (mounted) setLoading(false);
           return;
         }
 
-        const formatted: PlanDoc[] = products.map((prod, index) => {
-          // Hata Çözümü: productId mülkünü güvenli bir şekilde alıyoruz
-          const pId = 'productId' in prod ? prod.productId : (prod as any).id;
+        const formatted: PlanDoc[] = (products as ProductSubscription[]).map(
+          (prod: ProductSubscription, index: number) => {
+            const pId = prod.id;
 
-          return {
-            id: pId,
-            active: true,
-            sortOrder: index + 1,
-            tier: pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro',
-            title: prod.title || "Plan",
-            subtitle: prod.description || "",
-            currency: prod.currency || "USD",
-            monthlyPrice: (prod.price) || 0,
-            topPick: pId.includes('pro'),
-            features: [],
-            annualDiscountPercent: 25,
-            isUnlimited: pId.includes('studio'),
-            perClientNoteMode: 'auto',
-            footnote: null,
-          };
-        });
+            return {
+              id: pId,
+              active: true,
+              sortOrder: index + 1,
+              tier: pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro',
+              title: prod.title || "Plan",
+              subtitle: prod.description || "",
+              currency: prod.currency || "USD",
+              monthlyPrice: prod.price ?? 0,
+              topPick: pId.includes('pro'),
+              features: [],
+              annualDiscountPercent: 25,
+              isUnlimited: pId.includes('studio'),
+              perClientNoteMode: 'auto',
+              footnote: null,
+            };
+          }
+        );
 
         if (mounted) {
-          setPlans(formatted);
-          const initial = formatted.find(p => p.id.includes(billing)) || formatted[0];
+          setAllProducts(formatted);
+          // İlk seçim: monthly pro
+          const initial =
+            formatted.find((p) => p.id.includes("monthly") && p.id.includes("pro")) ||
+            formatted.find((p) => p.id.includes("monthly")) ||
+            formatted[0];
           setSelectedPlanId(initial?.id ?? null);
         }
       } catch (err) {
-        setError("Paketler yüklenemedi.");
+        if (mounted) setError("Paketler yüklenemedi.");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -132,7 +144,22 @@ export default function PaywallMonthlyScreen({
       mounted = false;
       endConnection();
     };
-  }, [billing]);
+  }, []); // Sadece bir kez çalış
+
+  // Billing değişince seçili planı aynı tier'da tut
+  useEffect(() => {
+    if (allProducts.length === 0) return;
+    const suffix = billing === "annual" ? "yearly" : "monthly";
+    const currentTier = selectedPlanId?.includes("core")
+      ? "core"
+      : selectedPlanId?.includes("studio")
+        ? "studio"
+        : "pro";
+    const next =
+      allProducts.find((p) => p.id.includes(suffix) && p.id.includes(currentTier)) ||
+      allProducts.find((p) => p.id.includes(suffix));
+    setSelectedPlanId(next?.id ?? null);
+  }, [billing, allProducts, selectedPlanId]);
 
   const handlePurchase = useCallback(async () => {
     if (!selectedPlan || busy) return;
@@ -141,14 +168,12 @@ export default function PaywallMonthlyScreen({
     setBusy(true);
 
     try {
-      // Sadece iOS odaklı abonelik isteği
-      await new PushSubscription();
+      await requestPurchase({ request: { apple: { sku: productId } }, type: 'subs' });
 
       if (onPurchase) {
         await onPurchase({ plan: selectedPlan, billing, productId });
       }
     } catch (e: any) {
-
       if (e.code !== 'E_USER_CANCELLED') {
         Alert.alert("Hata", e.message || "Ödeme başlatılamadı.");
       }
