@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Cpu } from "lucide-react-native";
-import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,22 +21,17 @@ import type { BillingCycle, PlanDoc } from "@/constants/paywall";
 import { useTranslation } from "react-i18next";
 import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
 
-import type { ProductSubscription } from 'react-native-iap';
-import {
-  clearTransactionIOS,
-  endConnection,
-  fetchProducts,
-  initConnection,
-  requestPurchase,
-} from 'react-native-iap';
+import type { Purchase } from 'react-native-iap';
+import { useIAP } from 'react-native-iap';
 
 const ITEM_SKUS = [
   'athletrack_core_monthly',
   'athletrack_pro_monthly',
   'athletrack_studio_monthly',
-  'athletrack_core_yearly',
-  'athletrack_pro_yearly',
-  'athletrack_studio_yearly',
+  // Yıllık planlar eklenince buraya eklenir:
+  // 'athletrack_core_yearly',
+  // 'athletrack_pro_yearly',
+  // 'athletrack_studio_yearly',
 ];
 
 type Props = {
@@ -63,6 +58,92 @@ export default function PaywallMonthlyScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // onPurchase callback'ini ref'te tut (stale closure önlemek için)
+  const selectedPlanRef = useRef(selectedPlanId);
+  const billingRef = useRef(billing);
+  useEffect(() => { selectedPlanRef.current = selectedPlanId; }, [selectedPlanId]);
+  useEffect(() => { billingRef.current = billing; }, [billing]);
+
+  const {
+    connected,
+    subscriptions,
+    fetchProducts: fetchSubs,
+    requestPurchase,
+  } = useIAP({
+    onPurchaseSuccess: useCallback(async (purchase: Purchase) => {
+      setBusy(false);
+      if (onPurchase) {
+        const planId = selectedPlanRef.current;
+        const plans_ = allProducts; // allProducts son değeri
+        const plan = plans_.find((p) => p.id === planId) ?? null;
+        if (plan) {
+          await onPurchase({ plan, billing: billingRef.current, productId: purchase.productId });
+        }
+      }
+    }, [onPurchase, allProducts]),
+    onPurchaseError: useCallback((err: any) => {
+      setBusy(false);
+      if (err.code !== 'E_USER_CANCELLED') {
+        Alert.alert("Hata", err.message || "Ödeme başlatılamadı.");
+      }
+    }, []),
+    onError: useCallback((err: Error) => {
+      console.error('[IAP] onError:', err.message);
+      setError(err.message);
+      setLoading(false);
+    }, []),
+  });
+
+  // Debug: bağlantı ve abonelik durumunu logla
+  useEffect(() => {
+    console.log('[IAP] connected:', connected);
+  }, [connected]);
+
+  useEffect(() => {
+    console.log('[IAP] subscriptions updated:', subscriptions.length, subscriptions.map(s => s.id));
+  }, [subscriptions]);
+
+  // Bağlantı kurulunca abonelikleri çek
+  useEffect(() => {
+    if (!connected) return;
+    console.log('[IAP] fetchSubs starting...');
+    setLoading(true);
+    fetchSubs({ skus: ITEM_SKUS, type: 'subs' })
+      .then(() => console.log('[IAP] fetchSubs done, subscriptions count:', subscriptions.length))
+      .catch((e) => { console.error('[IAP] fetchSubs error:', e); setError("Paketler yüklenemedi."); })
+      .finally(() => setLoading(false));
+  }, [connected]);
+
+  // subscriptions gelince PlanDoc'a dönüştür
+  useEffect(() => {
+    if (subscriptions.length === 0) return;
+    const formatted: PlanDoc[] = subscriptions.map((prod, index) => {
+      const pId = prod.id;
+      return {
+        id: pId,
+        active: true,
+        sortOrder: index + 1,
+        tier: pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro',
+        title: prod.title || "Plan",
+        subtitle: prod.description || "",
+        currency: prod.currency || "USD",
+        monthlyPrice: prod.price ?? 0,
+        topPick: pId.includes('pro'),
+        features: [],
+        annualDiscountPercent: 25,
+        isUnlimited: pId.includes('studio'),
+        perClientNoteMode: 'auto',
+        footnote: null,
+      };
+    });
+    setAllProducts(formatted);
+    const initial =
+      formatted.find((p) => p.id.includes("monthly") && p.id.includes("pro")) ||
+      formatted.find((p) => p.id.includes("monthly")) ||
+      formatted[0];
+    setSelectedPlanId(initial?.id ?? null);
+  }, [subscriptions]);
+
   // billing'e göre filtrele: monthly → "_monthly", annual → "_yearly"
   const plans = useMemo(() => {
     const suffix = billing === "annual" ? "yearly" : "monthly";
@@ -73,78 +154,6 @@ export default function PaywallMonthlyScreen({
     () => plans.find((p) => p.id === selectedPlanId) ?? null,
     [plans, selectedPlanId],
   );
-
-  const getAppleProductId = useCallback(
-    (plan: PlanDoc, cycle: BillingCycle) => {
-      const tier = (plan.tier ?? "pro").toLowerCase();
-      return cycle === "annual"
-        ? `athletrack_${tier}_yearly`
-        : `athletrack_${tier}_monthly`;
-    },
-    [],
-  );
-
-  useEffect(() => {
-    let mounted = true;
-
-    const initIAP = async () => {
-      try {
-        setLoading(true);
-        await initConnection();
-        await clearTransactionIOS(); // Bekleyen işlemleri temizle
-
-        const products = await fetchProducts({ skus: ITEM_SKUS, type: 'subs' });
-
-        if (!products || products.length === 0) {
-          if (mounted) setLoading(false);
-          return;
-        }
-
-        const formatted: PlanDoc[] = (products as ProductSubscription[]).map(
-          (prod: ProductSubscription, index: number) => {
-            const pId = prod.id;
-
-            return {
-              id: pId,
-              active: true,
-              sortOrder: index + 1,
-              tier: pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro',
-              title: prod.title || "Plan",
-              subtitle: prod.description || "",
-              currency: prod.currency || "USD",
-              monthlyPrice: prod.price ?? 0,
-              topPick: pId.includes('pro'),
-              features: [],
-              annualDiscountPercent: 25,
-              isUnlimited: pId.includes('studio'),
-              perClientNoteMode: 'auto',
-              footnote: null,
-            };
-          }
-        );
-
-        if (mounted) {
-          setAllProducts(formatted);
-          // İlk seçim: monthly pro
-          const initial =
-            formatted.find((p) => p.id.includes("monthly") && p.id.includes("pro")) ||
-            formatted.find((p) => p.id.includes("monthly")) ||
-            formatted[0];
-          setSelectedPlanId(initial?.id ?? null);
-        }
-      } catch (err) {
-        if (mounted) setError("Paketler yüklenemedi.");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    initIAP();
-    return () => {
-      mounted = false;
-      endConnection();
-    };
-  }, []); // Sadece bir kez çalış
 
   // Billing değişince seçili planı aynı tier'da tut
   useEffect(() => {
@@ -159,28 +168,31 @@ export default function PaywallMonthlyScreen({
       allProducts.find((p) => p.id.includes(suffix) && p.id.includes(currentTier)) ||
       allProducts.find((p) => p.id.includes(suffix));
     setSelectedPlanId(next?.id ?? null);
-  }, [billing, allProducts, selectedPlanId]);
+  }, [billing]);
+
+  const getAppleProductId = useCallback(
+    (plan: PlanDoc, cycle: BillingCycle) => {
+      const tier = (plan.tier ?? "pro").toLowerCase();
+      return cycle === "annual"
+        ? `athletrack_${tier}_yearly`
+        : `athletrack_${tier}_monthly`;
+    },
+    [],
+  );
 
   const handlePurchase = useCallback(async () => {
     if (!selectedPlan || busy) return;
-
     const productId = getAppleProductId(selectedPlan, billing);
     setBusy(true);
-
     try {
       await requestPurchase({ request: { apple: { sku: productId } }, type: 'subs' });
-
-      if (onPurchase) {
-        await onPurchase({ plan: selectedPlan, billing, productId });
-      }
     } catch (e: any) {
       if (e.code !== 'E_USER_CANCELLED') {
         Alert.alert("Hata", e.message || "Ödeme başlatılamadı.");
       }
-    } finally {
       setBusy(false);
     }
-  }, [billing, busy, getAppleProductId, onPurchase, selectedPlan]);
+  }, [billing, busy, getAppleProductId, requestPurchase, selectedPlan]);
 
   const saveText = useMemo(() => {
     const d = plans[0]?.annualDiscountPercent ?? 0;
