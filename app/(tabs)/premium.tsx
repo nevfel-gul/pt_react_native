@@ -28,9 +28,10 @@ const ITEM_SKUS = [
   'athletrack_core_monthly',
   'athletrack_pro_monthly',
   'athletrack_studio_monthly',
-  'athletrack_core_yearly',
-  'athletrack_pro_yearly',
-  'athletrack_studio_yearly',
+  // Yıllık planlar eklenince buraya eklenir:
+  // 'athletrack_core_yearly',
+  // 'athletrack_pro_yearly',
+  // 'athletrack_studio_yearly',
 ];
 
 type Props = {
