@@ -24,7 +24,7 @@ import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
 import {
   clearTransactionIOS,
   endConnection,
-  fetchProducts,
+  getSubscriptions,
   initConnection
 } from 'react-native-iap';
 
@@ -86,7 +86,7 @@ export default function PaywallMonthlyScreen({
         await initConnection();
         await clearTransactionIOS(); // Bekleyen işlemleri temizle
 
-        const products = await fetchProducts({ skus: itemSkus });
+        const products = await getSubscriptions({ skus: itemSkus });
 
         if (!products || products.length === 0) {
           if (mounted) setLoading(false);
