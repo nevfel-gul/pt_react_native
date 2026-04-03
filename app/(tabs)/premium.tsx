@@ -21,6 +21,7 @@ import type { BillingCycle, PlanDoc } from "@/constants/paywall";
 import { useTranslation } from "react-i18next";
 import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
 
+import type { ProductSubscription } from 'react-native-iap';
 import {
   clearTransactionIOS,
   endConnection,
@@ -28,7 +29,6 @@ import {
   initConnection,
   requestPurchase,
 } from 'react-native-iap';
-import type { ProductSubscription } from 'react-native-iap';
 
 const ITEM_SKUS = [
   'athletrack_core_monthly',
