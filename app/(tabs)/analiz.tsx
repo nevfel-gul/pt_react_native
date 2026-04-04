@@ -17,7 +17,7 @@ import { useTheme } from "@/constants/usetheme";
 
 // ✅ FIREBASE
 import { auth } from "@/services/firebase";
-import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
+import { appointmentsColRef, recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import i18n from "@/services/i18n";
 import {
   Timestamp,
@@ -64,6 +64,11 @@ type SummaryState = {
   dailyCounts: number[];
   bars: number[];
   barLabels: string[];
+
+  // randevu verileri
+  totalAppointments: number;
+  weeklyAppointments: number;
+  dailyAppointmentCounts: number[];
 };
 
 function startOfDay(d: Date) {
@@ -176,6 +181,10 @@ function useSummaryData(range: RangeKey): SummaryState {
     dailyCounts: [],
     bars: [],
     barLabels: [],
+
+    totalAppointments: 0,
+    weeklyAppointments: 0,
+    dailyAppointmentCounts: [],
   });
 
   useEffect(() => {
@@ -347,9 +356,38 @@ function useSummaryData(range: RangeKey): SummaryState {
       }));
     });
 
+    // 3) APPOINTMENTS canlı
+    let apptDows: number[] = [];
+    const unsubAppts = onSnapshot(appointmentsColRef(uid), (snap) => {
+      apptDows = snap.docs.map((d) => (d.data() as any).dayOfWeek ?? 0);
+
+      const total = apptDows.length;
+
+      // How many appointment slots fall in the current range
+      const { start: apptStart, days: apptDays } = buildWindow(range);
+      let weekly = 0;
+      const dailyApptArr: number[] = [];
+      for (let i = 0; i < apptDays; i++) {
+        const d = new Date(apptStart);
+        d.setDate(apptStart.getDate() + i);
+        const dow = d.getDay();
+        const count = apptDows.filter((aw) => aw === dow).length;
+        dailyApptArr.push(count);
+        weekly += count;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        totalAppointments: total,
+        weeklyAppointments: weekly,
+        dailyAppointmentCounts: dailyApptArr,
+      }));
+    });
+
     return () => {
       unsubStudents();
       unsubRecords();
+      unsubAppts();
     };
   }, [range, i18n.language]);
 
@@ -367,6 +405,8 @@ function DailyActivityChart({
   average,
   peak,
   hint,
+  appointmentCounts,
+  appointmentLabel,
 }: {
   counts: number[];
   labels: string[];
@@ -376,7 +416,10 @@ function DailyActivityChart({
   average: string;
   peak: string;
   hint: string;
+  appointmentCounts?: number[];
+  appointmentLabel?: string;
 }) {
+  const { t } = useTranslation();
   const animsRef = useRef<Animated.Value[]>([]);
 
   const max = useMemo(() => Math.max(0, ...counts), [counts.join("|")]);
@@ -443,7 +486,7 @@ function DailyActivityChart({
 
       </View>
 
-      {/* ✅ BARLAR: zirve gününü vurgula + alt label */}
+      {/* BARLAR: kayıt barları + randevu barları yan yana */}
       <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
         {ratios.map((_, i) => {
           const av = anims[i] ?? new Animated.Value(0);
@@ -453,6 +496,13 @@ function DailyActivityChart({
           });
 
           const isPeak = i === peakIndex;
+
+          // Appointment bar height (normalized against the same max as records)
+          const apptCount = appointmentCounts?.[i] ?? 0;
+          const apptRatio = apptCount / Math.max(1, max);
+          const apptBarH = Math.max(10, Math.round(apptRatio * height));
+
+          const hasAppt = apptCount > 0;
 
           return (
             <View
@@ -464,7 +514,7 @@ function DailyActivityChart({
                 height: height + 34,
               }}
             >
-              {/* sayı (sadece peak’te göster) */}
+              {/* Peak count label */}
               {isPeak && (
                 <Text
                   style={{
@@ -478,15 +528,32 @@ function DailyActivityChart({
                 </Text>
               )}
 
-              <Animated.View
-                style={{
-                  width: 10,
-                  borderRadius: theme.radius.pill,
-                  height: h,
-                  backgroundColor: isPeak ? theme.colors.warning : theme.colors.primary,
-                  opacity: isPeak ? 1 : 0.92,
-                }}
-              />
+              {/* Side-by-side bars */}
+              <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 2 }}>
+                {/* Appointment bar (purple) */}
+                {hasAppt && (
+                  <View
+                    style={{
+                      width: 5,
+                      height: apptBarH,
+                      borderRadius: theme.radius.pill,
+                      backgroundColor: theme.colors.premium,
+                      opacity: 0.85,
+                    }}
+                  />
+                )}
+
+                {/* Record bar (blue/orange) */}
+                <Animated.View
+                  style={{
+                    width: 10,
+                    borderRadius: theme.radius.pill,
+                    height: h,
+                    backgroundColor: isPeak ? theme.colors.warning : theme.colors.primary,
+                    opacity: isPeak ? 1 : 0.92,
+                  }}
+                />
+              </View>
 
               <Text
                 style={{
@@ -502,6 +569,24 @@ function DailyActivityChart({
           );
         })}
       </View>
+
+      {/* Chart legend */}
+      {appointmentCounts && appointmentCounts.some((c) => c > 0) && (
+        <View style={{ flexDirection: "row", gap: 14, marginTop: 8, flexWrap: "wrap" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 8, backgroundColor: theme.colors.primary }} />
+            <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs }}>
+              {t("summary.chart.average")}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 8, backgroundColor: theme.colors.premium }} />
+            <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs }}>
+              {appointmentLabel}
+            </Text>
+          </View>
+        </View>
+      )}
 
       <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, marginTop: 6 }}>
         {hint}
@@ -656,6 +741,18 @@ export default function SummaryScreen() {
               value={String(summary.followUpOk)}
               theme={theme}
             />
+            <StatRow
+              label={t("summary.stat.totalAppointments")}
+              sub={t("summary.stat.totalAppointments.sub")}
+              value={String(summary.totalAppointments)}
+              theme={theme}
+            />
+            <StatRow
+              label={t("summary.stat.weeklyAppointments")}
+              sub={t("summary.stat.weeklyAppointments.sub")}
+              value={String(summary.weeklyAppointments)}
+              theme={theme}
+            />
           </View>
 
           {/* KART 2 */}
@@ -744,7 +841,9 @@ export default function SummaryScreen() {
               today={t("summary.chart.today")}
               average={t("summary.chart.average")}
               peak={t("summary.chart.peak")}
-              hint={t("summary.hint")}
+              hint={t("summary.chart.appointmentHint")}
+              appointmentCounts={summary.dailyAppointmentCounts}
+              appointmentLabel={t("summary.chart.appointments")}
             />
           </View>
         </ScrollView>
