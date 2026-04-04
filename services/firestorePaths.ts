@@ -20,3 +20,19 @@ export function recordsColRef(uid: string) {
 export function recordDocRef(uid: string, recordId: string) {
     return doc(recordsColRef(uid), recordId);
 }
+export function studentNotesColRef(uid: string, studentId: string) {
+    return collection(studentDocRef(uid, studentId), "notes");
+}
+
+export function studentNoteDocRef(uid: string, studentId: string, noteId: string) {
+    return doc(studentNotesColRef(uid, studentId), noteId);
+}
+
+export function appointmentsColRef(uid: string) {
+    return collection(userDocRef(uid), "appointments");
+}
+
+export function appointmentDocRef(uid: string, appointmentId: string) {
+    return doc(appointmentsColRef(uid), appointmentId);
+}
+

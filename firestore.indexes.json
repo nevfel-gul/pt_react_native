@@ -1,0 +1,95 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "students",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "doctorSaidHeartOrHypertension",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "aktif",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "students",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "hadSurgery",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "aktif",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "students",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "currentlyUsesMedications",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "aktif",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "students",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "diagnosedChronicDiseaseByDoctor",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "aktif",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "students",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "jobRequiresHighHeels",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "aktif",
+                    "order": "ASCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}
