@@ -371,7 +371,7 @@ function useSummaryData(range: RangeKey): SummaryState {
         const ts: Timestamp | undefined = a?.date;
         const dt = ts?.toDate ? ts.toDate() : null;
         if (!dt) return;
-
+          
         const aptDayStart = startOfDay(dt).getTime();
         const repeat: number = typeof a?.repeatDays === "number" && a.repeatDays > 0 ? a.repeatDays : 0;
 
