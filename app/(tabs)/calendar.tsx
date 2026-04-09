@@ -217,8 +217,22 @@ function buildDayLabels(): { label: string; date: Date }[] {
 }
 
 const DAY_ITEMS = buildDayLabels();
-const HOUR_ITEMS = Array.from({ length: 17 }, (_, i) => String(i + 6).padStart(2, "0")); // 06–22
-const MINUTE_ITEMS = ["00", "15", "30", "45"];
+
+// Tek sütun saat: 06:00 → 22:30, 30dk aralıkla
+const TIME_ITEMS: string[] = [];
+for (let h = 6; h <= 22; h++) {
+    TIME_ITEMS.push(`${String(h).padStart(2, "0")}:00`);
+    if (h < 22) TIME_ITEMS.push(`${String(h).padStart(2, "0")}:30`);
+}
+
+const REPEAT_OPTIONS = [
+    { label: "Tekrar Yok", days: 0 },
+    { label: "Her Gün", days: 1 },
+    { label: "2 Günde Bir", days: 2 },
+    { label: "3 Günde Bir", days: 3 },
+    { label: "Haftada Bir", days: 7 },
+    { label: "2 Haftada Bir", days: 14 },
+];
 
 /* ------------------------------------------------------------------ */
 /*  STAT CARD                                                           */
@@ -263,7 +277,7 @@ function AddAppointmentModal({
     students: Student[];
     theme: ThemeUI;
     onClose: () => void;
-    onSave: (studentId: string, studentName: string, date: Date, note: string) => void;
+    onSave: (studentId: string, studentName: string, date: Date, note: string, repeatDays: number) => void;
     t: (key: string, opts?: any) => string;
 }) {
     const [step, setStep] = useState<"student" | "datetime">("student");
@@ -271,8 +285,8 @@ function AddAppointmentModal({
     const [selectedStudentId, setSelectedStudentId] = useState("");
     const [selectedStudentName, setSelectedStudentName] = useState("");
     const [dayIndex, setDayIndex] = useState(0);
-    const [hourIndex, setHourIndex] = useState(3); // 09:00
-    const [minuteIndex, setMinuteIndex] = useState(0);
+    const [timeIndex, setTimeIndex] = useState(6); // 09:00
+    const [repeatDays, setRepeatDays] = useState(0);
     const [note, setNote] = useState("");
 
     useEffect(() => {
@@ -282,8 +296,8 @@ function AddAppointmentModal({
             setSelectedStudentId("");
             setSelectedStudentName("");
             setDayIndex(0);
-            setHourIndex(3);
-            setMinuteIndex(0);
+            setTimeIndex(6);
+            setRepeatDays(0);
             setNote("");
         }
     }, [visible]);
@@ -304,13 +318,15 @@ function AddAppointmentModal({
 
     const handleSave = () => {
         const dayInfo = DAY_ITEMS[dayIndex];
+        const timeStr = TIME_ITEMS[timeIndex] ?? "09:00";
         if (!dayInfo || !selectedStudentId) return;
 
         const date = new Date(dayInfo.date);
-        date.setHours(parseInt(HOUR_ITEMS[hourIndex] ?? "9", 10));
-        date.setMinutes(parseInt(MINUTE_ITEMS[minuteIndex] ?? "0", 10));
+        const [hh, mm] = timeStr.split(":").map(Number);
+        date.setHours(hh ?? 9);
+        date.setMinutes(mm ?? 0);
         date.setSeconds(0);
-        onSave(selectedStudentId, selectedStudentName, date, note);
+        onSave(selectedStudentId, selectedStudentName, date, note, repeatDays);
     };
 
     const selectedDayLabel = DAY_ITEMS[dayIndex]?.label ?? "";
@@ -383,37 +399,55 @@ function AddAppointmentModal({
                     {/* STEP 2: Date + Time picker */}
                     {step === "datetime" && (
                         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
-                            {/* Date + Time label */}
-                            <View style={{ alignItems: "center", paddingTop: 8, paddingBottom: 4 }}>
-                                <Text style={{ color: theme.colors.text.muted, fontSize: 12, fontWeight: "700" }}>
-                                    {selectedDayLabel}  {HOUR_ITEMS[hourIndex]}:{MINUTE_ITEMS[minuteIndex]}
+
+                            {/* Seçim özeti */}
+                            <View style={{ alignItems: "center", paddingVertical: 10 }}>
+                                <Text style={{ color: theme.colors.premium, fontSize: 14, fontWeight: "900" }}>
+                                    {selectedDayLabel}  •  {TIME_ITEMS[timeIndex]}
                                 </Text>
                             </View>
 
-                            {/* 3 column wheel pickers */}
-                            <View style={{ flexDirection: "row", paddingHorizontal: 12, gap: 4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.border, marginVertical: 8 }}>
-                                {/* Column labels */}
-                                <View style={{ position: "absolute", top: 8, left: 0, right: 0, flexDirection: "row", zIndex: 2 }}>
-                                    <Text style={{ flex: 3, textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "700" }}>GÜN</Text>
-                                    <Text style={{ flex: 1, textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "700" }}>SAAT</Text>
-                                    <Text style={{ flex: 1, textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "700" }}>DK</Text>
-                                </View>
-
-                                <View style={{ flex: 3 }}>
+                            {/* Tarih + Saat yan yana */}
+                            <View style={{ flexDirection: "row", borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.border }}>
+                                {/* Gün kolonu */}
+                                <View style={{ flex: 3, borderRightWidth: 1, borderRightColor: theme.colors.border }}>
+                                    <Text style={{ textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "800", paddingTop: 8 }}>TARİH</Text>
                                     <WheelPicker data={DAY_ITEMS.map((d) => d.label)} initialIndex={dayIndex} onChange={setDayIndex} theme={theme} />
                                 </View>
-                                <View style={{ width: 1, backgroundColor: theme.colors.border, alignSelf: "stretch", marginVertical: 12 }} />
-                                <View style={{ flex: 1 }}>
-                                    <WheelPicker data={HOUR_ITEMS} initialIndex={hourIndex} onChange={setHourIndex} theme={theme} />
-                                </View>
-                                <View style={{ width: 1, backgroundColor: theme.colors.border, alignSelf: "stretch", marginVertical: 12 }} />
-                                <View style={{ flex: 1 }}>
-                                    <WheelPicker data={MINUTE_ITEMS} initialIndex={minuteIndex} onChange={setMinuteIndex} theme={theme} />
+                                {/* Saat kolonu */}
+                                <View style={{ flex: 2 }}>
+                                    <Text style={{ textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "800", paddingTop: 8 }}>SAAT</Text>
+                                    <WheelPicker data={TIME_ITEMS} initialIndex={timeIndex} onChange={setTimeIndex} theme={theme} />
                                 </View>
                             </View>
 
-                            {/* Note */}
-                            <View style={{ paddingHorizontal: 16, marginTop: 4 }}>
+                            {/* Tekrar aralığı */}
+                            <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+                                <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "800", marginBottom: 8 }}>TEKRAR</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                                    {REPEAT_OPTIONS.map((opt) => (
+                                        <Pressable
+                                            key={opt.days}
+                                            onPress={() => setRepeatDays(opt.days)}
+                                            style={{
+                                                paddingHorizontal: 14,
+                                                paddingVertical: 8,
+                                                borderRadius: 20,
+                                                borderWidth: 1.5,
+                                                borderColor: repeatDays === opt.days ? theme.colors.premium : theme.colors.border,
+                                                backgroundColor: repeatDays === opt.days ? `${theme.colors.premium}22` : theme.colors.surfaceSoft,
+                                            }}
+                                        >
+                                            <Text style={{ color: repeatDays === opt.days ? theme.colors.premium : theme.colors.text.secondary, fontSize: 13, fontWeight: "700" }}>
+                                                {opt.label}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </ScrollView>
+                            </View>
+
+                            {/* Not */}
+                            <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
                                 <TextInput
                                     value={note}
                                     onChangeText={setNote}
@@ -425,8 +459,8 @@ function AddAppointmentModal({
                                 />
                             </View>
 
-                            {/* Save button */}
-                            <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+                            {/* Kaydet */}
+                            <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
                                 <Pressable
                                     onPress={handleSave}
                                     style={({ pressed }) => ({ backgroundColor: theme.colors.premium, borderRadius: 14, paddingVertical: 14, alignItems: "center", opacity: pressed ? 0.85 : 1 })}
@@ -490,7 +524,7 @@ export default function CalendarFollowUpScreen() {
         return t("calendar.diff.remainingDays", { days: Math.abs(daysToDue) });
     }, [t]);
 
-    const handleSaveAppointment = useCallback(async (studentId: string, studentName: string, date: Date, note: string) => {
+    const handleSaveAppointment = useCallback(async (studentId: string, studentName: string, date: Date, note: string, repeatDays: number) => {
         if (!uid) return;
         try {
             await addDoc(appointmentsColRef(uid), {
@@ -498,6 +532,7 @@ export default function CalendarFollowUpScreen() {
                 studentName,
                 date: Timestamp.fromDate(date),
                 note: note.trim() || null,
+                repeatDays: repeatDays > 0 ? repeatDays : null,
                 createdAt: serverTimestamp(),
             });
             setShowAddModal(false);
