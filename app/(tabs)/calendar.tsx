@@ -320,7 +320,7 @@ function AddAppointmentModal({
             <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
                 <Pressable style={{ flex: 1 }} onPress={onClose} />
 
-                <View style={{ backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "85%" }}>
+                <View style={{ backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: "90%" }}>
                     {/* Handle */}
                     <View style={{ alignItems: "center", paddingTop: 12 }}>
                         <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: theme.colors.border }} />
