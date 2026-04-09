@@ -1,4 +1,4 @@
-import { Activity, BarChart2, Users } from "lucide-react-native";
+import { Activity, BarChart2, CalendarClock, Target, TrendingUp, Users } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -83,12 +83,6 @@ function toISOKey(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
-/**
- * Range seçimi:
- * - 7g => son 7 gün
- * - 30g => son 30 gün
- * - all => grafik performans için son 14 gün
- */
 function buildWindow(range: RangeKey) {
   const end = startOfDay(new Date());
   if (range === "7g") {
@@ -364,25 +358,37 @@ function useSummaryData(range: RangeKey): SummaryState {
 
     const qAppointments = query(
       appointmentsColRef(uid),
-      orderBy("date", "asc"),
-      where("date", ">=", Timestamp.fromDate(start))
+      orderBy("date", "asc")
     );
 
     const unsubAppointments = onSnapshot(qAppointments, (snap) => {
       Object.keys(aptDayCounts).forEach((k) => (aptDayCounts[k] = 0));
+
+      const windowKeys = Object.keys(aptDayCounts).sort();
 
       snap.forEach((doc) => {
         const a = doc.data() as any;
         const ts: Timestamp | undefined = a?.date;
         const dt = ts?.toDate ? ts.toDate() : null;
         if (!dt) return;
-        const key = toISOKey(startOfDay(dt));
-        if (key in aptDayCounts) aptDayCounts[key] += 1;
+          
+        const aptDayStart = startOfDay(dt).getTime();
+        const repeat: number = typeof a?.repeatDays === "number" && a.repeatDays > 0 ? a.repeatDays : 0;
+
+        for (const key of windowKeys) {
+          const keyTime = new Date(key + "T00:00:00").getTime();
+          if (keyTime < aptDayStart) continue;
+
+          if (repeat === 0) {
+            if (key === toISOKey(startOfDay(dt))) aptDayCounts[key] += 1;
+          } else {
+            const diffDays = Math.round((keyTime - aptDayStart) / 86400000);
+            if (diffDays % repeat === 0) aptDayCounts[key] += 1;
+          }
+        }
       });
 
-      const aptCountsArr = Object.keys(aptDayCounts)
-        .sort()
-        .map((k) => aptDayCounts[k]);
+      const aptCountsArr = windowKeys.map((k) => aptDayCounts[k]);
 
       setState((prev) => ({
         ...prev,
@@ -401,7 +407,7 @@ function useSummaryData(range: RangeKey): SummaryState {
   return state;
 }
 
-/* -------------------- CHART (DAHA ANLAŞILIR) -------------------- */
+/* -------------------- CHART -------------------- */
 
 function DailyActivityChart({
   counts,
@@ -469,121 +475,125 @@ function DailyActivityChart({
   if (!counts.length) return null;
 
   const anims = animsRef.current;
-
   const todayCount = counts[counts.length - 1] ?? 0;
 
   return (
     <View style={{ marginTop: theme.spacing.sm }}>
-      {/* ✅ ÜST ÖZET: tek bakışta anlaşılsın */}
+      {/* Mini stat row */}
+      <View style={{ flexDirection: "row", gap: 10, marginBottom: theme.spacing.sm }}>
+        <ChartStatCard title={today} value={`${todayCount}`} theme={theme} accent={theme.colors.primary} />
+        <ChartStatCard title={average} value={`${avg.toFixed(1)}`} theme={theme} accent={theme.colors.accent} />
+        <ChartStatCard title={peak} value={`${max}`} theme={theme} accent={theme.colors.warning} />
+      </View>
+
+      {/* Bars */}
       <View
         style={{
-          flexDirection: "row",
-          gap: 10,
-          marginBottom: theme.spacing.sm - 2,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.surfaceSoft,
+          borderRadius: theme.radius.lg,
+          paddingVertical: 14,
+          paddingHorizontal: 10,
         }}
       >
-        <MiniStat title={today} value={`${todayCount}`} theme={theme} />
-        <MiniStat title={average} value={`${avg.toFixed(1)}`} theme={theme} />
-        <MiniStat title={peak} value={`${max}`} theme={theme} />
+        <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
+          {ratios.map((_, i) => {
+            const av = anims[i] ?? new Animated.Value(0);
+            const h = av.interpolate({
+              inputRange: [0, 1],
+              outputRange: [6, height],
+            });
 
-      </View>
+            const isPeak = i === peakIndex;
 
-      {/* ✅ BARLAR: zirve gününü vurgula + alt label */}
-      <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-        {ratios.map((_, i) => {
-          const av = anims[i] ?? new Animated.Value(0);
-          const h = av.interpolate({
-            inputRange: [0, 1],
-            outputRange: [10, height],
-          });
+            return (
+              <View
+                key={i}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  height: height + 34,
+                }}
+              >
+                {isPeak && (
+                  <Text
+                    style={{
+                      fontSize: theme.fontSize.xs,
+                      color: theme.colors.text.primary,
+                      marginBottom: 4,
+                      fontWeight: "800",
+                    }}
+                  >
+                    {counts[i] ?? 0}
+                  </Text>
+                )}
 
-          const isPeak = i === peakIndex;
+                <Animated.View
+                  style={{
+                    width: 10,
+                    borderRadius: theme.radius.pill,
+                    height: h,
+                    backgroundColor: isPeak ? theme.colors.warning : theme.colors.primary,
+                    opacity: isPeak ? 1 : 0.85,
+                  }}
+                />
 
-          return (
-            <View
-              key={i}
-              style={{
-                flex: 1,
-                alignItems: "center",
-                justifyContent: "flex-end",
-                height: height + 34,
-              }}
-            >
-              {/* sayı (sadece peak’te göster) */}
-              {isPeak && (
                 <Text
                   style={{
+                    marginTop: 8,
                     fontSize: theme.fontSize.xs,
-                    color: theme.colors.text.primary,
-                    marginBottom: 6,
-                    fontWeight: "700",
+                    color: theme.colors.text.muted,
                   }}
+                  numberOfLines={1}
                 >
-                  {counts[i] ?? 0}
+                  {labels[i] ?? ""}
                 </Text>
-              )}
-
-              <Animated.View
-                style={{
-                  width: 10,
-                  borderRadius: theme.radius.pill,
-                  height: h,
-                  backgroundColor: isPeak ? theme.colors.warning : theme.colors.primary,
-                  opacity: isPeak ? 1 : 0.92,
-                }}
-              />
-
-              <Text
-                style={{
-                  marginTop: 8,
-                  fontSize: theme.fontSize.xs,
-                  color: theme.colors.text.muted,
-                }}
-                numberOfLines={1}
-              >
-                {labels[i] ?? ""}
-              </Text>
-            </View>
-          );
-        })}
+              </View>
+            );
+          })}
+        </View>
       </View>
 
-      <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, marginTop: 6 }}>
+      <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, marginTop: 8 }}>
         {hint}
       </Text>
     </View>
   );
 }
 
-function MiniStat({
+function ChartStatCard({
   title,
   value,
   theme,
+  accent,
 }: {
   title: string;
   value: string;
   theme: ThemeUI;
+  accent: string;
 }) {
   return (
     <View
       style={{
         flex: 1,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: theme.radius.lg,
-        backgroundColor: theme.colors.surfaceElevated,
         borderWidth: 1,
         borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surfaceSoft,
+        borderRadius: theme.radius.md,
+        padding: theme.spacing.sm,
+        minHeight: 64,
       }}
     >
-      <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs }}>
+      <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, fontWeight: "800" }}>
         {title}
       </Text>
       <Text
         style={{
-          color: theme.colors.text.primary,
-          fontSize: theme.fontSize.md,
-          fontWeight: "700",
+          color: accent,
+          fontSize: theme.fontSize.lg,
+          fontWeight: "900",
           marginTop: 2,
         }}
       >
@@ -593,11 +603,202 @@ function MiniStat({
   );
 }
 
+/* -------------------- KPI CARD -------------------- */
+
+function KpiCard({
+  label,
+  value,
+  sub,
+  accent,
+  theme,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: string;
+  theme: ThemeUI;
+}) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surfaceSoft,
+        borderRadius: theme.radius.md,
+        padding: theme.spacing.sm,
+        minHeight: 88,
+      }}
+    >
+      <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, fontWeight: "800" }}>
+        {label}
+      </Text>
+      <Text
+        style={{
+          color: accent ?? theme.colors.text.primary,
+          fontSize: theme.fontSize.lg,
+          fontWeight: "900",
+          marginTop: 4,
+        }}
+      >
+        {value}
+      </Text>
+      {!!sub && (
+        <Text style={{ color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, marginTop: 2 }}>
+          {sub}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+/* -------------------- PROGRESS ROW -------------------- */
+
+function GoalBar({
+  label,
+  percent,
+  count,
+  color,
+  theme,
+}: {
+  label: string;
+  percent: number;
+  count: number;
+  color: string;
+  theme: ThemeUI;
+}) {
+  const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+
+  return (
+    <View style={{ marginTop: 14 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <Text style={{ color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, fontWeight: "700" }}>
+          {label}
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 2,
+              borderRadius: theme.radius.pill,
+              borderWidth: 1,
+              borderColor: `${color}40`,
+              backgroundColor: `${color}15`,
+            }}
+          >
+            <Text style={{ color: color, fontSize: theme.fontSize.xs, fontWeight: "900" }}>
+              {count}
+            </Text>
+          </View>
+          <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, fontWeight: "800", minWidth: 32, textAlign: "right" }}>
+            {clamped}%
+          </Text>
+        </View>
+      </View>
+      <View
+        style={{
+          height: 10,
+          borderRadius: theme.radius.pill,
+          backgroundColor: theme.colors.border,
+          overflow: "hidden",
+        }}
+      >
+        <View
+          style={{
+            height: "100%",
+            width: `${clamped}%`,
+            borderRadius: theme.radius.pill,
+            backgroundColor: color,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+/* -------------------- SEGMENT CARD -------------------- */
+
+function SegmentCard({
+  label,
+  value,
+  icon,
+  theme,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  theme: ThemeUI;
+}) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surfaceSoft,
+        borderRadius: theme.radius.md,
+        padding: theme.spacing.sm,
+        minHeight: 80,
+        gap: 6,
+      }}
+    >
+      {icon}
+      <Text style={{ color: theme.colors.text.primary, fontSize: theme.fontSize.md, fontWeight: "900" }}>
+        {value}
+      </Text>
+      <Text style={{ color: theme.colors.text.muted, fontSize: theme.fontSize.xs, fontWeight: "700", lineHeight: 14 }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/* -------------------- RANGE CHIP -------------------- */
+
+function RangeChip({
+  label,
+  active,
+  onPress,
+  theme,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  theme: ThemeUI;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        flex: 1,
+        paddingVertical: 8,
+        borderRadius: theme.radius.pill,
+        backgroundColor: active ? theme.colors.surfaceElevated : theme.colors.surface,
+        borderWidth: 1,
+        borderColor: active ? theme.colors.primary : theme.colors.border,
+        alignItems: "center",
+        justifyContent: "center",
+        marginRight: 8,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: theme.fontSize.sm,
+          color: active ? theme.colors.text.primary : theme.colors.text.secondary,
+          fontWeight: active ? "700" : "500",
+        }}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 /* -------------------- SCREEN -------------------- */
 
 export default function SummaryScreen() {
   const { theme } = useTheme();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [selectedRange, setSelectedRange] = useState<RangeKey>("7g");
@@ -608,178 +809,118 @@ export default function SummaryScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 64 }} // ✅ daha fazla boşluk
+          contentContainerStyle={{ paddingBottom: 80 }}
           showsVerticalScrollIndicator={false}
         >
           {/* HEADER */}
           <View style={styles.header}>
-            <Text style={styles.pageTitle}>
-              {t("summary.title")}
-            </Text>
+            <Text style={styles.pageTitle}>{t("summary.title")}</Text>
+            <Text style={styles.pageSubtitle}>{t("summary.subtitle")}</Text>
 
-            <Text style={styles.pageSubtitle}>
-              {t("summary.subtitle")}
-            </Text>
-
-
-            {/* RANGE CHIPS */}
             <View style={styles.rangeRow}>
-              <View style={{ flex: 1 }}>
-                <RangeChip
-                  label={t("summary.range.7d")}
-                  active={selectedRange === "7g"}
-                  onPress={() => setSelectedRange("7g")}
-                  theme={theme}
-                />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <RangeChip
-                  label={t("summary.range.30d")}
-                  active={selectedRange === "30g"}
-                  onPress={() => setSelectedRange("30g")}
-                  theme={theme}
-                />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <RangeChip
-                  label={t("filter.all")}
-                  active={selectedRange === "all"}
-                  onPress={() => setSelectedRange("all")}
-                  theme={theme}
-                />
-              </View>
+              <RangeChip label={t("summary.range.7d")} active={selectedRange === "7g"} onPress={() => setSelectedRange("7g")} theme={theme} />
+              <RangeChip label={t("summary.range.30d")} active={selectedRange === "30g"} onPress={() => setSelectedRange("30g")} theme={theme} />
+              <RangeChip label={t("filter.all")} active={selectedRange === "all"} onPress={() => setSelectedRange("all")} theme={theme} />
             </View>
           </View>
 
-          {/* KART 1 */}
+          {/* KART 1 — Genel İstatistikler: KPI Grid */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <BarChart2 size={18} color={theme.colors.primary} />
-              <Text style={styles.cardTitle}>
-                {t("summary.card.generalStats")}
-              </Text>
+              <Text style={styles.cardTitle}>{t("summary.card.generalStats")}</Text>
             </View>
+            <Text style={styles.cardHint}>{t("summary.card.generalStats.hint")}</Text>
 
-            <Text style={styles.cardHint}>
-              {t("summary.card.generalStats.hint")}
-            </Text>
-            <StatRow
-              label={t("summary.stat.totalStudents")}
-              sub={t("summary.stat.totalStudents.sub")}
-              value={String(summary.totalStudents)}
-              theme={theme}
-            />
-            <StatRow
-              label={t("summary.stat.activeStudents")}
-              sub={t("summary.stat.activeStudents.sub")}
-              value={String(summary.activeStudents)}
-              theme={theme}
-            />
-            <StatRow
-              label="Toplam kayıt"
-              value={String(summary.measurementsInRange)}
-              sub="Seçili aralıkta oluşan tüm ölçüm kayıtları"
-              theme={theme}
-            />
-            <StatRow
-              label={t("summary.stat.measuredStudents.title")}
-              sub={t("summary.stat.measuredStudents.sub")}
-              value={String(summary.measuredStudentsInRange)}
-              theme={theme}
-            />
-            <StatRow
-              label={t("summary.stat.followUpDue.title")}
-              sub={t("summary.stat.followUpDue.sub")}
-              value={String(summary.followUpDue)}
-              theme={theme}
-            />
-            <StatRow
-              label={t("summary.stat.followUpOk.title")}
-              sub={t("summary.stat.followUpOk.sub")}
-              value={String(summary.followUpOk)}
-              theme={theme}
-            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              <KpiCard label={t("summary.stat.totalStudents")} value={String(summary.totalStudents)} sub={t("summary.stat.totalStudents.sub")} theme={theme} />
+              <KpiCard label={t("summary.stat.activeStudents")} value={String(summary.activeStudents)} sub={t("summary.stat.activeStudents.sub")} accent={theme.colors.success} theme={theme} />
+            </View>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+              <KpiCard label={t("summary.stat.totalRecords")} value={String(summary.measurementsInRange)} sub={t("summary.stat.totalRecords.sub")} theme={theme} />
+              <KpiCard label={t("summary.stat.measuredStudents.title")} value={String(summary.measuredStudentsInRange)} sub={t("summary.stat.measuredStudents.sub")} theme={theme} />
+            </View>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+              <KpiCard label={t("summary.stat.followUpDue.title")} value={String(summary.followUpDue)} sub={t("summary.stat.followUpDue.sub")} accent={theme.colors.warning} theme={theme} />
+              <KpiCard label={t("summary.stat.followUpOk.title")} value={String(summary.followUpOk)} sub={t("summary.stat.followUpOk.sub")} accent={theme.colors.success} theme={theme} />
+            </View>
           </View>
 
-          {/* KART 2 */}
+          {/* KART 2 — Hedef Dağılımı */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <Activity size={18} color={theme.colors.success} />
-              <Text style={styles.cardTitle}>
-                {t("summary.card.goalProgress")}
-              </Text>
+              <Target size={18} color={theme.colors.success} />
+              <Text style={styles.cardTitle}>{t("summary.card.goalProgress")}</Text>
             </View>
+            <Text style={styles.cardHint}>{t("summary.card.goalProgress.hint")}</Text>
 
-            <Text style={styles.cardHint}>
-              {t("summary.card.goalProgress.hint")}
-            </Text>
-            <ProgressRow
+            <GoalBar
               label={t("summary.goal.fatLoss")}
               percent={summary.goalPercents.fatLoss}
+              count={summary.goalCounts.fatLoss}
+              color={theme.colors.warning}
               theme={theme}
             />
-
-            <ProgressRow
+            <GoalBar
               label={t("summary.goal.muscleGain")}
               percent={summary.goalPercents.muscleGain}
+              count={summary.goalCounts.muscleGain}
+              color={theme.colors.primary}
               theme={theme}
             />
-
-            <ProgressRow
+            <GoalBar
               label={t("summary.goal.generalHealth")}
               percent={summary.goalPercents.generalHealth}
+              count={summary.goalCounts.generalHealth}
+              color={theme.colors.success}
               theme={theme}
             />
           </View>
 
-          {/* KART 3 */}
+          {/* KART 3 — Öğrenci Segmentleri: 2x2 Grid */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Users size={18} color={theme.colors.accent} />
-              <Text style={styles.cardTitle}>
-                {t("summary.card.studentSegments")}
-              </Text>
+              <Text style={styles.cardTitle}>{t("summary.card.studentSegments")}</Text>
             </View>
 
-            <TagRow
-              label={t("summary.segment.twiceWeek")}
-              value={`${summary.segTwiceWeek} ${t("summary.segment.people")}`}
-              theme={theme}
-            />
-
-            <TagRow
-              label={t("summary.segment.threeTimesWeek")}
-              value={`${summary.segThreeTimesWeek} ${t("summary.segment.people")}`}
-              theme={theme}
-            />
-
-            <TagRow
-              label={t("summary.segment.onlineHybrid")}
-              value={`${summary.segOnlineHybrid} ${t("summary.segment.people")}`}
-              theme={theme}
-            />
-
-            <TagRow
-              label={t("summary.segment.beginner")}
-              value={`${summary.segBeginner} ${t("summary.segment.people")}`}
-              theme={theme}
-            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+              <SegmentCard
+                label={t("summary.segment.twiceWeek")}
+                value={`${summary.segTwiceWeek} ${t("summary.segment.people")}`}
+                icon={<TrendingUp size={18} color={theme.colors.primary} />}
+                theme={theme}
+              />
+              <SegmentCard
+                label={t("summary.segment.threeTimesWeek")}
+                value={`${summary.segThreeTimesWeek} ${t("summary.segment.people")}`}
+                icon={<Activity size={18} color={theme.colors.success} />}
+                theme={theme}
+              />
+            </View>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+              <SegmentCard
+                label={t("summary.segment.onlineHybrid")}
+                value={`${summary.segOnlineHybrid} ${t("summary.segment.people")}`}
+                icon={<CalendarClock size={18} color={theme.colors.accent} />}
+                theme={theme}
+              />
+              <SegmentCard
+                label={t("summary.segment.beginner")}
+                value={`${summary.segBeginner} ${t("summary.segment.people")}`}
+                icon={<Users size={18} color={theme.colors.warning} />}
+                theme={theme}
+              />
+            </View>
           </View>
 
-          {/* KART 4 */}
+          {/* KART 4 — Randevu Yoğunluğu */}
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <BarChart2 size={18} color={theme.colors.warning} />
-              <Text style={styles.cardTitle}>
-                {t("summary.card.dailySessionFill")}
-              </Text>
+              <Text style={styles.cardTitle}>{t("summary.card.dailySessionFill")}</Text>
             </View>
-
-            <Text style={styles.cardHint}>
-              {t("summary.card.dailySessionFill.hint")}
-            </Text>
+            <Text style={styles.cardHint}>{t("summary.card.dailySessionFill.hint")}</Text>
 
             <DailyActivityChart
               counts={summary.appointmentDailyCounts.length ? summary.appointmentDailyCounts : summary.barLabels.map(() => 0)}
@@ -795,104 +936,6 @@ export default function SummaryScreen() {
         </ScrollView>
       </View>
     </SafeAreaView>
-  );
-}
-
-/* COMPONENTS -------------------------------------------------- */
-
-function RangeChip({
-  label,
-  active,
-  onPress,
-  theme,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-  theme: ThemeUI;
-}) {
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.rangeChip, active && styles.rangeChipActive]}
-    >
-      <Text style={[styles.rangeChipText, active && styles.rangeChipTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-function StatRow({
-  label,
-  value,
-  sub,
-  theme,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  theme: ThemeUI;
-}) {
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-
-  return (
-    <View style={styles.statRow}>
-      <View style={{ flex: 1, paddingRight: 12 }}>
-        <Text style={styles.statLabel}>{label}</Text>
-        {!!sub && <Text style={styles.statSub}>{sub}</Text>}
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-    </View>
-  );
-}
-
-function ProgressRow({
-  label,
-  percent,
-  theme,
-}: {
-  label: string;
-  percent: number;
-  theme: ThemeUI;
-}) {
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-  const clamped = Math.max(0, Math.min(100, Math.round(percent)));
-
-  return (
-    <View style={styles.progressRow}>
-      <View style={styles.progressHeader}>
-        <Text style={styles.progressLabel}>{label}</Text>
-        <Text style={styles.progressLabel}>{clamped}%</Text>
-      </View>
-
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${clamped}%` }]} />
-      </View>
-    </View>
-  );
-}
-
-function TagRow({
-  label,
-  value,
-  theme,
-}: {
-  label: string;
-  value: string;
-  theme: ThemeUI;
-}) {
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-
-  return (
-    <View style={styles.tagRow}>
-      <Text style={styles.tagLabel}>{label}</Text>
-      <View style={styles.tagPill}>
-        <Text style={styles.tagPillText}>{value}</Text>
-      </View>
-    </View>
   );
 }
 
@@ -922,30 +965,6 @@ function makeStyles(theme: ThemeUI) {
       marginTop: theme.spacing.sm - 2,
     },
 
-    rangeChip: {
-      paddingHorizontal: theme.spacing.md - 4,
-      paddingVertical: theme.spacing.xs,
-      borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      marginRight: theme.spacing.xs,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    rangeChipActive: {
-      backgroundColor: theme.colors.surfaceElevated,
-      borderColor: theme.colors.primary,
-    },
-    rangeChipText: {
-      fontSize: theme.fontSize.sm,
-      color: theme.colors.text.secondary,
-    },
-    rangeChipTextActive: {
-      color: theme.colors.text.primary,
-      fontWeight: "600",
-    },
-
     card: {
       marginHorizontal: theme.spacing.md,
       marginTop: theme.spacing.md - 2,
@@ -960,75 +979,14 @@ function makeStyles(theme: ThemeUI) {
     cardTitle: {
       color: theme.colors.text.primary,
       fontSize: theme.fontSize.lg - 1,
-      fontWeight: "600",
+      fontWeight: "700",
       marginLeft: theme.spacing.xs,
     },
     cardHint: {
       color: theme.colors.text.muted,
       fontSize: theme.fontSize.xs,
       marginTop: theme.spacing.xs - 2,
-      marginBottom: theme.spacing.sm - 2,
-    },
-
-    statRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingVertical: theme.spacing.sm - 2,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
-      alignItems: "center",
-    },
-    statLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm },
-    statSub: {
-      color: theme.colors.text.muted,
-      fontSize: theme.fontSize.xs,
-      marginTop: 2,
-    },
-    statValue: {
-      color: theme.colors.text.primary,
-      fontSize: theme.fontSize.md,
-      fontWeight: "600",
-    },
-
-    progressRow: { marginTop: theme.spacing.sm - 2 },
-    progressHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: theme.spacing.xs - 2,
-    },
-    progressLabel: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm },
-    progressBar: {
-      height: 8,
-      borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.border,
-      overflow: "hidden",
-    },
-    progressFill: {
-      height: "100%",
-      borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.primary,
-    },
-
-    tagRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingVertical: theme.spacing.sm - 2,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
-    },
-    tagLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm },
-    tagPill: {
-      paddingHorizontal: theme.spacing.sm - 4,
-      paddingVertical: theme.spacing.xs - 2,
-      backgroundColor: theme.colors.surfaceElevated,
-      borderRadius: theme.radius.pill,
-    },
-    tagPillText: { color: theme.colors.text.primary, fontSize: theme.fontSize.xs },
-
-    chartFooterText: {
-      color: theme.colors.text.muted,
-      fontSize: theme.fontSize.xs,
-      marginTop: theme.spacing.sm - 2,
+      marginBottom: 2,
     },
   });
 }
