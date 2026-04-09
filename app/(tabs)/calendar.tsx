@@ -58,6 +58,7 @@ type Appointment = {
     studentName?: string;
     date: Timestamp; // full datetime (date + time)
     note?: string;
+    repeatDays?: number | null; // 0/null = tekrar yok, 1 = her gün, 3 = 3 günde bir vs.
     createdAt?: Timestamp;
 };
 
@@ -100,6 +101,25 @@ function daysDiff(a: Date, b: Date): number {
 
 function severityRank(s: DueItem["status"]) {
     return s === "overdue" ? 0 : s === "dueSoon" ? 1 : s === "ok" ? 2 : 3;
+}
+
+// Bir randevunun belirli bir güne denk gelip gelmediğini kontrol et (tekrar dahil)
+function isAppointmentOnDay(apt: Appointment, dayStr: string): boolean {
+    const aptDate = toDateSafe(apt.date);
+    if (!aptDate) return false;
+
+    const aptDayStr = ymd(aptDate);
+    if (aptDayStr === dayStr) return true;
+
+    const repeat = apt.repeatDays;
+    if (!repeat || repeat <= 0) return false;
+
+    const aptTime = startOfDay(aptDate).getTime();
+    const dayTime = startOfDay(new Date(dayStr + "T00:00:00")).getTime();
+    if (dayTime < aptTime) return false;
+
+    const diffDays = Math.round((dayTime - aptTime) / 86400000);
+    return diffDays % repeat === 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -614,17 +634,23 @@ export default function CalendarFollowUpScreen() {
 
     const appointmentBuckets = useMemo(() => {
         const map = new Map<string, number>();
-        for (const apt of appointments) {
-            const d = toDateSafe(apt.date);
-            if (!d) continue;
+        // Önümüzdeki 90 gün için tüm tekrarları hesapla
+        const today = startOfDay(new Date());
+        for (let i = -30; i <= 90; i++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() + i);
             const key = ymd(d);
-            map.set(key, (map.get(key) ?? 0) + 1);
+            for (const apt of appointments) {
+                if (isAppointmentOnDay(apt, key)) {
+                    map.set(key, (map.get(key) ?? 0) + 1);
+                }
+            }
         }
         return map;
     }, [appointments]);
 
     const selectedAppointments = useMemo(() =>
-        appointments.filter((apt) => { const d = toDateSafe(apt.date); return d ? ymd(d) === selectedDay : false; }),
+        appointments.filter((apt) => isAppointmentOnDay(apt, selectedDay)),
         [appointments, selectedDay]
     );
 
