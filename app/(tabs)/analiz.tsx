@@ -362,27 +362,43 @@ function useSummaryData(range: RangeKey): SummaryState {
       aptDayCounts[toISOKey(d)] = 0;
     }
 
+    // Tekrarlı randevular start'tan önce başlamış olabilir, tümünü çek
     const qAppointments = query(
       appointmentsColRef(uid),
-      orderBy("date", "asc"),
-      where("date", ">=", Timestamp.fromDate(start))
+      orderBy("date", "asc")
     );
 
     const unsubAppointments = onSnapshot(qAppointments, (snap) => {
       Object.keys(aptDayCounts).forEach((k) => (aptDayCounts[k] = 0));
+
+      // Penceredeki tüm günler
+      const windowKeys = Object.keys(aptDayCounts).sort();
 
       snap.forEach((doc) => {
         const a = doc.data() as any;
         const ts: Timestamp | undefined = a?.date;
         const dt = ts?.toDate ? ts.toDate() : null;
         if (!dt) return;
-        const key = toISOKey(startOfDay(dt));
-        if (key in aptDayCounts) aptDayCounts[key] += 1;
+
+        const aptDayStart = startOfDay(dt).getTime();
+        const repeat: number = typeof a?.repeatDays === "number" && a.repeatDays > 0 ? a.repeatDays : 0;
+
+        for (const key of windowKeys) {
+          const keyTime = new Date(key + "T00:00:00").getTime();
+          if (keyTime < aptDayStart) continue; // randevu başlamadan önce
+
+          if (repeat === 0) {
+            // tekrarsız: sadece kendi gününde say
+            if (key === toISOKey(startOfDay(dt))) aptDayCounts[key] += 1;
+          } else {
+            // tekrarlı: fark repeat'e tam bölünüyorsa say
+            const diffDays = Math.round((keyTime - aptDayStart) / 86400000);
+            if (diffDays % repeat === 0) aptDayCounts[key] += 1;
+          }
+        }
       });
 
-      const aptCountsArr = Object.keys(aptDayCounts)
-        .sort()
-        .map((k) => aptDayCounts[k]);
+      const aptCountsArr = windowKeys.map((k) => aptDayCounts[k]);
 
       setState((prev) => ({
         ...prev,
