@@ -837,7 +837,7 @@ export default function SummaryScreen() {
               <KpiCard label={t("summary.stat.activeStudents")} value={String(summary.activeStudents)} sub={t("summary.stat.activeStudents.sub")} accent={theme.colors.success} theme={theme} />
             </View>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-              <KpiCard label="Toplam Kayıt" value={String(summary.measurementsInRange)} sub="Seçili aralık" theme={theme} />
+              <KpiCard label={t("summary.stat.totalRecords")} value={String(summary.measurementsInRange)} sub={t("summary.stat.totalRecords.sub")} theme={theme} />
               <KpiCard label={t("summary.stat.measuredStudents.title")} value={String(summary.measuredStudentsInRange)} sub={t("summary.stat.measuredStudents.sub")} theme={theme} />
             </View>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>

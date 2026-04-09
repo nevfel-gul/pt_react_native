@@ -431,19 +431,19 @@ function AddAppointmentModal({
                             <View style={{ flexDirection: "row", borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.border }}>
                                 {/* Gün kolonu */}
                                 <View style={{ flex: 3, borderRightWidth: 1, borderRightColor: theme.colors.border }}>
-                                    <Text style={{ textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "800", paddingTop: 8 }}>TARİH</Text>
+                                    <Text style={{ textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "800", paddingTop: 8 }}>{t("calendar.appointment.dateHeader")}</Text>
                                     <WheelPicker data={DAY_ITEMS.map((d) => d.label)} initialIndex={dayIndex} onChange={setDayIndex} theme={theme} />
                                 </View>
                                 {/* Saat kolonu */}
                                 <View style={{ flex: 2 }}>
-                                    <Text style={{ textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "800", paddingTop: 8 }}>SAAT</Text>
+                                    <Text style={{ textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "800", paddingTop: 8 }}>{t("calendar.appointment.timeHeader")}</Text>
                                     <WheelPicker data={TIME_ITEMS} initialIndex={timeIndex} onChange={setTimeIndex} theme={theme} />
                                 </View>
                             </View>
 
                             {/* Tekrar aralığı */}
                             <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-                                <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "800", marginBottom: 8 }}>TEKRAR</Text>
+                                <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "800", marginBottom: 8 }}>{t("calendar.appointment.repeatLabel")}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                                     {REPEAT_OPTIONS.map((opt) => (
                                         <Pressable
@@ -485,7 +485,7 @@ function AddAppointmentModal({
                                     onPress={handleSave}
                                     style={({ pressed }) => ({ backgroundColor: theme.colors.primary, borderRadius: 14, paddingVertical: 14, alignItems: "center", opacity: pressed ? 0.85 : 1 })}
                                 >
-                                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>{t("calendar.appointment.save")}</Text>
+                                    <Text style={{ color: theme.colors.white, fontSize: 16, fontWeight: "900" }}>{t("calendar.appointment.save")}</Text>
                                 </Pressable>
                             </View>
                         </ScrollView>
@@ -807,7 +807,7 @@ export default function CalendarFollowUpScreen() {
                                     elevation: 4,
                                 })}
                             >
-                                <Text style={{ color: "#fff", fontSize: 20, fontWeight: "900", marginTop: -2 }}>+</Text>
+                                <Text style={{ color: theme.colors.white, fontSize: 20, fontWeight: "900", marginTop: -2 }}>+</Text>
                             </Pressable>
                         </View>
 

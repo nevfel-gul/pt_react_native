@@ -48,7 +48,7 @@ export const darkTheme: ThemeUI = {
     filterPassive: "hsl(0, 52%, 51%)",
 
     overlay: "rgba(0,0,0,0.55)",
-    white: ""
+    white: "#ffffff",
   },
 
   radius: { sm: 8, md: 12, lg: 18, xl: 26, pill: 999 },
