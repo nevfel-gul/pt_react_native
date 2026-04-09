@@ -367,7 +367,7 @@ function AddAppointmentModal({
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                             {step === "datetime" && (
                                 <Pressable onPress={() => setStep("student")} hitSlop={12}>
-                                    <Text style={{ color: theme.colors.premium, fontSize: 14, fontWeight: "700" }}>← Geri</Text>
+                                    <Text style={{ color: theme.colors.text.secondary, fontSize: 14, fontWeight: "700" }}>← Geri</Text>
                                 </Pressable>
                             )}
                             <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: "900" }}>
@@ -422,7 +422,7 @@ function AddAppointmentModal({
 
                             {/* Seçim özeti */}
                             <View style={{ alignItems: "center", paddingVertical: 10 }}>
-                                <Text style={{ color: theme.colors.premium, fontSize: 14, fontWeight: "900" }}>
+                                <Text style={{ color: theme.colors.text.primary, fontSize: 14, fontWeight: "900" }}>
                                     {selectedDayLabel}  •  {TIME_ITEMS[timeIndex]}
                                 </Text>
                             </View>
@@ -454,11 +454,11 @@ function AddAppointmentModal({
                                                 paddingVertical: 8,
                                                 borderRadius: 20,
                                                 borderWidth: 1.5,
-                                                borderColor: repeatDays === opt.days ? theme.colors.premium : theme.colors.border,
-                                                backgroundColor: repeatDays === opt.days ? `${theme.colors.premium}22` : theme.colors.surfaceSoft,
+                                                borderColor: repeatDays === opt.days ? theme.colors.accent : theme.colors.border,
+                                                backgroundColor: repeatDays === opt.days ? `${theme.colors.accent}20` : theme.colors.surfaceSoft,
                                             }}
                                         >
-                                            <Text style={{ color: repeatDays === opt.days ? theme.colors.premium : theme.colors.text.secondary, fontSize: 13, fontWeight: "700" }}>
+                                            <Text style={{ color: repeatDays === opt.days ? theme.colors.accent : theme.colors.text.secondary, fontSize: 13, fontWeight: "700" }}>
                                                 {opt.label}
                                             </Text>
                                         </Pressable>
@@ -483,7 +483,7 @@ function AddAppointmentModal({
                             <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
                                 <Pressable
                                     onPress={handleSave}
-                                    style={({ pressed }) => ({ backgroundColor: theme.colors.premium, borderRadius: 14, paddingVertical: 14, alignItems: "center", opacity: pressed ? 0.85 : 1 })}
+                                    style={({ pressed }) => ({ backgroundColor: theme.colors.primary, borderRadius: 14, paddingVertical: 14, alignItems: "center", opacity: pressed ? 0.85 : 1 })}
                                 >
                                     <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>{t("calendar.appointment.save")}</Text>
                                 </Pressable>
@@ -789,20 +789,25 @@ export default function CalendarFollowUpScreen() {
                     {/* RANDEVULAR - seçili gün */}
                     <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                            <Text style={{ color: theme.colors.premium, fontSize: 16, fontWeight: "900" }}>{t("calendar.appointment.sectionTitle")}</Text>
+                            <Text style={{ color: theme.colors.text.primary, fontSize: 16, fontWeight: "900" }}>{t("calendar.appointment.sectionTitle")}</Text>
                             <Pressable
                                 onPress={() => setShowAddModal(true)}
                                 style={({ pressed }) => ({
-                                    backgroundColor: theme.colors.premium,
+                                    backgroundColor: "rgba(124,58,237,0.45)",
                                     borderRadius: 20,
                                     width: 32,
                                     height: 32,
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    opacity: pressed ? 0.8 : 1,
+                                    opacity: pressed ? 0.7 : 1,
+                                    shadowColor: "#7c3aed",
+                                    shadowOpacity: 0.35,
+                                    shadowRadius: 8,
+                                    shadowOffset: { width: 0, height: 3 },
+                                    elevation: 4,
                                 })}
                             >
-                                <Text style={{ color: "#fff", fontSize: 22, lineHeight: 26, fontWeight: "900" }}>+</Text>
+                                <Text style={{ color: "#fff", fontSize: 20, fontWeight: "900", marginTop: -2 }}>+</Text>
                             </Pressable>
                         </View>
 
@@ -816,11 +821,11 @@ export default function CalendarFollowUpScreen() {
                                     const aptDate = toDateSafe(apt.date);
                                     const timeStr = aptDate ? `${String(aptDate.getHours()).padStart(2, "0")}:${String(aptDate.getMinutes()).padStart(2, "0")}` : "";
                                     return (
-                                        <View key={apt.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.premium, borderRadius: 14, padding: 14 }}>
+                                        <View key={apt.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 14, padding: 14 }}>
                                             <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: theme.colors.premium }} />
                                             <View style={{ flex: 1 }}>
                                                 <Text style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: "900" }}>{apt.studentName ?? "—"}</Text>
-                                                {timeStr ? <Text style={{ color: theme.colors.premium, fontSize: 12, fontWeight: "700", marginTop: 2 }}>🕐 {timeStr}</Text> : null}
+                                                {timeStr ? <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "700", marginTop: 2 }}>🕐 {timeStr}</Text> : null}
                                                 {apt.note ? <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "600", marginTop: 2 }}>{apt.note}</Text> : null}
                                             </View>
                                             <Pressable onPress={() => handleDeleteAppointment(apt.id)} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 4 })}>
