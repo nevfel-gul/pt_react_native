@@ -17,7 +17,7 @@ import { useTheme } from "@/constants/usetheme";
 
 // ✅ FIREBASE
 import { auth } from "@/services/firebase";
-import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
+import { appointmentsColRef, recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import i18n from "@/services/i18n";
 import {
   Timestamp,
@@ -64,6 +64,10 @@ type SummaryState = {
   dailyCounts: number[];
   bars: number[];
   barLabels: string[];
+
+  // randevu yoğunluğu
+  appointmentDailyCounts: number[];
+  appointmentBars: number[];
 };
 
 function startOfDay(d: Date) {
@@ -176,6 +180,9 @@ function useSummaryData(range: RangeKey): SummaryState {
     dailyCounts: [],
     bars: [],
     barLabels: [],
+
+    appointmentDailyCounts: [],
+    appointmentBars: [],
   });
 
   useEffect(() => {
@@ -347,9 +354,47 @@ function useSummaryData(range: RangeKey): SummaryState {
       }));
     });
 
+    // 3) APPOINTMENTS canlı
+    const aptDayCounts: Record<string, number> = {};
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      aptDayCounts[toISOKey(d)] = 0;
+    }
+
+    const qAppointments = query(
+      appointmentsColRef(uid),
+      orderBy("date", "asc"),
+      where("date", ">=", Timestamp.fromDate(start))
+    );
+
+    const unsubAppointments = onSnapshot(qAppointments, (snap) => {
+      Object.keys(aptDayCounts).forEach((k) => (aptDayCounts[k] = 0));
+
+      snap.forEach((doc) => {
+        const a = doc.data() as any;
+        const ts: Timestamp | undefined = a?.date;
+        const dt = ts?.toDate ? ts.toDate() : null;
+        if (!dt) return;
+        const key = toISOKey(startOfDay(dt));
+        if (key in aptDayCounts) aptDayCounts[key] += 1;
+      });
+
+      const aptCountsArr = Object.keys(aptDayCounts)
+        .sort()
+        .map((k) => aptDayCounts[k]);
+
+      setState((prev) => ({
+        ...prev,
+        appointmentDailyCounts: aptCountsArr,
+        appointmentBars: normalizeBars(aptCountsArr),
+      }));
+    });
+
     return () => {
       unsubStudents();
       unsubRecords();
+      unsubAppointments();
     };
   }, [range, i18n.language]);
 
@@ -737,7 +782,7 @@ export default function SummaryScreen() {
             </Text>
 
             <DailyActivityChart
-              counts={summary.dailyCounts}
+              counts={summary.appointmentDailyCounts.length ? summary.appointmentDailyCounts : summary.barLabels.map(() => 0)}
               labels={summary.barLabels}
               theme={theme}
               height={140}
