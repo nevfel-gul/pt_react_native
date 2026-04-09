@@ -3,37 +3,37 @@ import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { addDoc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import {
-    ArrowLeft,
-    BicepsFlexed,
-    Calendar,
-    Eye,
-    EyeOff,
-    HandHeart,
-    HeartPulse,
-    Mail,
-    PersonStanding,
-    Phone,
-    Ruler,
-    SquareActivity,
-    User,
+  ArrowLeft,
+  BicepsFlexed,
+  Calendar,
+  Eye,
+  EyeOff,
+  HandHeart,
+  HeartPulse,
+  Mail,
+  PersonStanding,
+  Phone,
+  Ruler,
+  SquareActivity,
+  User,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // ✅ NEW
@@ -359,11 +359,15 @@ export default function NewRecordScreen() {
         >
           <View style={styles.modalBackdrop}>
             <View style={styles.modalContent}>
-              <Image
-                source={imageSource}
-                style={styles.hintImage}
-                resizeMode="contain"
-              />
+
+              <View style={styles.imageWrapper}>
+                <Image
+                  source={imageSource}
+                  style={styles.hintImage}
+                  resizeMode="contain"
+                />
+                <Text style={styles.hintImageLabel}>Ogito tesasadt</Text>
+              </View>
 
               <Pressable
                 style={styles.modalCloseButton}
@@ -864,11 +868,11 @@ export default function NewRecordScreen() {
         pushupStatus:
           pushupReps && age && gender
             ? getPushUpScore(
-                pushupReps,
-                age,
-                gender,
-                formData.modifiedpushup === "Evet",
-              )
+              pushupReps,
+              age,
+              gender,
+              formData.modifiedpushup === "Evet",
+            )
             : "",
         wallSitStatus:
           wallSitSec && gender ? getWallSitScore(wallSitSec, gender) : "",
@@ -938,10 +942,10 @@ export default function NewRecordScreen() {
                   borderColor: theme.colors.success,
                 },
                 active &&
-                  !done && {
-                    backgroundColor: theme.colors.accent,
-                    borderColor: theme.colors.accent,
-                  },
+                !done && {
+                  backgroundColor: theme.colors.accent,
+                  borderColor: theme.colors.accent,
+                },
               ]}
             >
               <Text
@@ -967,17 +971,17 @@ export default function NewRecordScreen() {
     </View>
   );
   const measurementHintImages: Partial<Record<keyof FormData, any>> = {
-    boyun: require("@/assets/images/ölçüm/boyun.jpg"),
-    omuz: require("@/assets/images/ölçüm/omuz.jpg"),
-    gogus: require("@/assets/images/ölçüm/gogus.jpg"),
-    sagKol: require("@/assets/images/ölçüm/kol.jpg"),
-    solKol: require("@/assets/images/ölçüm/kol.jpg"),
-    bel: require("@/assets/images/ölçüm/bel.jpg"),
-    kalca: require("@/assets/images/ölçüm/kalça.jpg"),
-    sagBacak: require("@/assets/images/ölçüm/bacak.jpg"),
-    solBacak: require("@/assets/images/ölçüm/bacak.jpg"),
-    sagKalf: require("@/assets/images/ölçüm/baldir.jpg"),
-    solKalf: require("@/assets/images/ölçüm/baldir.jpg"),
+    boyun: require("@/assets/images/olcum/boyun.jpg"),
+    omuz: require("@/assets/images/olcum/omuz.jpg"),
+    gogus: require("@/assets/images/olcum/gogus.jpg"),
+    sagKol: require("@/assets/images/olcum/kol.jpg"),
+    solKol: require("@/assets/images/olcum/kol.jpg"),
+    bel: require("@/assets/images/olcum/bel.jpg"),
+    kalca: require("@/assets/images/olcum/kalca.jpg"),
+    sagBacak: require("@/assets/images/olcum/bacak.jpg"),
+    solBacak: require("@/assets/images/olcum/bacak.jpg"),
+    sagKalf: require("@/assets/images/olcum/baldir.jpg"),
+    solKalf: require("@/assets/images/olcum/baldir.jpg"),
   };
   const renderNumericInput = (
     field: keyof FormData,
@@ -1319,8 +1323,8 @@ export default function NewRecordScreen() {
                     {getCarvonenTargetHR(
                       Number(
                         formData.dinlenikNabiz ||
-                          formData.restingHeartRate ||
-                          0,
+                        formData.restingHeartRate ||
+                        0,
                       ),
                       Number(formData.carvonenMultiplier || 0),
                       getAge(),
@@ -1713,8 +1717,8 @@ export default function NewRecordScreen() {
               )}
 
               {formData.sitandreach1 &&
-              formData.sitandreach2 &&
-              formData.sitandreach3 ? (
+                formData.sitandreach2 &&
+                formData.sitandreach3 ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.label.bestValue")}{" "}
                   {getMaxOfThree(
@@ -1729,15 +1733,15 @@ export default function NewRecordScreen() {
                     formData.sitandreach3,
                   ) != null && student?.gender
                     ? getSitAndReachStatus(
-                        Number(
-                          getMaxOfThree(
-                            formData.sitandreach1,
-                            formData.sitandreach2,
-                            formData.sitandreach3,
-                          ) || 0,
-                        ),
-                        student.gender,
-                      )
+                      Number(
+                        getMaxOfThree(
+                          formData.sitandreach1,
+                          formData.sitandreach2,
+                          formData.sitandreach3,
+                        ) || 0,
+                      ),
+                      student.gender,
+                    )
                     : ""}
                 </Text>
               ) : null}
@@ -2352,11 +2356,6 @@ const makeStyles = (theme: ThemeUI) =>
       padding: 16,
       alignItems: "center",
     },
-    hintImage: {
-      width: "100%",
-      height: 360,
-      marginBottom: 12,
-    },
     modalCloseButton: {
       marginTop: 4,
       paddingHorizontal: 16,
@@ -2426,5 +2425,22 @@ const makeStyles = (theme: ThemeUI) =>
     },
     td: {
       color: theme.colors.text.primary,
+    },
+    hintImageLabel: {
+      color: theme.colors.text.primary,
+      fontSize: 16,
+      fontWeight: "600",
+      textAlign: "center",
+      marginBottom: theme.spacing.md,
+    },
+    hintImage: {
+      width: 250,
+      height: 150,
+      borderBlockColor: theme.colors.border,
+      borderWidth: 1,
+      borderRadius: 12,
+    },
+    imageWrapper: {
+      alignItems: "center",
     },
   });
