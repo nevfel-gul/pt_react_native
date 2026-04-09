@@ -621,7 +621,7 @@ export default function CalendarFollowUpScreen() {
     return (
         <SafeAreaView style={[s.safeArea, { backgroundColor: theme.colors.background }]}>
             <View style={{ flex: 1 }}>
-                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
                     {/* HEADER */}
                     <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 }}>
@@ -729,7 +729,20 @@ export default function CalendarFollowUpScreen() {
                     <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                             <Text style={{ color: theme.colors.premium, fontSize: 16, fontWeight: "900" }}>{t("calendar.appointment.sectionTitle")}</Text>
-                            <Text style={{ color: theme.colors.text.secondary, fontWeight: "800" }}>{selectedAppointments.length}</Text>
+                            <Pressable
+                                onPress={() => setShowAddModal(true)}
+                                style={({ pressed }) => ({
+                                    backgroundColor: theme.colors.premium,
+                                    borderRadius: 20,
+                                    width: 32,
+                                    height: 32,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    opacity: pressed ? 0.8 : 1,
+                                })}
+                            >
+                                <Text style={{ color: "#fff", fontSize: 22, lineHeight: 26, fontWeight: "900" }}>+</Text>
+                            </Pressable>
                         </View>
 
                         {selectedAppointments.length === 0 ? (
@@ -801,16 +814,6 @@ export default function CalendarFollowUpScreen() {
                     </View>
                 </ScrollView>
 
-                {/* BOTTOM BUTTON */}
-                <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 16, backgroundColor: theme.colors.background, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-                    <TouchableOpacity
-                        activeOpacity={0.88}
-                        onPress={() => setShowAddModal(true)}
-                        style={{ backgroundColor: theme.colors.premium, borderRadius: 14, paddingVertical: 14, alignItems: "center" }}
-                    >
-                        <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>+ {t("calendar.appointment.add")}</Text>
-                    </TouchableOpacity>
-                </View>
             </View>
 
             {/* MODAL */}
