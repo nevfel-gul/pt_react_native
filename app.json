@@ -10,9 +10,6 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.athletrack.athletrack",
-      "entitlements": {
-        "com.apple.developer.in-app-purchases": true
-      },
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
