@@ -19,8 +19,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
-    View,
+    View
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 
@@ -620,25 +619,6 @@ export default function CalendarFollowUpScreen() {
     }, [dueItems]);
 
     // ✅ Randevu bucket: tarih → randevu sayısı
-    const appointmentBuckets = useMemo(() => {
-        const map = new Map<string, number>();
-        for (const apt of appointments) {
-            const d = toDateSafe(apt.date);
-            if (!d) continue;
-            const key = ymd(d);
-            map.set(key, (map.get(key) ?? 0) + 1);
-        }
-        return map;
-    }, [appointments]);
-
-    // ✅ Seçili gündeki randevular
-    const selectedAppointments = useMemo(() => {
-        return appointments.filter((apt) => {
-            const d = toDateSafe(apt.date);
-            return d ? ymd(d) === selectedDay : false;
-        });
-    }, [appointments, selectedDay]);
-
     const dayBuckets = useMemo(() => {
         const buckets = new Map<string, DayBucket>();
         for (const item of dueItems) {
