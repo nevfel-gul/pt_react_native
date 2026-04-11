@@ -1,3 +1,4 @@
+import { DEMO_MODE, DEMO_PT_NOTE, DEMO_STUDENT_NOTES, DEMO_STUDENT_PROFILE, DEMO_STUDENT_RECORDS } from "@/constants/demoData";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
@@ -1830,6 +1831,12 @@ export default function StudentDetailScreen() {
 
   // ─── Firebase yükle ────────────────────────────────────────────────────────
   useEffect(() => {
+    if (DEMO_MODE) {
+      setStudent(DEMO_STUDENT_PROFILE as any);
+      setPtNote(DEMO_PT_NOTE);
+      setLoadingStudent(false);
+      return;
+    }
     if (!id || !uid) return;
     const load = async () => {
       try {
@@ -1855,6 +1862,11 @@ export default function StudentDetailScreen() {
   }, [id, uid]);
 
   useEffect(() => {
+    if (DEMO_MODE) {
+      setRecords(DEMO_STUDENT_RECORDS as any);
+      setLoadingRecords(false);
+      return;
+    }
     if (!id || !uid) return;
     const qy = query(
       recordsColRef(auth.currentUser?.uid!),
@@ -1873,6 +1885,11 @@ export default function StudentDetailScreen() {
   }, [id, uid]);
 
   useEffect(() => {
+    if (DEMO_MODE) {
+      setNotes(DEMO_STUDENT_NOTES as any);
+      setLoadingNotes(false);
+      return;
+    }
     if (!id || !uid) return;
     const qy = query(studentNotesColRef(uid, id), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(

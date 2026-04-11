@@ -706,5 +706,22 @@
   "paywall.alert.restore_title": "Restore ready",
   "paywall.alert.restore_message": "Previous purchases will be restored here once the store connection is added.",
   "paywall.alert.purchase_error": "Purchase could not be started.",
-  "paywall.alert.restore_error": "Purchases could not be restored."
+  "paywall.alert.restore_error": "Purchases could not be restored.",
+
+  "ai.chat.systemMessage": "AthleAI • Filters only based on existing student data.",
+  "ai.chat.headerTitle": "AthleAI",
+  "ai.chat.thinking": "AI is thinking…",
+  "ai.chat.foundStudents": "Found students",
+  "ai.chat.foundCount": "Found: {{count}}",
+  "ai.chat.done": "Done.",
+  "ai.chat.failed": "Could not process.",
+  "ai.chat.searchPrompt": "Ask about: \"{{term}}\"",
+  "ai.chat.moreResults": "… +{{count}} more",
+  "ai.chat.inputPlaceholder": "Ask a question…",
+  "ai.quick.active": "Active students",
+  "ai.quick.passive": "Passive students",
+  "ai.quick.thisWeek": "Measured this week",
+  "ai.quick.last30": "Measured in the last 30 days",
+  "ai.quick.notLast30": "Not measured in the last 30 days",
+  "ai.quick.nameSearch": "Names containing 'Ali'"
 }

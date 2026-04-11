@@ -1,3 +1,4 @@
+import { DEMO_MODE, DEMO_SUMMARY } from "@/constants/demoData";
 import { Activity, BarChart2, CalendarClock, Target, TrendingUp, Users } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -180,6 +181,10 @@ function useSummaryData(range: RangeKey): SummaryState {
   });
 
   useEffect(() => {
+    if (DEMO_MODE) {
+      setState(DEMO_SUMMARY);
+      return;
+    }
     const uid = auth.currentUser?.uid;
     if (!uid) {
       setState((p) => ({ ...p, loading: false }));
@@ -451,7 +456,7 @@ function DailyActivityChart({
     if (prev.length === ratios.length) return;
     animsRef.current = Array.from(
       { length: ratios.length },
-      (_, i) => prev[i] ?? new Animated.Value(0)
+      (_, i) => prev[i] ?? new Animated.Value(DEMO_MODE ? Math.max(0, Math.min(1, ratios[i])) : 0)
     );
   }, [ratios.length]);
 
@@ -463,13 +468,13 @@ function DailyActivityChart({
     const runs = ratios.map((r, i) =>
       Animated.timing(anims[i], {
         toValue: Math.max(0, Math.min(1, r)),
-        duration: 520,
+        duration: DEMO_MODE ? 0 : 520,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       })
     );
 
-    Animated.stagger(14, runs).start();
+    Animated.stagger(DEMO_MODE ? 0 : 14, runs).start();
   }, [ratios.join("|")]);
 
   if (!counts.length) return null;
@@ -498,12 +503,13 @@ function DailyActivityChart({
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-          {ratios.map((_, i) => {
+          {ratios.map((ratio, i) => {
             const av = anims[i] ?? new Animated.Value(0);
             const h = av.interpolate({
               inputRange: [0, 1],
               outputRange: [6, height],
             });
+            const staticH = Math.max(6, ratio * height);
 
             const isPeak = i === peakIndex;
 
@@ -530,15 +536,27 @@ function DailyActivityChart({
                   </Text>
                 )}
 
-                <Animated.View
-                  style={{
-                    width: 10,
-                    borderRadius: theme.radius.pill,
-                    height: h,
-                    backgroundColor: isPeak ? theme.colors.warning : theme.colors.primary,
-                    opacity: isPeak ? 1 : 0.85,
-                  }}
-                />
+                {DEMO_MODE ? (
+                  <View
+                    style={{
+                      width: 10,
+                      borderRadius: theme.radius.pill,
+                      height: staticH,
+                      backgroundColor: isPeak ? theme.colors.warning : theme.colors.primary,
+                      opacity: isPeak ? 1 : 0.85,
+                    }}
+                  />
+                ) : (
+                  <Animated.View
+                    style={{
+                      width: 10,
+                      borderRadius: theme.radius.pill,
+                      height: h,
+                      backgroundColor: isPeak ? theme.colors.warning : theme.colors.primary,
+                      opacity: isPeak ? 1 : 0.85,
+                    }}
+                  />
+                )}
 
                 <Text
                   style={{
