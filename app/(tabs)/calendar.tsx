@@ -1,4 +1,5 @@
 // app/(tabs)/calendar.tsx
+import { DEMO_APPOINTMENTS, DEMO_MODE, DEMO_RECORDS_CAL, DEMO_STUDENTS } from "@/constants/demoData";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
@@ -516,6 +517,13 @@ export default function CalendarFollowUpScreen() {
     useFocusEffect(useCallback(() => { setCalKey((k) => k + 1); }, []));
 
     useEffect(() => {
+        if (DEMO_MODE) {
+            setStudents(DEMO_STUDENTS as any);
+            setRecords(DEMO_RECORDS_CAL as any);
+            setAppointments(DEMO_APPOINTMENTS as any);
+            setLoading(false);
+            return;
+        }
         if (!uid) return;
         setLoading(true);
 
@@ -688,7 +696,7 @@ export default function CalendarFollowUpScreen() {
         return "";
     }, [filter, t]);
 
-    if (!uid) {
+    if (!uid && !DEMO_MODE) {
         return (
             <SafeAreaView style={[s.safeArea, { backgroundColor: theme.colors.background }]}>
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 20 }}>

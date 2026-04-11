@@ -28,9 +28,13 @@ export async function initI18n() {
                 resources,
                 lng: lang,
                 fallbackLng: "tr",
+                keySeparator: false,
                 interpolation: { escapeValue: false },
             });
     } else {
+        // Hot-reload durumunda yeni JSON anahtarlarını güncelle
+        i18n.addResourceBundle("tr", "translation", tr, true, true);
+        i18n.addResourceBundle("en", "translation", en, true, true);
         await i18n.changeLanguage(lang);
     }
 }

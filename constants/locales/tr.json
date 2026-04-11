@@ -709,5 +709,22 @@
   "paywall.alert.restore_title": "Geri yükleme hazır",
   "paywall.alert.restore_message": "Store bağlantısı eklendiğinde önceki satın alımlar burada geri yüklenecek.",
   "paywall.alert.purchase_error": "Satın alma başlatılamadı.",
-  "paywall.alert.restore_error": "Satın alımlar geri yüklenemedi."
+  "paywall.alert.restore_error": "Satın alımlar geri yüklenemedi.",
+
+  "ai.chat.systemMessage": "AthleAI • Sadece mevcut öğrenci verilerine göre filtre uygular.",
+  "ai.chat.headerTitle": "AthleAI",
+  "ai.chat.thinking": "AI düşünüyor…",
+  "ai.chat.foundStudents": "Bulunan öğrenciler",
+  "ai.chat.foundCount": "Bulunan: {{count}}",
+  "ai.chat.done": "İşlem tamam.",
+  "ai.chat.failed": "İşlem yapılamadı.",
+  "ai.chat.searchPrompt": "Arama metnini sor: \"{{term}}\"",
+  "ai.chat.moreResults": "… +{{count}} kişi daha",
+  "ai.chat.inputPlaceholder": "Soru sor…",
+  "ai.quick.active": "Aktif öğrenciler",
+  "ai.quick.passive": "Pasif öğrenciler",
+  "ai.quick.thisWeek": "Bu hafta ölçüm yapanlar",
+  "ai.quick.last30": "Son 30 günde ölçüm yapanlar",
+  "ai.quick.notLast30": "Son 30 günde ölçüm yapmayanlar",
+  "ai.quick.nameSearch": "İsmi 'Ali' geçenler"
 }

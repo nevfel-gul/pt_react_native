@@ -1,3 +1,4 @@
+import { DEMO_MODE, DEMO_RECORDS_CAL, DEMO_STUDENTS } from "@/constants/demoData";
 import { auth, functions } from "@/services/firebase";
 import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -174,6 +175,13 @@ export default function KayitlarScreen() {
   }, [students, safeSearch, filterDurum]);
 
   useEffect(() => {
+    if (DEMO_MODE) {
+      setStudents(DEMO_STUDENTS as any);
+      setRecords(DEMO_RECORDS_CAL as any);
+      setLoading(false);
+      return;
+    }
+
     const uid = auth.currentUser?.uid;
     if (!uid) {
       setLoading(false);
