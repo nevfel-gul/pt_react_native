@@ -51,8 +51,21 @@ export type ThemeUI = {
         filterPassive: string;
 
         overlay: string;
-        white: string;  // Add this line
+        white: string;
 
+        accentSoft: string;
+        mutedSoft: string;
+        inactive: string;
+        premiumOverlay: string;
+
+        status: {
+            excellent: string;
+            good: string;
+            warning: string;
+            poor: string;
+            bad: string;
+            purple: string;
+        };
     };
 
     radius: {

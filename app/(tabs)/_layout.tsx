@@ -36,7 +36,7 @@ export default function TabLayout() {
   const premiumHref = hasPremium ? undefined : "/premium";
 
   const glow = {
-    backgroundColor: mode === "light" ? "rgba(56,189,248,0.12)" : "rgba(56,189,248,0.10)",
+    backgroundColor: theme.colors.accentSoft,
     shadowColor: theme.colors.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,

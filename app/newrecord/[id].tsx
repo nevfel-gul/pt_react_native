@@ -373,7 +373,7 @@ export default function NewRecordScreen() {
                 style={styles.modalCloseButton}
                 onPress={() => setVisible(false)}
               >
-                <Text style={styles.modalCloseText}>Kapat</Text>
+                <Text style={styles.modalCloseText}>{t("recordNew.modal.close")}</Text>
               </Pressable>
             </View>
           </View>
@@ -906,7 +906,7 @@ export default function NewRecordScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Öğrenci yükleniyor...</Text>
+          <Text style={styles.loadingText}>{t("recordNew.loadingStudent")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -916,10 +916,10 @@ export default function NewRecordScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <Text style={styles.errorText}>Öğrenci bulunamadı.</Text>
+          <Text style={styles.errorText}>{t("recordNew.studentNotFound")}</Text>
           <TouchableOpacity style={styles.backButton} onPress={router.back}>
             <ArrowLeft size={18} color={theme.colors.text.primary} />
-            <Text style={styles.backButtonText}>Geri</Text>
+            <Text style={styles.backButtonText}>{t("recordNew.back")}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -1877,14 +1877,14 @@ export default function NewRecordScreen() {
                     ]}
                   >
                     {showTips ? (
-                      <Eye size={14} color="#38bdf8" />
+                      <Eye size={14} color={theme.colors.status.excellent} />
                     ) : (
-                      <EyeOff size={14} color="#94a3b8" />
+                      <EyeOff size={14} color={theme.colors.inactive} />
                     )}
                     <Text
                       style={[
                         styles.tipChipText,
-                        showTips ? { color: "#38bdf8" } : { color: "#94a3b8" },
+                        showTips ? { color: theme.colors.status.excellent } : { color: theme.colors.inactive },
                       ]}
                     >
                       {showTips

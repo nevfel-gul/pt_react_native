@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { ArrowLeft, Check, Edit3, Trash2, User, X } from "lucide-react-native";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -60,6 +61,7 @@ export default function ProfileScreen() {
   const scrollRef = React.useRef<ScrollView>(null);
 
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   const [profile, setProfile] = React.useState<ProfileState>(emptyProfile);
@@ -74,8 +76,8 @@ export default function ProfileScreen() {
     // ✅ email'i şimdilik kilitli (reauth gerekir)
     if (key === "email") {
       Alert.alert(
-        "Bilgi",
-        "E-posta değiştirmek için yeniden doğrulama gerekir. İstersen ekleyelim.",
+        t("profile.alert.info"),
+        t("profile.alert.emailLocked"),
       );
       return;
     }
@@ -161,7 +163,7 @@ export default function ProfileScreen() {
           business: (data?.business ?? "").toString(),
         });
       } catch (e: any) {
-        Alert.alert("Hata", e?.message ?? "Profil alınamadı");
+        Alert.alert(t("recordNew.alert.errorTitle"), e?.message ?? t("profile.alert.fetchError"));
       } finally {
         setLoading(false);
       }
@@ -172,20 +174,20 @@ export default function ProfileScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      "Hesabı Sil",
-      "Bu işlem geri alınamaz. Hesabın, profil bilgilerin ve kullanıcı kaydın kalıcı olarak silinecek. Devam etmek istiyor musun?",
+      t("profile.alert.deleteTitle"),
+      t("profile.alert.deleteMessage"),
       [
         {
-          text: "Vazgeç",
+          text: t("profile.alert.cancel"),
           style: "cancel",
         },
         {
-          text: "Evet, sil",
+          text: t("profile.alert.confirmDelete"),
           style: "destructive",
           onPress: async () => {
             const user = auth.currentUser;
             if (!user) {
-              Alert.alert("Hata", "Aktif kullanıcı bulunamadı.");
+              Alert.alert(t("recordNew.alert.errorTitle"), t("profile.alert.noUser"));
               return;
             }
 
@@ -208,21 +210,21 @@ export default function ProfileScreen() {
                 // deleteUser sonrası token zaten düşebilir, sessiz geç
               }
 
-              Alert.alert("Hesap Silindi", "Hesabın başarıyla silindi.");
+              Alert.alert(t("profile.alert.deletedTitle"), t("profile.alert.deletedMessage"));
             } catch (e: any) {
               // Eğer Auth silme başarısız olduysa kullanıcıyı oturumdan çıkar
               // ama kullanıcıya gerçek nedeni açık göster
               try {
                 await signOut(auth);
-              } catch {}
+              } catch { }
 
               if (e?.code === "auth/requires-recent-login") {
                 Alert.alert(
-                  "Yeniden Giriş Gerekli",
-                  "Güvenlik nedeniyle hesabı silmek için yeniden giriş yapman gerekiyor. Uygulamadan çıkış yapıp tekrar giriş yaptıktan sonra yeniden deneyebilirsin.",
+                  t("profile.alert.reAuthTitle"),
+                  t("profile.alert.reAuthMessage"),
                 );
               } else {
-                Alert.alert("Hata", e?.message ?? "Hesap silinemedi");
+                Alert.alert(t("recordNew.alert.errorTitle"), e?.message ?? t("profile.alert.deleteFailedMessage"));
               }
             } finally {
               setDeletingAccount(false);
@@ -326,7 +328,7 @@ export default function ProfileScreen() {
         await updateDoc(userRef, patch);
         setEditKey(null);
       } catch (e: any) {
-        Alert.alert("Hata", e?.message ?? "Kaydedilemedi");
+        Alert.alert(t("recordNew.alert.errorTitle"), e?.message ?? t("profile.alert.saveError"));
       } finally {
         setLoading(false);
       }
@@ -343,7 +345,7 @@ export default function ProfileScreen() {
           {!isEditing ? (
             <>
               <Text style={styles.settingValueText} numberOfLines={1}>
-                {value || "Düzenle"}
+                {value || t("profile.value.edit")}
               </Text>
               <TouchableOpacity onPress={() => startEdit(fieldKey)}>
                 <Edit3 size={16} color={theme.colors.text.secondary} />
@@ -416,7 +418,7 @@ export default function ProfileScreen() {
               fontWeight: "600",
             }}
           >
-            Profil yükleniyor...
+            {t("profile.loading")}
           </Text>
         </View>
       </SafeAreaView>
@@ -439,10 +441,10 @@ export default function ProfileScreen() {
                 onPress={() => router.back()}
               >
                 <ArrowLeft size={18} color={theme.colors.text.primary} />
-                <Text style={styles.backButtonText}>Geri</Text>
+                <Text style={styles.backButtonText}>{t("profile.back")}</Text>
               </TouchableOpacity>
 
-              <Text style={styles.headerTitle}>Profil</Text>
+              <Text style={styles.headerTitle}>{t("profile.title")}</Text>
               <View style={{ width: 60 }} />
             </View>
           </View>
@@ -458,7 +460,7 @@ export default function ProfileScreen() {
             }
           >
             <Section
-              title="Profil"
+              title={t("profile.section.profile")}
               icon={<User size={18} color={theme.colors.primary} />}
             />
 
@@ -485,16 +487,16 @@ export default function ProfileScreen() {
 
               <View style={styles.profileMetaRow}>
                 <View style={styles.profileMetaItem}>
-                  <Text style={styles.profileMetaLabel}>Üyelik</Text>
-                  <Text style={styles.profileMetaValue}>Pro</Text>
+                  <Text style={styles.profileMetaLabel}>{t("profile.meta.membership")}</Text>
+                  <Text style={styles.profileMetaValue}>{t("profile.meta.membership_value")}</Text>
                 </View>
                 <View style={styles.profileMetaItem}>
-                  <Text style={styles.profileMetaLabel}>Müşteri</Text>
-                  <Text style={styles.profileMetaValue}>32 aktif</Text>
+                  <Text style={styles.profileMetaLabel}>{t("profile.meta.customers")}</Text>
+                  <Text style={styles.profileMetaValue}>{t("profile.meta.customers_value")}</Text>
                 </View>
                 <View style={styles.profileMetaItem}>
-                  <Text style={styles.profileMetaLabel}>Kayıt</Text>
-                  <Text style={styles.profileMetaValue}>2024</Text>
+                  <Text style={styles.profileMetaLabel}>{t("profile.meta.registered")}</Text>
+                  <Text style={styles.profileMetaValue}>{t("profile.meta.registered_value")}</Text>
                 </View>
               </View>
             </View>
@@ -502,32 +504,32 @@ export default function ProfileScreen() {
             {/* USER INFO */}
             <View style={styles.card}>
               <SettingRow
-                label="İsim"
-                subtitle="Uygulamada gözükecek adın"
+                label={t("profile.field.name.label")}
+                subtitle={t("profile.field.name.subtitle")}
                 fieldKey="name"
                 value={profile.name}
-                placeholder="Örn: Yağmur Koca"
+                placeholder={t("profile.field.name.placeholder")}
               />
               <SettingRow
-                label="Kullanıcı Adı"
-                subtitle="Profil linkinde kullanılacak"
+                label={t("profile.field.username.label")}
+                subtitle={t("profile.field.username.subtitle")}
                 fieldKey="username"
                 value={profile.username}
-                placeholder="Örn: @pt.yagmur"
+                placeholder={t("profile.field.username.placeholder")}
               />
               <SettingRow
-                label="E-posta"
-                subtitle="Giriş ve bildirimler için"
+                label={t("profile.field.email.label")}
+                subtitle={t("profile.field.email.subtitle")}
                 fieldKey="email"
                 value={profile.email}
-                placeholder="Örn: mail@domain.com"
+                placeholder={t("profile.field.email.placeholder")}
               />
               <SettingRow
-                label="Telefon"
-                subtitle="Müşteri iletişimi için"
+                label={t("profile.field.phone.label")}
+                subtitle={t("profile.field.phone.subtitle")}
                 fieldKey="phone"
                 value={profile.phone}
-                placeholder="Örn: 05xxxxxxxxx"
+                placeholder={t("profile.field.phone.placeholder")}
                 isLast
               />
             </View>
@@ -535,35 +537,34 @@ export default function ProfileScreen() {
             {/* BIO */}
             <View style={styles.card}>
               <SettingRow
-                label="Biyografi"
-                subtitle="Kendini kısaca tanıt"
+                label={t("profile.field.bio.label")}
+                subtitle={t("profile.field.bio.subtitle")}
                 fieldKey="bio"
                 value={profile.bio}
-                placeholder="Örn: 8 yıllık PT, reformer ve online koçluk..."
+                placeholder={t("profile.field.bio.placeholder")}
               />
               <SettingRow
-                label="Uzmanlık Alanların"
-                subtitle="Reformer, Fonksiyonel Antrenman..."
+                label={t("profile.field.skills.label")}
+                subtitle={t("profile.field.skills.subtitle")}
                 fieldKey="skills"
                 value={profile.skills}
-                placeholder="Örn: Reformer, Fonksiyonel, Mobilite..."
+                placeholder={t("profile.field.skills.placeholder")}
               />
               <SettingRow
-                label="İşletme Adı"
-                subtitle="Müşterilerin göreceği marka"
+                label={t("profile.field.business.label")}
+                subtitle={t("profile.field.business.subtitle")}
                 fieldKey="business"
                 value={profile.business}
-                placeholder="Örn: PT Lab"
+                placeholder={t("profile.field.business.placeholder")}
                 isLast
               />
             </View>
 
             {/* HESAP SİLME */}
             <View style={styles.card}>
-              <Text style={styles.dangerTitle}>Hesap Silme</Text>
+              <Text style={styles.dangerTitle}>{t("profile.section.deleteAccount")}</Text>
               <Text style={styles.dangerSubtitle}>
-                Hesabını sildiğinde profil bilgilerin kalıcı olarak kaldırılır
-                ve uygulamadan çıkış yapılır.
+                {t("profile.section.deleteAccount.desc")}
               </Text>
 
               <TouchableOpacity
@@ -580,7 +581,7 @@ export default function ProfileScreen() {
                 ) : (
                   <>
                     <Trash2 size={18} color={theme.colors.surface} />
-                    <Text style={styles.deleteButtonText}>Hesabımı Sil</Text>
+                    <Text style={styles.deleteButtonText}>{t("profile.deleteButton")}</Text>
                   </>
                 )}
               </TouchableOpacity>

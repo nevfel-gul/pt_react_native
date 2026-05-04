@@ -324,7 +324,7 @@ export default function KayitlarScreen() {
       const uiMsg =
         typeof details?.message === "string" && details.message ? details.message : message;
 
-      setAiReason(`AI hata: ${uiMsg}${traceId ? ` (traceId: ${traceId})` : ""}`);
+      setAiReason(t("ai.error", { msg: uiMsg + (traceId ? ` (traceId: ${traceId})` : "") }));
       setAiMode(false);
       setAiIds(null);
       setAiDetails([]); // ✅ YENİ

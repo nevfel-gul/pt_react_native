@@ -352,7 +352,7 @@ function AddAppointmentModal({
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
+            <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: theme.colors.overlay }}>
                 <Pressable style={{ flex: 1 }} onPress={onClose} />
 
                 <View style={{ backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: "90%" }}>
@@ -366,7 +366,7 @@ function AddAppointmentModal({
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                             {step === "datetime" && (
                                 <Pressable onPress={() => setStep("student")} hitSlop={12}>
-                                    <Text style={{ color: theme.colors.text.secondary, fontSize: 14, fontWeight: "700" }}>← Geri</Text>
+                                    <Text style={{ color: theme.colors.text.secondary, fontSize: 14, fontWeight: "700" }}>{t("common.back")}</Text>
                                 </Pressable>
                             )}
                             <Text style={{ color: theme.colors.text.primary, fontSize: 17, fontWeight: "900" }}>
@@ -793,7 +793,7 @@ export default function CalendarFollowUpScreen() {
                             <Pressable
                                 onPress={() => setShowAddModal(true)}
                                 style={({ pressed }) => ({
-                                    backgroundColor: "rgba(124,58,237,0.45)",
+                                    backgroundColor: theme.colors.premiumOverlay,
                                     borderRadius: 20,
                                     width: 32,
                                     height: 32,

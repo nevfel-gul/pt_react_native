@@ -7,6 +7,7 @@ import { auth } from "@/services/firebase";
 import { initI18n } from "@/services/i18n";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Text, View } from "react-native";
 
 // ✅ SENİN THEME PROVIDER
@@ -34,6 +35,7 @@ export const unstable_settings = {
 function AppNav() {
   const { mode } = useTheme(); // ✅ artık cihaz değil, app theme
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,11 +125,11 @@ function AppNav() {
         <Stack.Screen name="login" options={{ title: "Login", headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
-        <Stack.Screen name="student/[id]" options={{ title: "Öğrenci", headerShown: false }} />
-        <Stack.Screen name="newrecord/[id]" options={{ title: "Yeni Kayıt", headerShown: false }} />
-        <Stack.Screen name="record/[id]" options={{ title: "Kayıt", headerShown: false }} />
-        <Stack.Screen name="newstudent" options={{ title: "Yeni Öğrenci", headerShown: false }} />
-        <Stack.Screen name="landing" options={{ title: "Hoşgeldiniz", headerShown: false }} />
+        <Stack.Screen name="student/[id]" options={{ title: t("screen.student"), headerShown: false }} />
+        <Stack.Screen name="newrecord/[id]" options={{ title: t("screen.newRecord"), headerShown: false }} />
+        <Stack.Screen name="record/[id]" options={{ title: t("screen.record"), headerShown: false }} />
+        <Stack.Screen name="newstudent" options={{ title: t("screen.newStudent"), headerShown: false }} />
+        <Stack.Screen name="landing" options={{ title: t("screen.welcome"), headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
