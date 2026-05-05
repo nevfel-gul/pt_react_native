@@ -168,7 +168,7 @@ export default function PaywallMonthlyScreen({
           });
         }
       }
-    }, [onPurchase]),
+    }, [onPurchase, updateSubscription]),
 
     onPurchaseError: useCallback((err: any) => {
       setBusyState(null);
@@ -302,20 +302,21 @@ export default function PaywallMonthlyScreen({
     [plans, selectedPlanId],
   );
 
-  // Billing değişince seçili planı aynı tier'da tut
+  // Billing değişince seçili planı aynı tier'da tut.
+  // Functional setState ile selectedPlanId dep'ini kaldır — her kart seçiminde
+  // gereksiz tetiklenmesini önler.
   useEffect(() => {
     if (allProducts.length === 0) return;
     const suffix = billing === 'annual' ? 'annually' : 'monthly';
-    const currentTier = selectedPlanId?.includes('core')
-      ? 'core'
-      : selectedPlanId?.includes('studio')
-        ? 'studio'
-        : 'pro';
-    const next =
-      allProducts.find((p) => p.id.includes(suffix) && p.id.includes(currentTier)) ||
-      allProducts.find((p) => p.id.includes(suffix));
-    setSelectedPlanId(next?.id ?? null);
-  }, [billing, allProducts, selectedPlanId]);
+    setSelectedPlanId((prev) => {
+      const currentTier = prev?.includes('core') ? 'core'
+        : prev?.includes('studio') ? 'studio' : 'pro';
+      const next =
+        allProducts.find((p) => p.id.includes(suffix) && p.id.includes(currentTier)) ||
+        allProducts.find((p) => p.id.includes(suffix));
+      return next?.id ?? prev;
+    });
+  }, [billing, allProducts]);
 
   const getAppleProductId = useCallback(
     (plan: PlanDoc, cycle: BillingCycle) => {
@@ -351,28 +352,30 @@ export default function PaywallMonthlyScreen({
 
     const productId = getAppleProductId(selectedPlan, billing);
 
-    // Mevcut plana tıklandıysa işlem yok
-    if (purchaseAction === 'same') {
-      Alert.alert('Mevcut Planınız', 'Bu pakete zaten abonesiniz.');
-      return;
-    }
-
-    // Upgrade/downgrade için onay al
+    // Upgrade / downgrade / billing-switch için onay al
     if (purchaseAction === 'upgrade' || purchaseAction === 'downgrade') {
-      const actionLabel = purchaseAction === 'upgrade' ? 'yükseltmek' : 'düşürmek';
+      const activeTier = activeProductId?.includes('core') ? 'core'
+        : activeProductId?.includes('studio') ? 'studio' : 'pro';
+      const selectedTier = selectedPlanId?.includes('core') ? 'core'
+        : selectedPlanId?.includes('studio') ? 'studio' : 'pro';
+      const isBillingSwitch = activeTier === selectedTier; // aynı tier, farklı billing
+
+      const title = isBillingSwitch ? 'Fatura Dönemini Değiştir'
+        : purchaseAction === 'upgrade' ? 'Planı Yükselt' : 'Planı Değiştir';
+      const body = isBillingSwitch
+        ? `${selectedPlan.title} planınızı ${billing === 'annual' ? 'yıllık' : 'aylık'} faturalamaya geçirmek istiyor musunuz?`
+        : `Aboneliğinizi ${selectedPlan.title} planına ${purchaseAction === 'upgrade' ? 'yükseltmek' : 'düşürmek'} istiyor musunuz?\n\nDeğişiklik bir sonraki faturalama döneminde geçerli olur.`;
+
       const confirm = await new Promise<boolean>((resolve) => {
-        Alert.alert(
-          purchaseAction === 'upgrade' ? 'Planı Yükselt' : 'Planı Değiştir',
-          `Aboneliğinizi ${selectedPlan.title} planına ${actionLabel} istiyor musunuz?\n\nDeğişiklik bir sonraki faturalama döneminde geçerli olur.`,
-          [
-            { text: 'Vazgeç', style: 'cancel', onPress: () => resolve(false) },
-            {
-              text: purchaseAction === 'upgrade' ? 'Yükselt' : 'Değiştir',
-              style: purchaseAction === 'upgrade' ? 'default' : 'destructive',
-              onPress: () => resolve(true),
-            },
-          ],
-        );
+        Alert.alert(title, body, [
+          { text: 'Vazgeç', style: 'cancel', onPress: () => resolve(false) },
+          {
+            text: isBillingSwitch ? 'Değiştir'
+              : purchaseAction === 'upgrade' ? 'Yükselt' : 'Değiştir',
+            style: purchaseAction === 'downgrade' ? 'destructive' : 'default',
+            onPress: () => resolve(true),
+          },
+        ]);
       });
       if (!confirm) return;
     }
@@ -449,7 +452,7 @@ export default function PaywallMonthlyScreen({
     } finally {
       setBusyState(null);
     }
-  }, [activeSubscriptions, busyState, onRestorePurchases, restorePurchases, updateSubscription]);
+  }, [busyState, onRestorePurchases, restorePurchases, updateSubscription]);
 
   // CTA etiketini duruma göre belirle
   const ctaLabel = useMemo(() => {
