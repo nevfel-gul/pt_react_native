@@ -28,9 +28,9 @@ const ITEM_SKUS = [
   'athletrack_core_monthly',
   'athletrack_pro_monthly',
   'athletrack_studio_monthly',
-  // 'athletrack_core_yearly',
-  // 'athletrack_pro_yearly',
-  // 'athletrack_studio_yearly',
+  'athletrack_core_annually',
+  'athletrack_pro_annually',
+  'athletrack_studio_annually',
 ];
 
 // Tier sıralaması: yüksek index = daha yüksek plan
@@ -247,7 +247,7 @@ export default function PaywallMonthlyScreen({
   }, [subscriptions]);
 
   const plans = useMemo(() => {
-    const suffix = billing === 'annual' ? 'yearly' : 'monthly';
+    const suffix = billing === 'annual' ? 'annually' : 'monthly';
     return allProducts.filter((p) => p.id.includes(suffix));
   }, [allProducts, billing]);
 
@@ -259,7 +259,7 @@ export default function PaywallMonthlyScreen({
   // Billing değişince seçili planı aynı tier'da tut
   useEffect(() => {
     if (allProducts.length === 0) return;
-    const suffix = billing === 'annual' ? 'yearly' : 'monthly';
+    const suffix = billing === 'annual' ? 'annually' : 'monthly';
     const currentTier = selectedPlanId?.includes('core')
       ? 'core'
       : selectedPlanId?.includes('studio')
@@ -275,7 +275,7 @@ export default function PaywallMonthlyScreen({
     (plan: PlanDoc, cycle: BillingCycle) => {
       const tier = (plan.tier ?? 'pro').toLowerCase();
       return cycle === 'annual'
-        ? `athletrack_${tier}_yearly`
+        ? `athletrack_${tier}_annually`
         : `athletrack_${tier}_monthly`;
     },
     [],
