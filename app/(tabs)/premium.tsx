@@ -76,7 +76,7 @@ export default function PaywallMonthlyScreen({
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { theme, mode } = useTheme();
-  const { updateSubscription } = usePremium();
+  const { updateSubscription, subscription: firestoreSubscription } = usePremium();
 
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -184,22 +184,25 @@ export default function PaywallMonthlyScreen({
     }, []),
   });
 
-  // Mevcut aktif abonelik (varsa)
+  // IAP'tan gelen aktif abonelik — react-native-iap Purchase tipinde isActive yoktur,
+  // bu yüzden .find((s) => s.isActive) her zaman undefined döner. İlk elemanı kullan.
   const currentActiveSub = useMemo(
-    () => activeSubscriptions.find((s) => s.isActive) ?? null,
+    () => activeSubscriptions[0] ?? null,
     [activeSubscriptions],
   );
 
-  // Aktif aboneliğin productId'si:
-  // - Önce activeSubscriptions'tan bak (currentPlanId veya productId)
-  // - Yoksa kendi tuttuğumuz purchasedProductId'yi kullan
-  // - Her iki taraf da geçerli string olmalı (null/undefined karşılaştırma hatasını önler)
+  // Aktif aboneliğin productId'si — öncelik sırası:
+  // 1. IAP activeSubscriptions (Apple'dan gelen en güncel bilgi)
+  // 2. Bu session'da yeni satın alınan (local state)
+  // 3. Firestore'a kaydedilmiş subscription (ekrandan çıkıp girilince de korunur)
   const activeProductId = useMemo((): string | null => {
-    const fromSub = currentActiveSub?.currentPlanId ?? currentActiveSub?.productId ?? null;
-    if (fromSub && fromSub.length > 0) return fromSub;
+    const fromIAP = currentActiveSub?.productId ?? null;
+    if (fromIAP && fromIAP.length > 0) return fromIAP;
     if (purchasedProductId && purchasedProductId.length > 0) return purchasedProductId;
+    const fromFirestore = firestoreSubscription?.productId ?? null;
+    if (fromFirestore && fromFirestore.length > 0) return fromFirestore;
     return null;
-  }, [currentActiveSub, purchasedProductId]);
+  }, [currentActiveSub, purchasedProductId, firestoreSubscription]);
 
   // Mevcut plandaki tier (upgrade/downgrade kararı için)
   const currentTierRank = useMemo(() => {
@@ -264,12 +267,21 @@ export default function PaywallMonthlyScreen({
       };
     });
     setAllProducts(formatted);
+    // Aktif plan varsa ona, yoksa Pro monthly'ye default yap
+    const activeProdId = activeProductId;
     const initial =
+      (activeProdId ? formatted.find((p) => p.id === activeProdId) : null) ||
       formatted.find((p) => p.id.includes('monthly') && p.id.includes('pro')) ||
       formatted.find((p) => p.id.includes('monthly')) ||
       formatted[0];
     setSelectedPlanId(initial?.id ?? null);
-  }, [subscriptions]);
+
+    // Aktif plan annual ise billing toggle'ı da annual'a çek
+    if (activeProdId?.includes('annually')) {
+      setBilling('annual');
+    }
+  }, [subscriptions]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Not: activeProductId intentionally excluded — sadece products yüklendiğinde initial seçim yapılsın
 
   const plans = useMemo(() => {
     const suffix = billing === 'annual' ? 'annually' : 'monthly';
