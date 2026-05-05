@@ -192,17 +192,18 @@ export default function PaywallMonthlyScreen({
   );
 
   // Aktif aboneliğin productId'si — öncelik sırası:
-  // 1. IAP activeSubscriptions (Apple'dan gelen en güncel bilgi)
-  // 2. Bu session'da yeni satın alınan (local state)
-  // 3. Firestore'a kaydedilmiş subscription (ekrandan çıkıp girilince de korunur)
+  // 1. Bu session'da yeni satın alınan (en taze aksiyon — upgrade/downgrade anında doğru)
+  // 2. Firestore'a kaydedilmiş subscription (ekrandan çıkıp girilince de korunur)
+  // 3. IAP activeSubscriptions — LAST: Apple upgrade/downgrade'de eski planı döndürür,
+  //    bu yüzden en düşük öncelik verilmeli.
   const activeProductId = useMemo((): string | null => {
-    const fromIAP = currentActiveSub?.productId ?? null;
-    if (fromIAP && fromIAP.length > 0) return fromIAP;
     if (purchasedProductId && purchasedProductId.length > 0) return purchasedProductId;
     const fromFirestore = firestoreSubscription?.productId ?? null;
     if (fromFirestore && fromFirestore.length > 0) return fromFirestore;
+    const fromIAP = currentActiveSub?.productId ?? null;
+    if (fromIAP && fromIAP.length > 0) return fromIAP;
     return null;
-  }, [currentActiveSub, purchasedProductId, firestoreSubscription]);
+  }, [purchasedProductId, firestoreSubscription, currentActiveSub]);
 
   // Mevcut plandaki tier (upgrade/downgrade kararı için)
   const currentTierRank = useMemo(() => {
