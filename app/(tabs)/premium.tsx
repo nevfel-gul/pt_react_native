@@ -268,21 +268,29 @@ export default function PaywallMonthlyScreen({
       };
     });
     setAllProducts(formatted);
-    // Aktif plan varsa ona, yoksa Pro monthly'ye default yap
-    const activeProdId = activeProductId;
+    // Geçici default: Pro monthly. Aşağıdaki sync effect, activeProductId
+    // hazır olduğunda bunu aktif planla değiştirir.
     const initial =
-      (activeProdId ? formatted.find((p) => p.id === activeProdId) : null) ||
       formatted.find((p) => p.id.includes('monthly') && p.id.includes('pro')) ||
       formatted.find((p) => p.id.includes('monthly')) ||
       formatted[0];
     setSelectedPlanId(initial?.id ?? null);
+  }, [subscriptions]);
 
-    // Aktif plan annual ise billing toggle'ı da annual'a çek
-    if (activeProdId?.includes('annually')) {
-      setBilling('annual');
-    }
-  }, [subscriptions]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Not: activeProductId intentionally excluded — sadece products yüklendiğinde initial seçim yapılsın
+  // activeProductId değişince (Firestore yüklenince veya satın alım sonrası)
+  // seçili planı ve billing toggle'ı aktif planla senkronize et.
+  // Kullanıcı manuel kart seçtikten sonra çalışmaması için purchasedProductId
+  // yokken sadece products ilk yüklendiğinde çalışır; satın alım sonrası tekrar çalışır.
+  const lastSyncedProductRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeProductId || allProducts.length === 0) return;
+    if (lastSyncedProductRef.current === activeProductId) return; // zaten sync edildi
+    const activePlan = allProducts.find((p) => p.id === activeProductId);
+    if (!activePlan) return;
+    lastSyncedProductRef.current = activeProductId;
+    setSelectedPlanId(activeProductId);
+    setBilling(activeProductId.includes('annually') ? 'annual' : 'monthly');
+  }, [activeProductId, allProducts]);
 
   const plans = useMemo(() => {
     const suffix = billing === 'annual' ? 'annually' : 'monthly';
@@ -324,8 +332,16 @@ export default function PaywallMonthlyScreen({
     if (!activeProductId) return 'new';
     if (!selectedPlanId) return 'new';
     if (activeProductId === selectedPlanId) return 'same';
+
+    const activeTier = activeProductId.includes('core') ? 'core'
+      : activeProductId.includes('studio') ? 'studio' : 'pro';
     const selectedTier = selectedPlanId.includes('core') ? 'core'
       : selectedPlanId.includes('studio') ? 'studio' : 'pro';
+
+    // Aynı tier, farklı billing (monthly↔annual) → upgrade say
+    // (annual, monthly'den daha avantajlı; "downgrade" demek yanlış olur)
+    if (activeTier === selectedTier) return 'upgrade';
+
     const selectedRank = TIER_RANK[selectedTier] ?? 0;
     return selectedRank > currentTierRank ? 'upgrade' : 'downgrade';
   }, [activeProductId, selectedPlanId, currentTierRank]);
