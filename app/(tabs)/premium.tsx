@@ -20,6 +20,8 @@ import { useTheme } from "@/constants/usetheme";
 import type { BillingCycle, PlanDoc } from "@/constants/paywall";
 import { useTranslation } from "react-i18next";
 import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
+import { usePremium, TIER_STUDENT_LIMITS } from "@/constants/PremiumContext";
+import type { PremiumTier } from "@/constants/PremiumContext";
 
 import type { Purchase } from 'react-native-iap';
 import { useIAP } from 'react-native-iap';
@@ -74,6 +76,7 @@ export default function PaywallMonthlyScreen({
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { theme, mode } = useTheme();
+  const { updateSubscription } = usePremium();
 
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -129,9 +132,31 @@ export default function PaywallMonthlyScreen({
         console.warn('[IAP] getActiveSubscriptions error after purchase:', e);
       }
 
+      // 4. Subscription bilgisini Firestore'a kaydet (premium state global olarak güncellensin)
+      try {
+        const planId = selectedPlanRef.current;
+        const plan = allProductsRef.current.find((p) => p.id === planId) ?? null;
+        if (plan) {
+          const tier = (plan.tier ?? 'pro') as PremiumTier;
+          const isUnlimited = tier === 'studio';
+          const studentLimit = TIER_STUDENT_LIMITS[tier];
+          await updateSubscription({
+            productId: purchase.productId,
+            tier,
+            billing: billingRef.current,
+            isActive: true,
+            studentLimit: studentLimit ?? null,
+            isUnlimited,
+            purchasedAt: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        console.warn('[IAP] updateSubscription Firestore error:', e);
+      }
+
       setBusyState(null);
 
-      // 4. Üst katmana bildir (Firestore'a yaz vb.)
+      // 5. Üst katmana bildir (isteğe bağlı ek işlemler için)
       if (onPurchase) {
         const planId = selectedPlanRef.current;
         const plan = allProductsRef.current.find((p) => p.id === planId) ?? null;
@@ -290,7 +315,7 @@ export default function PaywallMonthlyScreen({
       : selectedPlanId.includes('studio') ? 'studio' : 'pro';
     const selectedRank = TIER_RANK[selectedTier] ?? 0;
     return selectedRank > currentTierRank ? 'upgrade' : 'downgrade';
-  }, [currentActiveSub, selectedPlanId, currentTierRank]);
+  }, [activeProductId, selectedPlanId, currentTierRank]);
 
   const handlePurchase = useCallback(async () => {
     if (!selectedPlan || busyState) return;
@@ -345,7 +370,45 @@ export default function PaywallMonthlyScreen({
       // Önce kütüphanenin kendi restore'unu çalıştır
       await restorePurchases();
 
-      // Üst katmana da bildir (Firestore senkronizasyonu için)
+      // Aktif abonelikleri yenile
+      try {
+        await getActiveSubscriptionsRef.current?.();
+      } catch (e) {
+        console.warn('[IAP] getActiveSubscriptions after restore error:', e);
+      }
+
+      // Geri yüklenen subscription varsa Firestore'a kaydet
+      // activeSubscriptions ref üzerinden kontrol — restore sonrası güncellenir
+      const activeSubs = activeSubscriptions;
+      const restoredSub = activeSubs.find((s) => s.isActive);
+      if (restoredSub) {
+        const restoredProductId = restoredSub.currentPlanId ?? restoredSub.productId ?? '';
+        if (restoredProductId) {
+          const tier = (restoredProductId.includes('core')
+            ? 'core'
+            : restoredProductId.includes('studio')
+            ? 'studio'
+            : 'pro') as PremiumTier;
+          const billing = restoredProductId.includes('annually') ? 'annual' : 'monthly';
+          const isUnlimited = tier === 'studio';
+          try {
+            await updateSubscription({
+              productId: restoredProductId,
+              tier,
+              billing,
+              isActive: true,
+              studentLimit: TIER_STUDENT_LIMITS[tier] ?? null,
+              isUnlimited,
+              purchasedAt: new Date().toISOString(),
+            });
+          } catch (e) {
+            console.warn('[IAP] restore updateSubscription error:', e);
+          }
+          setPurchasedProductId(restoredProductId);
+        }
+      }
+
+      // Üst katmana da bildir (isteğe bağlı ek işlemler için)
       if (onRestorePurchases) {
         await onRestorePurchases();
       } else {
@@ -362,7 +425,7 @@ export default function PaywallMonthlyScreen({
     } finally {
       setBusyState(null);
     }
-  }, [busyState, onRestorePurchases, restorePurchases]);
+  }, [activeSubscriptions, busyState, onRestorePurchases, restorePurchases, updateSubscription]);
 
   // CTA etiketini duruma göre belirle
   const ctaLabel = useMemo(() => {
