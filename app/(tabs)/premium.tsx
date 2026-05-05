@@ -132,24 +132,24 @@ export default function PaywallMonthlyScreen({
         console.warn('[IAP] getActiveSubscriptions error after purchase:', e);
       }
 
-      // 4. Subscription bilgisini Firestore'a kaydet (premium state global olarak güncellensin)
+      // 4. Subscription bilgisini Firestore'a kaydet
+      // Ground truth olarak purchase.productId kullan — UI seçimiyle değil
+      // Apple'ın response'uyla yaz.
       try {
-        const planId = selectedPlanRef.current;
-        const plan = allProductsRef.current.find((p) => p.id === planId) ?? null;
-        if (plan) {
-          const tier = (plan.tier ?? 'pro') as PremiumTier;
-          const isUnlimited = tier === 'studio';
-          const studentLimit = TIER_STUDENT_LIMITS[tier];
-          await updateSubscription({
-            productId: purchase.productId,
-            tier,
-            billing: billingRef.current,
-            isActive: true,
-            studentLimit: studentLimit ?? null,
-            isUnlimited,
-            purchasedAt: new Date().toISOString(),
-          });
-        }
+        const pid = purchase.productId;
+        const tier = (pid.includes('core') ? 'core'
+          : pid.includes('studio') ? 'studio' : 'pro') as PremiumTier;
+        const billing: BillingCycle = pid.includes('annually') ? 'annual' : 'monthly';
+        const isUnlimited = tier === 'studio';
+        await updateSubscription({
+          productId: pid,
+          tier,
+          billing,
+          isActive: true,
+          studentLimit: TIER_STUDENT_LIMITS[tier] ?? null,
+          isUnlimited,
+          purchasedAt: new Date().toISOString(),
+        });
       } catch (e) {
         console.warn('[IAP] updateSubscription Firestore error:', e);
       }
@@ -399,42 +399,37 @@ export default function PaywallMonthlyScreen({
       // Önce kütüphanenin kendi restore'unu çalıştır
       await restorePurchases();
 
-      // Aktif abonelikleri yenile
+      // Aktif abonelikleri yenile — return value'yu kullan, state async güncellenir
+      let freshSubs: any[] = [];
       try {
-        await getActiveSubscriptionsRef.current?.();
+        freshSubs = (await getActiveSubscriptionsRef.current?.()) ?? [];
       } catch (e) {
         console.warn('[IAP] getActiveSubscriptions after restore error:', e);
       }
 
       // Geri yüklenen subscription varsa Firestore'a kaydet
-      // activeSubscriptions ref üzerinden kontrol — restore sonrası güncellenir
-      const activeSubs = activeSubscriptions;
-      const restoredSub = activeSubs.find((s) => s.isActive);
-      if (restoredSub) {
-        const restoredProductId = restoredSub.currentPlanId ?? restoredSub.productId ?? '';
-        if (restoredProductId) {
-          const tier = (restoredProductId.includes('core')
-            ? 'core'
-            : restoredProductId.includes('studio')
-            ? 'studio'
-            : 'pro') as PremiumTier;
-          const billing = restoredProductId.includes('annually') ? 'annual' : 'monthly';
-          const isUnlimited = tier === 'studio';
-          try {
-            await updateSubscription({
-              productId: restoredProductId,
-              tier,
-              billing,
-              isActive: true,
-              studentLimit: TIER_STUDENT_LIMITS[tier] ?? null,
-              isUnlimited,
-              purchasedAt: new Date().toISOString(),
-            });
-          } catch (e) {
-            console.warn('[IAP] restore updateSubscription error:', e);
-          }
-          setPurchasedProductId(restoredProductId);
+      // purchase.productId gibi IAP'ın döndürdüğü productId'yi kullan
+      const restoredSub = freshSubs[0] ?? null;
+      const restoredProductId: string = restoredSub?.productId ?? '';
+      if (restoredProductId) {
+        const tier = (restoredProductId.includes('core') ? 'core'
+          : restoredProductId.includes('studio') ? 'studio' : 'pro') as PremiumTier;
+        const billing: BillingCycle = restoredProductId.includes('annually') ? 'annual' : 'monthly';
+        const isUnlimited = tier === 'studio';
+        try {
+          await updateSubscription({
+            productId: restoredProductId,
+            tier,
+            billing,
+            isActive: true,
+            studentLimit: TIER_STUDENT_LIMITS[tier] ?? null,
+            isUnlimited,
+            purchasedAt: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.warn('[IAP] restore updateSubscription error:', e);
         }
+        setPurchasedProductId(restoredProductId);
       }
 
       // Üst katmana da bildir (isteğe bağlı ek işlemler için)
