@@ -25,6 +25,7 @@ import type { PremiumTier } from "@/constants/PremiumContext";
 
 import type { Purchase } from 'react-native-iap';
 import { useIAP } from 'react-native-iap';
+import { useRouter } from 'expo-router';
 
 const ITEM_SKUS = [
   'athletrack_core_monthly',
@@ -77,6 +78,7 @@ export default function PaywallMonthlyScreen({
   const { t } = useTranslation();
   const { theme, mode } = useTheme();
   const { updateSubscription } = usePremium();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -132,7 +134,10 @@ export default function PaywallMonthlyScreen({
         console.warn('[IAP] getActiveSubscriptions error after purchase:', e);
       }
 
-      // 4. Subscription bilgisini Firestore'a kaydet (premium state global olarak güncellensin)
+      // 4. Subscription bilgisini Firestore'a kaydet ve sonucu doğrula
+      let premiumActivated = false;
+      let activatedTier: PremiumTier = 'pro';
+      let activatedIsUnlimited = false;
       try {
         const planId = selectedPlanRef.current;
         const plan = allProductsRef.current.find((p) => p.id === planId) ?? null;
@@ -149,6 +154,10 @@ export default function PaywallMonthlyScreen({
             isUnlimited,
             purchasedAt: new Date().toISOString(),
           });
+          // Firestore yazımı başarılı → premium aktif
+          premiumActivated = true;
+          activatedTier = tier;
+          activatedIsUnlimited = isUnlimited;
         }
       } catch (e) {
         console.warn('[IAP] updateSubscription Firestore error:', e);
@@ -156,7 +165,25 @@ export default function PaywallMonthlyScreen({
 
       setBusyState(null);
 
-      // 5. Üst katmana bildir (isteğe bağlı ek işlemler için)
+      // 5. Sonucu kullanıcıya bildir
+      if (premiumActivated) {
+        const tierLabel = activatedTier === 'studio' ? 'Studio' : activatedTier === 'pro' ? 'Pro' : 'Core';
+        const limitText = activatedIsUnlimited
+          ? 'Sınırsız öğrenci ekleyebilirsiniz.'
+          : `${TIER_STUDENT_LIMITS[activatedTier]} öğrenciye kadar ekleyebilirsiniz.`;
+        Alert.alert(
+          'Premium Aktif!',
+          `${tierLabel} planınız başarıyla aktif edildi.\n${limitText}`,
+          [{ text: 'Harika!', onPress: () => router.replace('/(tabs)') }],
+        );
+      } else {
+        Alert.alert(
+          'Ödeme Alındı',
+          'Ödemeniz alındı ancak hesabınıza yansıtılması biraz zaman alabilir. Sorun devam ederse "Satın Almaları Geri Yükle" seçeneğini deneyin.',
+        );
+      }
+
+      // 6. Üst katmana bildir (isteğe bağlı ek işlemler için)
       if (onPurchase) {
         const planId = selectedPlanRef.current;
         const plan = allProductsRef.current.find((p) => p.id === planId) ?? null;
@@ -168,7 +195,7 @@ export default function PaywallMonthlyScreen({
           });
         }
       }
-    }, [onPurchase]),
+    }, [onPurchase, router, updateSubscription]),
 
     onPurchaseError: useCallback((err: any) => {
       setBusyState(null);
@@ -246,11 +273,12 @@ export default function PaywallMonthlyScreen({
         ? rawPrice
         : parseFloat(String(rawPrice).replace(/[^0-9.]/g, '')) || 0;
 
+      const tier = pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro';
       return {
         id: pId,
         active: true,
         sortOrder: index + 1,
-        tier: pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro',
+        tier,
         title: prod.title || 'Plan',
         subtitle: prod.description || '',
         currency: prod.currency || 'USD',
@@ -259,6 +287,7 @@ export default function PaywallMonthlyScreen({
         features: [],
         annualDiscountPercent: 25,
         isUnlimited: pId.includes('studio'),
+        studentLimit: TIER_STUDENT_LIMITS[tier as PremiumTier] ?? null,
         perClientNoteMode: 'auto',
         footnote: null,
       };
@@ -751,6 +780,18 @@ const PlanCard = memo(function PlanCard({
             }}
           >
             {plan.subtitle}
+          </Text>
+          <Text
+            style={{
+              color: plan.isUnlimited ? accent : theme.colors.text.muted,
+              fontSize: 12,
+              fontWeight: '900',
+              marginTop: 6,
+            }}
+          >
+            {plan.isUnlimited
+              ? 'Sınırsız öğrenci'
+              : `${TIER_STUDENT_LIMITS[(plan.tier ?? 'pro') as PremiumTier] ?? 0} öğrenciye kadar`}
           </Text>
         </View>
 
