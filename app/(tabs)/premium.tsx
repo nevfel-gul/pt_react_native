@@ -263,6 +263,16 @@ export default function PaywallMonthlyScreen({
     doFetchSubs();
   }, [connected, doFetchSubs]);
 
+  // IAP bağlantısı çok uzun sürerse spinner'ı kapat ve hata göster
+  useEffect(() => {
+    if (!loading) return;
+    const t = setTimeout(() => {
+      setLoading(false);
+      setFetchError('App Store bağlantısı kurulamadı. Sandbox hesabıyla giriş yapıp tekrar deneyin.');
+    }, 12000);
+    return () => clearTimeout(t);
+  }, [loading]);
+
   // subscriptions gelince PlanDoc'a dönüştür
   useEffect(() => {
     if (subscriptions.length === 0) return;
