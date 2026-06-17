@@ -792,5 +792,19 @@
   "ai.quick.thisWeek": "Bu hafta ölçüm yapanlar",
   "ai.quick.last30": "Son 30 günde ölçüm yapanlar",
   "ai.quick.notLast30": "Son 30 günde ölçüm yapmayanlar",
-  "ai.quick.nameExample": "İsmi 'Ali' geçenler"
+  "ai.quick.nameExample": "İsmi 'Ali' geçenler",
+
+  "common.cancel": "İptal",
+  "login.placeholder.username": "Kullanıcı Adın",
+  "settings.about.termsOfUse": "Kullanım Koşulları",
+  "settings.about.cookiePolicy": "Çerez Politikası",
+  "settings.deleteAccount": "Hesabı Sil",
+  "settings.deleteAccount.confirm": "Bu işlem geri alınamaz. Hesabınız kalıcı olarak silinecek.",
+  "settings.deleteAccount.confirm.action": "Sil",
+  "settings.security.noEmail": "E-posta bulunamadı.",
+  "settings.security.resetSent": "Şifre sıfırlama maili gönderildi: ",
+  "newstudent.label.planned_days_per_week": "Haftada kaç gün gelmeyi planlıyorsunuz?",
+  "recordNew.next": "İleri",
+  "recordNew.prev": "Geri",
+  "recordNew.status.poor": "Kötü"
 }

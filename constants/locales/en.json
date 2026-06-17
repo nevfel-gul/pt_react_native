@@ -789,5 +789,22 @@
   "ai.quick.thisWeek": "Measured this week",
   "ai.quick.last30": "Measured in last 30 days",
   "ai.quick.notLast30": "Not measured in last 30 days",
-  "ai.quick.nameExample": "Names containing 'Ali'"
+  "ai.quick.nameExample": "Names containing 'Ali'",
+
+  "brand.name": "ATHLETRACK",
+  "common.cancel": "Cancel",
+  "common.description": "Description",
+  "login.placeholder.username": "Username",
+  "settings.about.termsOfUse": "Terms of Use",
+  "settings.about.cookiePolicy": "Cookie Policy",
+  "settings.deleteAccount": "Delete Account",
+  "settings.deleteAccount.confirm": "This action cannot be undone. Your account will be permanently deleted.",
+  "settings.deleteAccount.confirm.action": "Delete",
+  "settings.security.noEmail": "Email not found.",
+  "settings.security.resetSent": "Password reset email sent: ",
+  "recordNew.label.plankScore": "Plank score",
+  "summary.activity.tanitaAdded": "Tanita measurement added for Ayşe Y.",
+  "summary.activity.strengthUpdated": "Can B.'s strength tests updated",
+  "summary.activity.postureSaved": "Posture note saved for Zehra K.",
+  "summary.activity.programCreated": "New program created for Mert A."
 }
