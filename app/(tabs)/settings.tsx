@@ -613,10 +613,6 @@ export default function SettingsScreen() {
           <LogOut size={18} color="#fca5a5" />
           <Text style={styles.logoutText}>{t("settings.logout")}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut size={18} color="#fca5a5" />
-          <Text style={styles.logoutText}>{t("settings.logout")}</Text>
-        </TouchableOpacity>
 
         {/* ✅ HESABI SİL - Soluk, göze batmayan */}
         <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
