@@ -36,7 +36,9 @@ import { doc, setDoc } from "firebase/firestore";
 type TabKey = "preferences" | "security";
 
 const STORAGE_SETTINGS_KEY = "settings_v1";
-const PRIVACY_POLICY_URL = "https://example.com/privacy";
+const PRIVACY_POLICY_URL = "https://www.athletrackai.com/tr/privacy-policy";
+const TERMS_OF_USE_URL = "https://www.athletrackai.com/en/terms-of-service";
+const COOKIE_POLICY_URL = "https://www.athletrackai.com/en/cookie-policy";
 
 type StoredSettings = {
   pushEnabled: boolean;
@@ -253,7 +255,22 @@ export default function SettingsScreen() {
     await signOut(auth);
     router.replace("/login");
   }, [router]);
-
+  const handleDeleteAccount = useCallback(async () => {
+    Alert.alert(
+      t("settings.deleteAccount") || "Hesabı Sil",
+      t("settings.deleteAccount.confirm") || "Bu işlem geri alınamaz. Hesabınız kalıcı olarak silinecek.",
+      [
+        { text: t("common.cancel") || "İptal", style: "cancel" },
+        {
+          text: t("settings.deleteAccount.confirm.action") || "Sil",
+          style: "destructive",
+          onPress: async () => {
+            // silme işlemi buraya
+          },
+        },
+      ]
+    );
+  }, [t]);
   const handleChangePassword = useCallback(async () => {
     const email = auth.currentUser?.email;
     if (!email) {
@@ -472,6 +489,24 @@ export default function SettingsScreen() {
             label={t("settings.about.privacyPolicy")}
             right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
             onPress={handleOpenPrivacyPolicy}
+          />
+
+          <SettingRow
+            label={t("settings.about.termsOfUse") || "Kullanım Koşulları"}
+            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
+            onPress={async () => {
+              const can = await Linking.canOpenURL(TERMS_OF_USE_URL);
+              if (can) await Linking.openURL(TERMS_OF_USE_URL);
+            }}
+          />
+
+          <SettingRow
+            label={t("settings.about.cookiePolicy") || "Çerez Politikası"}
+            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
+            onPress={async () => {
+              const can = await Linking.canOpenURL(COOKIE_POLICY_URL);
+              if (can) await Linking.openURL(COOKIE_POLICY_URL);
+            }}
             isLast
           />
         </View>
@@ -577,6 +612,11 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={18} color="#fca5a5" />
           <Text style={styles.logoutText}>{t("settings.logout")}</Text>
+        </TouchableOpacity>
+
+        {/* ✅ HESABI SİL - Soluk, göze batmayan */}
+        <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
+          <Text style={styles.deleteAccountText}>{t("settings.deleteAccount") || "Hesabı Sil"}</Text>
         </TouchableOpacity>
       </>
     ),
@@ -767,10 +807,23 @@ function makeStyles(theme: ThemeUI) {
       justifyContent: "center",
       gap: theme.spacing.sm - 2,
     },
+    deleteAccountButton: {
+      marginHorizontal: theme.spacing.md,
+      marginTop: theme.spacing.xs,
+      paddingVertical: theme.spacing.sm - 2,
+      alignItems: "center",
+    },
+    deleteAccountText: {
+      color: theme.colors.text.muted,
+      fontSize: theme.fontSize.sm,
+      fontWeight: "400",
+      textDecorationLine: "underline",
+    },
     logoutText: {
       color: theme.colors.danger,
       fontSize: theme.fontSize.md,
       fontWeight: "700",
     },
   });
+
 }

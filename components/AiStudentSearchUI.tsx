@@ -1,6 +1,7 @@
 import type { ThemeUI } from "@/constants/types";
 import { ArrowLeft, Eye, Send, Sparkles, Trash2 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
     FlatList,
     KeyboardAvoidingView,
@@ -67,6 +68,7 @@ export default function AiStudentSearchUI({
     onOpenStudent,
     hideAiTrigger = false,
 }: Props) {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [aiQuery, setAiQuery] = useState("");
 
@@ -74,7 +76,7 @@ export default function AiStudentSearchUI({
         {
             id: "sys-1",
             role: "system",
-            text: "AthleAI • Sadece mevcut öğrenci verilerine göre filtre uygular.",
+            text: t("ai.systemMsg"),
         },
     ]);
 
@@ -147,7 +149,7 @@ export default function AiStudentSearchUI({
             {
                 id: "sys-1",
                 role: "system",
-                text: "AthleAI • Sadece mevcut öğrenci verilerine göre filtre uygular.",
+                text: t("ai.systemMsg"),
             },
         ]);
         setAiQuery("");
@@ -185,11 +187,11 @@ export default function AiStudentSearchUI({
             aiReason && aiReason.trim().length
                 ? aiReason.trim()
                 : aiMode
-                    ? "İşlem tamam."
-                    : "İşlem yapılamadı.";
+                    ? t("ai.processing")
+                    : t("ai.failed");
 
         const count = results?.length ?? 0;
-        const finalText = `${base}\n\nBulunan: ${count}`;
+        const finalText = `${base}\n\n${t("ai.found", { count })}`;
 
         appendMsg("assistant", finalText);
     }, [aiSearchLoading, aiReason, aiMode, results]);
@@ -224,14 +226,14 @@ export default function AiStudentSearchUI({
 
     const quickPrompts = useMemo(
         () => [
-            "Aktif öğrenciler",
-            "Pasif öğrenciler",
-            "Bu hafta ölçüm yapanlar",
-            "Son 30 günde ölçüm yapanlar",
-            "Son 30 günde ölçüm yapmayanlar",
-            "İsmi 'Ali' geçenler",
+            t("ai.quick.active"),
+            t("ai.quick.passive"),
+            t("ai.quick.thisWeek"),
+            t("ai.quick.last30"),
+            t("ai.quick.notLast30"),
+            t("ai.quick.nameExample"),
         ],
-        []
+        [t]
     );
 
     const showResultCards = !aiSearchLoading && aiMode && lastDoneSeq > 0 && (results?.length ?? 0) > 0;
@@ -249,7 +251,7 @@ export default function AiStudentSearchUI({
         return (
             <View style={{ paddingTop: 10 }}>
                 <Text style={{ color: theme.colors.text.muted, fontWeight: "900", marginBottom: 8 }}>
-                    Bulunan öğrenciler
+                    {t("ai.foundStudents")}
                 </Text>
 
                 {top.map((s) => {
@@ -335,7 +337,7 @@ export default function AiStudentSearchUI({
                                                 color: isActive ? theme.colors.success : theme.colors.danger,
                                             }}
                                         >
-                                            {String(s.aktif)}
+                                            {String(s.aktif) === "Aktif" ? t("status.active") : t("status.passive")}
                                         </Text>
                                     </View>
                                 )}
@@ -361,7 +363,7 @@ export default function AiStudentSearchUI({
 
                 {(results?.length ?? 0) > 20 && (
                     <Text style={{ color: theme.colors.text.muted, fontWeight: "800", marginTop: 2 }}>
-                        … +{results.length - 20} kişi daha
+                        {t("ai.moreStudents", { count: results.length - 20 })}
                     </Text>
                 )}
             </View>
@@ -480,7 +482,7 @@ export default function AiStudentSearchUI({
                             ListFooterComponent={
                                 aiSearchLoading ? (
                                     <View style={bubble.assistant}>
-                                        <Text style={bubble.assistantText}>AI düşünüyor…</Text>
+                                        <Text style={bubble.assistantText}>{t("ai.thinking")}</Text>
                                     </View>
                                 ) : showResultCards ? (
                                     <ResultCards />
@@ -512,8 +514,7 @@ export default function AiStudentSearchUI({
                                         }}
                                     >
                                         <Text style={{ color: theme.colors.text.primary, fontWeight: "900" }}>
-                                            Arama metnini sor: "{searchTerm.trim().slice(0, 42)}
-                                            {searchTerm.trim().length > 42 ? "…" : ""}"
+                                            {t("ai.searchQuery", { term: searchTerm.trim().slice(0, 42) + (searchTerm.trim().length > 42 ? "…" : "") })}
                                         </Text>
                                     </TouchableOpacity>
                                 )}

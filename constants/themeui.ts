@@ -49,6 +49,20 @@ export const darkTheme: ThemeUI = {
 
     overlay: "rgba(0,0,0,0.55)",
     white: "#ffffff",
+
+    accentSoft: "rgba(56,189,248,0.12)",
+    mutedSoft: "rgba(148,163,184,0.12)",
+    inactive: "#94a3b8",
+    premiumOverlay: "rgba(124,58,237,0.45)",
+
+    status: {
+      excellent: "#38bdf8",
+      good: "#34d399",
+      warning: "#fbbf24",
+      poor: "#f87171",
+      bad: "#fb923c",
+      purple: "#a78bfa",
+    },
   },
 
   radius: { sm: 8, md: 12, lg: 18, xl: 26, pill: 999 },
@@ -98,6 +112,7 @@ export const nightTheme: ThemeUI = {
     filterAll: "#e2e8f0",
     filterActive: "#16a34a",
     filterPassive: "#dc2626",
+    accentSoft: "rgba(2,132,199,0.12)",
   },
 
   shadow: {

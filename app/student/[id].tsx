@@ -287,43 +287,43 @@ function buildMonthlyPoints(records: any[]): ChartPoint[] {
   });
   return points.map((p) => ({ ...p, count: map[p.key] ?? 0 }));
 }
-function buildChartData(records: any[], range: RangeKey) {
+function buildChartData(records: any[], range: RangeKey, t: (key: string) => string) {
   if (range === "7g")
     return {
       mode: "day" as BucketMode,
-      title: "Son 7 gün",
+      title: t("studentDetail.chart.7d"),
       points: buildDailyPoints(records, 7),
     };
   if (range === "30g")
     return {
       mode: "day" as BucketMode,
-      title: "Son 30 gün",
+      title: t("studentDetail.chart.30d"),
       points: buildDailyPoints(records, 30),
     };
   if (range === "90g")
     return {
       mode: "week" as BucketMode,
-      title: "Son 90 gün",
+      title: t("studentDetail.chart.90d"),
       points: buildWeeklyPoints(records, 90),
     };
   return {
     mode: "month" as BucketMode,
-    title: "Tüm zaman",
+    title: t("studentDetail.chart.all"),
     points: buildMonthlyPoints(records),
   };
 }
 
-function getMetricSnapshot(records: any[], key: string, suffix = "") {
+function getMetricSnapshot(records: any[], key: string, suffix = "", t: (key: string) => string) {
   const values = records
     .map((r) => num(r?.[key]))
     .filter((v): v is number => v != null);
   const latest = values[0] ?? null;
   const previous = values[1] ?? null;
-  let deltaText = "Önceki veri yok";
+  let deltaText = t("studentDetail.chart.noPrev");
   if (latest != null && previous != null) {
     const diff = latest - previous;
     const sign = diff > 0 ? "+" : "";
-    deltaText = `${sign}${diff.toFixed(1)}${suffix} önceki kayıda göre`;
+    deltaText = `${sign}${diff.toFixed(1)}${suffix} ${t("studentDetail.chart.fromLastRecord")}`;
   }
   return {
     value: latest != null ? `${latest}${suffix}` : "-",
@@ -371,10 +371,10 @@ function buildMetricSeries(
 //  ANİMASYONLU ÇİZGİ GRAFİK
 // ─────────────────────────────────────────────────────────────────────────────
 const METRIC_TABS = [
-  { key: "weight", label: "Kilo", suffix: " kg", color: "#38bdf8", gradId: "gW" },
-  { key: "bodyFat", label: "Yağ %", suffix: "%", color: "#a78bfa", gradId: "gF" },
-  { key: "bel", label: "Bel", suffix: " cm", color: "#34d399", gradId: "gB" },
-  { key: "kalca", label: "Kalça", suffix: " cm", color: "#fb923c", gradId: "gK" },
+  { key: "weight", labelKey: "studentDetail.metric.weight", suffix: " kg", colorKey: "excellent", gradId: "gW" },
+  { key: "bodyFat", labelKey: "studentDetail.metric.fatPct", suffix: "%", colorKey: "purple", gradId: "gF" },
+  { key: "bel", labelKey: "recordNew.field.waist", suffix: " cm", colorKey: "good", gradId: "gB" },
+  { key: "kalca", labelKey: "recordNew.field.hip", suffix: " cm", colorKey: "bad", gradId: "gK" },
 ] as const;
 
 type MetricKey = (typeof METRIC_TABS)[number]["key"];
@@ -386,6 +386,7 @@ function MetricLineChart({
   theme: ThemeUI;
   records: any[];
 }) {
+  const { t } = useTranslation();
   const [activeMetric, setActiveMetric] = useState<MetricKey>("weight");
   const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -397,6 +398,7 @@ function MetricLineChart({
   const chartH = H - PAD.top - PAD.bottom;
 
   const metaCfg = METRIC_TABS.find((m) => m.key === activeMetric)!;
+  const metaCfgColor = theme.colors.status[metaCfg.colorKey];
 
   const series = useMemo(
     () => buildMetricSeries(records, activeMetric),
@@ -466,6 +468,7 @@ function MetricLineChart({
       >
         {METRIC_TABS.map((m) => {
           const active = m.key === activeMetric;
+          const color = theme.colors.status[m.colorKey];
           return (
             <TouchableOpacity
               key={m.key}
@@ -476,19 +479,19 @@ function MetricLineChart({
                 paddingVertical: 7,
                 borderRadius: 999,
                 borderWidth: 1.5,
-                borderColor: active ? m.color : "rgba(148,163,184,0.3)",
-                backgroundColor: active ? `${m.color}18` : "transparent",
+                borderColor: active ? color : "rgba(148,163,184,0.3)",
+                backgroundColor: active ? `${color}18` : "transparent",
               }}
             >
               <Text
                 style={{
-                  color: active ? m.color : theme.colors.text.muted,
+                  color: active ? color : theme.colors.text.muted,
                   fontSize: 12,
                   fontWeight: "800",
                   letterSpacing: 0.3,
                 }}
               >
-                {m.label}
+                {t(m.labelKey)}
               </Text>
             </TouchableOpacity>
           );
@@ -523,7 +526,7 @@ function MetricLineChart({
               }}
             >
               {series.length === 0
-                ? `${metaCfg.label} verisi henüz yok.`
+                ? `${t(metaCfg.labelKey)} verisi henüz yok.`
                 : "Grafik için en az 2 ölçüm gerekli."}
             </Text>
           </View>
@@ -545,12 +548,12 @@ function MetricLineChart({
                   >
                     <Stop
                       offset="0%"
-                      stopColor={metaCfg.color}
+                      stopColor={metaCfgColor}
                       stopOpacity="0.28"
                     />
                     <Stop
                       offset="100%"
-                      stopColor={metaCfg.color}
+                      stopColor={metaCfgColor}
                       stopOpacity="0.01"
                     />
                   </LinearGradient>
@@ -625,7 +628,7 @@ function MetricLineChart({
                 <Path
                   d={linePath}
                   fill="none"
-                  stroke={metaCfg.color}
+                  stroke={metaCfgColor}
                   strokeWidth={2.2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -638,7 +641,7 @@ function MetricLineChart({
                     cx={p.x}
                     cy={p.y}
                     r={3}
-                    fill={metaCfg.color}
+                    fill={metaCfgColor}
                     opacity={0.45}
                   />
                 ))}
@@ -651,7 +654,7 @@ function MetricLineChart({
                       y1={PAD.top}
                       x2={activeXY.x}
                       y2={PAD.top + chartH}
-                      stroke={metaCfg.color}
+                      stroke={metaCfgColor}
                       strokeWidth={1.2}
                       opacity={0.45}
                       strokeDasharray="3 3"
@@ -660,14 +663,14 @@ function MetricLineChart({
                       cx={activeXY.x}
                       cy={activeXY.y}
                       r={6}
-                      fill={metaCfg.color}
+                      fill={metaCfgColor}
                       opacity={0.18}
                     />
                     <Circle
                       cx={activeXY.x}
                       cy={activeXY.y}
                       r={3.5}
-                      fill={metaCfg.color}
+                      fill={metaCfgColor}
                     />
                   </G>
                 )}
@@ -695,8 +698,8 @@ function MetricLineChart({
               marginTop: 8,
               marginHorizontal: 8,
               borderWidth: 1,
-              borderColor: `${metaCfg.color}30`,
-              backgroundColor: `${metaCfg.color}0e`,
+              borderColor: `${metaCfgColor}30`,
+              backgroundColor: `${metaCfgColor}0e`,
               borderRadius: theme.radius.md,
               paddingVertical: 10,
               paddingHorizontal: 14,
@@ -720,7 +723,7 @@ function MetricLineChart({
             </Text>
             <Text
               style={{
-                color: metaCfg.color,
+                color: theme.colors.status[metaCfg.colorKey],
                 fontSize: 15,
                 fontWeight: "900",
               }}
@@ -742,8 +745,8 @@ function MetricLineChart({
               diff === 0
                 ? theme.colors.text.muted
                 : diff < 0
-                  ? "#34d399"
-                  : "#f87171";
+                  ? theme.colors.status.good
+                  : theme.colors.status.poor;
             return (
               <View
                 style={{
@@ -866,7 +869,7 @@ function AnimatedGaugeCard({
       ? config.thresholds.find((t) => config.numericValue! <= t.upto) ??
       config.thresholds[config.thresholds.length - 1]
       : null;
-  const trackColor = activeThreshold?.color ?? "#38bdf8";
+  const trackColor = activeThreshold?.color ?? theme.colors.status.excellent;
 
   const needleTip = polar(CX, CY, R - STROKE / 2 - 2, needleAngle);
   const needleBase1 = polar(CX, CY, 5, needleAngle + Math.PI / 2);
@@ -1162,10 +1165,11 @@ function AnalyticsCard({
   open: boolean;
   setOpen: (v: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const summary = useMemo(() => {
-    const chart = buildChartData(records, range);
+    const chart = buildChartData(records, range, t);
     const counts = chart.points.map((p) => p.count);
     const total = counts.reduce((a, b) => a + b, 0);
     const avg = chart.points.length ? total / chart.points.length : 0;
@@ -1193,36 +1197,36 @@ function AnalyticsCard({
           return db - da;
         })
       : [];
-    const weight = getMetricSnapshot(records, "weight", " kg");
-    const fat = getMetricSnapshot(records, "bodyFat", " %");
-    const bel = getMetricSnapshot(records, "bel", " cm");
-    const kalca = getMetricSnapshot(records, "kalca", " cm");
+    const weight = getMetricSnapshot(records, "weight", " kg", t);
+    const fat = getMetricSnapshot(records, "bodyFat", " %", t);
+    const bel = getMetricSnapshot(records, "bel", " cm", t);
+    const kalca = getMetricSnapshot(records, "kalca", " cm", t);
     return {
       chart, total, avg, peak,
       safeIdx, selectedPoint, selectedPeriodRecords,
       weight, fat, bel, kalca,
     };
-  }, [records, range, selectedIndex]);
+  }, [records, range, selectedIndex, t]);
 
   useEffect(() => {
-    const chart = buildChartData(records, range);
+    const chart = buildChartData(records, range, t);
     setSelectedIndex(
       chart.points.length > 0 ? chart.points.length - 1 : 0,
     );
-  }, [range, records.length]);
+  }, [range, records.length, t]);
 
   const rangeItems: Array<{ key: RangeKey; label: string }> = [
-    { key: "7g", label: "7 Gün" },
-    { key: "30g", label: "30 Gün" },
-    { key: "90g", label: "90 Gün" },
-    { key: "all", label: "Tümü" },
+    { key: "7g", label: t("studentDetail.range.7d") },
+    { key: "30g", label: t("studentDetail.range.30d") },
+    { key: "90g", label: t("studentDetail.range.90d") },
+    { key: "all", label: t("studentDetail.range.all") },
   ];
 
   return (
     <CollapsibleCard
       theme={theme}
       styles={styles}
-      title="Analitikler • Ölçümler"
+      title={t("studentDetail.analytics.title")}
       open={open}
       setOpen={setOpen}
     >
@@ -1234,7 +1238,7 @@ function AnalyticsCard({
           marginTop: 2,
         }}
       >
-        Kayıt sıklığı, ölçüm trendleri ve değişim analizleri.
+        {t("studentDetail.analytics.subtitle")}
       </Text>
 
       {/* Range seçici */}
@@ -1264,7 +1268,7 @@ function AnalyticsCard({
                 },
                 active && {
                   borderColor: theme.colors.accent,
-                  backgroundColor: "rgba(56,189,248,0.12)",
+                  backgroundColor: theme.colors.accentSoft,
                 },
               ]}
             >
@@ -1312,7 +1316,7 @@ function AnalyticsCard({
             marginTop: 6,
           }}
         >
-          Toplam kayıt:{" "}
+          {t("studentDetail.analytics.totalRecords")}{" "}
           <Text
             style={{
               color: theme.colors.text.primary,
@@ -1322,7 +1326,7 @@ function AnalyticsCard({
             {summary.total}
           </Text>
           {"  •  "}
-          Ortalama:{" "}
+          {t("studentDetail.analytics.average")}{" "}
           <Text
             style={{
               color: theme.colors.text.primary,
@@ -1332,7 +1336,7 @@ function AnalyticsCard({
             {summary.avg.toFixed(1)}
           </Text>
           {"  •  "}
-          En yoğun:{" "}
+          {t("studentDetail.analytics.peakDay")}{" "}
           <Text
             style={{
               color: theme.colors.text.primary,
@@ -1356,13 +1360,13 @@ function AnalyticsCard({
       >
         <KPI
           theme={theme}
-          label="Son Kilo"
+          label={t("studentDetail.kpi.lastWeight")}
           value={summary.weight.value}
           subText={summary.weight.deltaText}
         />
         <KPI
           theme={theme}
-          label="Son Yağ %"
+          label={t("studentDetail.kpi.lastFat")}
           value={summary.fat.value}
           subText={summary.fat.deltaText}
         />
@@ -1370,13 +1374,13 @@ function AnalyticsCard({
       <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
         <KPI
           theme={theme}
-          label="Bel Çevresi"
+          label={t("studentDetail.kpi.waist")}
           value={summary.bel.value}
           subText={summary.bel.deltaText}
         />
         <KPI
           theme={theme}
-          label="Kalça Çevresi"
+          label={t("studentDetail.kpi.hip")}
           value={summary.kalca.value}
           subText={summary.kalca.deltaText}
         />
@@ -1394,7 +1398,7 @@ function AnalyticsCard({
             fontWeight: "900",
           }}
         >
-          Seçili dönemin kayıtları
+          {t("studentDetail.analytics.selectedPeriod")}
         </Text>
         {summary.selectedPeriodRecords.length ? (
           summary.selectedPeriodRecords.map((r: any) => {
@@ -1427,7 +1431,7 @@ function AnalyticsCard({
                     marginTop: 2,
                   }}
                 >
-                  {r.note?.trim() ? r.note : "Not yok"}
+                  {r.note?.trim() ? r.note : t("studentDetail.records.noNote")}
                 </Text>
               </View>
             );
@@ -1436,7 +1440,7 @@ function AnalyticsCard({
           <Text
             style={{ marginTop: 6, color: theme.colors.text.muted }}
           >
-            Seçili dönemde kayıt yok.
+            {t("studentDetail.analytics.noPeriodRecords")}
           </Text>
         )}
       </View>
@@ -1460,6 +1464,7 @@ function TestsCard({
   open: boolean;
   setOpen: (v: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -1511,10 +1516,10 @@ function TestsCard({
         min: 10, max: 45,
         statusLabel: a?.bmiStatus ?? null,
         thresholds: [
-          { upto: 18.5, color: "#60a5fa", label: "Zayıf" },
-          { upto: 24.9, color: "#34d399", label: "Normal" },
-          { upto: 29.9, color: "#fbbf24", label: "Fazla Kilolu" },
-          { upto: 45, color: "#f87171", label: "Obez" },
+          { upto: 18.5, color: theme.colors.primary, label: t("recordNew.status.weak") },
+          { upto: 24.9, color: theme.colors.status.good, label: t("recordNew.status.normal") },
+          { upto: 29.9, color: theme.colors.status.warning, label: t("studentDetail.status.overweight") },
+          { upto: 45, color: theme.colors.status.poor, label: t("studentDetail.status.obese") },
         ],
       },
       {
@@ -1525,10 +1530,10 @@ function TestsCard({
         statusLabel: a?.vo2Status ?? null,
         unit: "ml/kg/dk",
         thresholds: [
-          { upto: 35, color: "#f87171", label: "Zayıf" },
-          { upto: 42, color: "#fbbf24", label: "Orta" },
-          { upto: 52, color: "#34d399", label: "İyi" },
-          { upto: 75, color: "#38bdf8", label: "Mükemmel" },
+          { upto: 35, color: theme.colors.status.poor, label: t("recordNew.status.weak") },
+          { upto: 42, color: theme.colors.status.warning, label: t("recordNew.status.medium") },
+          { upto: 52, color: theme.colors.status.good, label: t("recordNew.status.good") },
+          { upto: 75, color: theme.colors.status.excellent, label: t("recordNew.status.excellent") },
         ],
       },
       {
@@ -1538,11 +1543,11 @@ function TestsCard({
         min: 0, max: 100,
         statusLabel: a?.ymcaStatus ?? null,
         thresholds: [
-          { upto: 20, color: "#f87171", label: "Çok Zayıf" },
-          { upto: 40, color: "#fb923c", label: "Zayıf" },
-          { upto: 60, color: "#fbbf24", label: "Orta" },
-          { upto: 80, color: "#34d399", label: "İyi" },
-          { upto: 100, color: "#38bdf8", label: "Mükemmel" },
+          { upto: 20, color: theme.colors.status.poor, label: t("recordNew.status.veryWeak") },
+          { upto: 40, color: theme.colors.status.bad, label: t("recordNew.status.weak") },
+          { upto: 60, color: theme.colors.status.warning, label: t("recordNew.status.medium") },
+          { upto: 80, color: theme.colors.status.good, label: t("recordNew.status.good") },
+          { upto: 100, color: theme.colors.status.excellent, label: t("recordNew.status.excellent") },
         ],
       },
       {
@@ -1552,10 +1557,10 @@ function TestsCard({
         min: -20, max: 40,
         statusLabel: null,
         thresholds: [
-          { upto: 0, color: "#f87171", label: "Düşük" },
-          { upto: 15, color: "#fbbf24", label: "Orta" },
-          { upto: 25, color: "#34d399", label: "İyi" },
-          { upto: 40, color: "#38bdf8", label: "Mükemmel" },
+          { upto: 0, color: theme.colors.status.poor, label: t("recordNew.status.low") },
+          { upto: 15, color: theme.colors.status.warning, label: t("recordNew.status.medium") },
+          { upto: 25, color: theme.colors.status.good, label: t("recordNew.status.good") },
+          { upto: 40, color: theme.colors.status.excellent, label: t("recordNew.status.excellent") },
         ],
       },
       {
@@ -1565,11 +1570,11 @@ function TestsCard({
         min: 0, max: 100,
         statusLabel: a?.pushupStatus ?? null,
         thresholds: [
-          { upto: 20, color: "#f87171", label: "Zayıf" },
-          { upto: 40, color: "#fb923c", label: "Orta Altı" },
-          { upto: 60, color: "#fbbf24", label: "Orta" },
-          { upto: 80, color: "#34d399", label: "İyi" },
-          { upto: 100, color: "#38bdf8", label: "Mükemmel" },
+          { upto: 20, color: theme.colors.status.poor, label: t("recordNew.status.weak") },
+          { upto: 40, color: theme.colors.status.bad, label: t("recordNew.status.belowMiddle") },
+          { upto: 60, color: theme.colors.status.warning, label: t("recordNew.status.medium") },
+          { upto: 80, color: theme.colors.status.good, label: t("recordNew.status.good") },
+          { upto: 100, color: theme.colors.status.excellent, label: t("recordNew.status.excellent") },
         ],
       },
       {
@@ -1579,20 +1584,20 @@ function TestsCard({
         min: 0, max: 100,
         statusLabel: a?.plankStatus ?? null,
         thresholds: [
-          { upto: 25, color: "#f87171", label: "Zayıf" },
-          { upto: 50, color: "#fbbf24", label: "Orta" },
-          { upto: 75, color: "#34d399", label: "İyi" },
-          { upto: 100, color: "#38bdf8", label: "Mükemmel" },
+          { upto: 25, color: theme.colors.status.poor, label: t("recordNew.status.weak") },
+          { upto: 50, color: theme.colors.status.warning, label: t("recordNew.status.medium") },
+          { upto: 75, color: theme.colors.status.good, label: t("recordNew.status.good") },
+          { upto: 100, color: theme.colors.status.excellent, label: t("recordNew.status.excellent") },
         ],
       },
     ];
-  }, [a]);
+  }, [a, theme, t]);
 
   return (
     <CollapsibleCard
       theme={theme}
       styles={styles}
-      title="Analitikler • Test Sonuçları"
+      title={t("studentDetail.tests.title")}
       open={open}
       setOpen={(v) => {
         setOpen(v);
@@ -1607,7 +1612,7 @@ function TestsCard({
           marginTop: 2,
         }}
       >
-        Seçili kaydın test sonuçları gösterge grafikleriyle görselleştirilir.
+        {t("studentDetail.tests.subtitle")}
       </Text>
 
       {/* Kayıt seçici */}
@@ -1636,7 +1641,7 @@ function TestsCard({
               fontWeight: "800",
             }}
           >
-            Seçili kayıt
+            {t("studentDetail.tests.selectedRecord")}
           </Text>
           <Text
             style={{
@@ -1692,7 +1697,7 @@ function TestsCard({
                     borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: theme.colors.border,
                     backgroundColor: isActive
-                      ? "rgba(56,189,248,0.10)"
+                      ? theme.colors.accentSoft
                       : "transparent",
                   }}
                 >
@@ -1929,7 +1934,7 @@ export default function StudentDetailScreen() {
   const saveNewNote = async () => {
     if (!id) return;
     const text = newNoteText.trim();
-    if (!text) { Alert.alert(t("common.error"), "Not boş olamaz"); return; }
+    if (!text) { Alert.alert(t("common.error"), t("studentDetail.notes.emptyError")); return; }
     try {
       setSavingNote(true);
       const title = newNoteTitle.trim();
@@ -1942,7 +1947,7 @@ export default function StudentDetailScreen() {
       setNewNoteText("");
     } catch (e) {
       console.error(e);
-      Alert.alert(t("common.error"), "Not kaydedilemedi");
+      Alert.alert(t("common.error"), t("studentDetail.notes.saveError"));
     } finally { setSavingNote(false); }
   };
 
@@ -2245,7 +2250,7 @@ export default function StudentDetailScreen() {
               <CollapsibleCard
                 theme={theme}
                 styles={styles}
-                title="Notlar"
+                title={t("studentDetail.notes.title")}
                 open={notesOpen}
                 setOpen={(v) => {
                   setNotesOpen(v);
@@ -2267,7 +2272,7 @@ export default function StudentDetailScreen() {
                   }}
                 >
                   <Text style={{ color: theme.colors.text.primary, fontWeight: "900" }}>
-                    + Yeni Not
+                    {t("studentDetail.notes.newButton")}
                   </Text>
                 </TouchableOpacity>
 
@@ -2328,7 +2333,7 @@ export default function StudentDetailScreen() {
                   </View>
                 ) : (
                   <Text style={{ marginTop: theme.spacing.sm, color: theme.colors.text.muted }}>
-                    Henüz not yok.
+                    {t("studentDetail.notes.empty")}
                   </Text>
                 )}
               </CollapsibleCard>
@@ -2388,12 +2393,12 @@ export default function StudentDetailScreen() {
                     }}
                   >
                     <Text style={{ color: theme.colors.text.primary, fontWeight: "900", fontSize: theme.fontSize.lg }}>
-                      Yeni Not
+                      {t("studentDetail.notes.modalTitle")}
                     </Text>
                     <TextInput
                       value={newNoteTitle}
                       onChangeText={setNewNoteTitle}
-                      placeholder="Not başlığı..."
+                      placeholder={t("studentDetail.notes.titlePlaceholder")}
                       placeholderTextColor={theme.colors.text.muted}
                       style={[styles.editInput, { marginTop: theme.spacing.sm }]}
                       returnKeyType="next"
@@ -2401,7 +2406,7 @@ export default function StudentDetailScreen() {
                     <TextInput
                       value={newNoteText}
                       onChangeText={setNewNoteText}
-                      placeholder="Notunu yaz..."
+                      placeholder={t("studentDetail.notes.textPlaceholder")}
                       placeholderTextColor={theme.colors.text.muted}
                       multiline
                       textAlignVertical="top"
@@ -2422,7 +2427,7 @@ export default function StudentDetailScreen() {
                         activeOpacity={0.85}
                         style={[styles.cancelButton, { flex: 1, alignItems: "center", marginLeft: 0 }]}
                       >
-                        <Text style={styles.cancelButtonText}>İptal</Text>
+                        <Text style={styles.cancelButtonText}>{t("studentDetail.notes.cancel")}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={saveNewNote}
@@ -2431,7 +2436,7 @@ export default function StudentDetailScreen() {
                         style={[styles.saveButton, { flex: 1, alignItems: "center", opacity: savingNote ? 0.6 : 1, marginLeft: 0 }]}
                       >
                         <Text style={styles.saveButtonText}>
-                          {savingNote ? "Kaydediliyor..." : "Kaydet"}
+                          {savingNote ? t("studentDetail.notes.saving") : t("studentDetail.notes.save")}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -2608,7 +2613,7 @@ function makeStyles(theme: ThemeUI) {
     editQTitle: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm, fontWeight: "800" },
     editQButtons: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
     editQBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: theme.radius.pill, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceSoft },
-    editQBtnActive: { borderColor: theme.colors.accent, backgroundColor: "rgba(56,189,248,0.12)" },
+    editQBtnActive: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
     editQBtnText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, fontWeight: "900" },
     editQBtnTextActive: { color: theme.colors.accent },
     editQNote: {
@@ -2680,7 +2685,7 @@ function makeStyles(theme: ThemeUI) {
     badge: { paddingHorizontal: theme.spacing.sm - 2, paddingVertical: theme.spacing.xs - 2, borderRadius: theme.radius.pill, borderWidth: 1, alignSelf: "flex-start", marginLeft: theme.spacing.md - 4 },
     badgeYes: { backgroundColor: theme.colors.successSoft, borderColor: "rgba(34,197,94,0.35)" },
     badgeNo: { backgroundColor: theme.colors.dangerSoft, borderColor: "rgba(248,113,113,0.35)" },
-    badgeNA: { backgroundColor: "rgba(148,163,184,0.12)", borderColor: "rgba(148,163,184,0.25)" },
+    badgeNA: { backgroundColor: theme.colors.mutedSoft, borderColor: "rgba(148,163,184,0.25)" },
     badgeText: { fontSize: theme.fontSize.xs, fontWeight: "800" },
     badgeTextYes: { color: theme.colors.success },
     badgeTextNo: { color: theme.colors.danger },
@@ -2738,7 +2743,7 @@ function makeStyles(theme: ThemeUI) {
     followUpLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, fontWeight: "700" },
     followUpPillsRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: theme.spacing.xs },
     followUpPill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: theme.radius.pill, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceSoft },
-    followUpPillActive: { borderColor: theme.colors.accent, backgroundColor: "rgba(56,189,248,0.12)" },
+    followUpPillActive: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
     followUpPillText: { color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, fontWeight: "800" },
     followUpPillTextActive: { color: theme.colors.accent },
     followUpSavingText: { color: theme.colors.text.muted, fontSize: theme.fontSize.xs, fontWeight: "700", marginLeft: 4 },
