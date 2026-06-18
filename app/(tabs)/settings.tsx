@@ -1,7 +1,8 @@
 import { setAppLanguage } from "@/services/i18n";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { sendPasswordResetEmail, signOut } from "firebase/auth";
+import { deleteUser, sendPasswordResetEmail, signOut } from "firebase/auth";
+import { deleteDoc } from "firebase/firestore";
 import {
   Bell,
   ChevronRight,
@@ -255,22 +256,50 @@ export default function SettingsScreen() {
     await signOut(auth);
     router.replace("/login");
   }, [router]);
-  const handleDeleteAccount = useCallback(async () => {
-    Alert.alert(
-      t("settings.deleteAccount") || "Hesabı Sil",
-      t("settings.deleteAccount.confirm") || "Bu işlem geri alınamaz. Hesabınız kalıcı olarak silinecek.",
-      [
-        { text: t("common.cancel") || "İptal", style: "cancel" },
-        {
-          text: t("settings.deleteAccount.confirm.action") || "Sil",
-          style: "destructive",
-          onPress: async () => {
-            // silme işlemi buraya
-          },
+const handleDeleteAccount = useCallback(async () => {
+  Alert.alert(
+    t("settings.deleteAccount") || "Hesabı Sil",
+    t("settings.deleteAccount.confirm") || "Bu işlem geri alınamaz. Hesabınız kalıcı olarak silinecek.",
+    [
+      { text: t("common.cancel") || "İptal", style: "cancel" },
+      {
+        text: t("settings.deleteAccount.confirm.action") || "Sil",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const user = auth.currentUser;
+            if (!user) throw new Error("Kullanıcı bulunamadı");
+
+            await deleteDoc(doc(db, "users", user.uid));
+            await deleteUser(user);
+
+          } catch (error: unknown) {
+            const err = error as { code?: string; message?: string };
+
+            if (err.code === "auth/requires-recent-login") {
+              Alert.alert(
+                t("common.error") || "Yeniden Giriş Gerekli",
+                "Güvenlik nedeniyle hesabınızı silmek için tekrar giriş yapmanız gerekiyor.",
+                [
+                  { text: t("common.cancel") || "İptal", style: "cancel" },
+                  {
+                    text: "Giriş Yap",
+                    onPress: () => router.replace("/login"), // ✅ navigation yerine router
+                  },
+                ]
+              );
+            } else {
+              Alert.alert(
+                t("common.error") || "Hata",
+                err.message || "Hesap silinirken bir hata oluştu."
+              );
+            }
+          }
         },
-      ]
-    );
-  }, [t]);
+      },
+    ]
+  );
+}, [t, router]); // ✅ navigation yerine router
   const handleChangePassword = useCallback(async () => {
     const email = auth.currentUser?.email;
     if (!email) {
