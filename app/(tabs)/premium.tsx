@@ -1,3 +1,5 @@
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Cpu } from "lucide-react-native";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -5,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   ScrollView,
   StyleSheet,
   Switch,
@@ -14,13 +17,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { ThemeUI } from "@/constants/types";
-import { useTheme } from "@/constants/usetheme";
-
 import type { BillingCycle, PlanDoc } from "@/constants/paywall";
 import { useTranslation } from "react-i18next";
 import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
 
+import i18n from "@/services/i18n";
 import type { Purchase } from 'react-native-iap';
 import { useIAP } from 'react-native-iap';
 
@@ -84,7 +85,7 @@ export default function PaywallMonthlyScreen({
     onPurchaseError: useCallback((err: any) => {
       setBusy(false);
       if (err.code !== 'E_USER_CANCELLED') {
-        Alert.alert("Hata", err.message || "Ödeme başlatılamadı.");
+        Alert.alert(t("paywall.error.title"), err.message || t("paywall.error.payment"));
       }
     }, []),
     onError: useCallback((err: Error) => {
@@ -110,7 +111,7 @@ export default function PaywallMonthlyScreen({
     setLoading(true);
     fetchSubs({ skus: ITEM_SKUS, type: 'subs' })
       .then(() => console.log('[IAP] fetchSubs done, subscriptions count:', subscriptions.length))
-      .catch((e) => { console.error('[IAP] fetchSubs error:', e); setError("Paketler yüklenemedi."); })
+      .catch((e) => { console.error('[IAP] fetchSubs error:', e); setError(t("paywall.error.load")); })
       .finally(() => setLoading(false));
   }, [connected]);
 
@@ -188,7 +189,7 @@ export default function PaywallMonthlyScreen({
       await requestPurchase({ request: { apple: { sku: productId } }, type: 'subs' });
     } catch (e: any) {
       if (e.code !== 'E_USER_CANCELLED') {
-        Alert.alert("Hata", e.message || "Ödeme başlatılamadı.");
+        Alert.alert(t("paywall.error.title"), e.message || t("paywall.error.payment"));
       }
       setBusy(false);
     }
@@ -413,7 +414,37 @@ export default function PaywallMonthlyScreen({
               <Text style={styles.buyBtnArrow}>→</Text>
             </LinearGradient>
           </TouchableOpacity>
-
+          {/* EULA - Apple Guideline 3.1.2(c) */}
+          <View style={{ marginTop: 8, marginBottom: 4, alignItems: 'center' }}>
+            <Text style={{
+              color: theme.colors.text.muted,
+              fontSize: 11,
+              textAlign: 'center',
+              lineHeight: 16,
+              fontWeight: '600'
+            }}>
+              {t('paywall.legal.agree_prefix')}
+              <Text
+                style={{ color: theme.colors.primary, textDecorationLine: 'underline' }}
+                onPress={() => {
+                  const l = i18n.language.startsWith('tr') ? 'tr' : 'en';
+                  Linking.openURL(`https://www.athletrackai.com/${l}/terms-of-service`);
+                }}
+              >
+                {t('paywall.legal.terms')}
+              </Text>
+              {' & '}
+              <Text
+                style={{ color: theme.colors.primary, textDecorationLine: 'underline' }}
+                onPress={() => {
+                  const l = i18n.language.startsWith('tr') ? 'tr' : 'en';
+                  Linking.openURL(`https://www.athletrackai.com/${l}/privacy-policy`);
+                }}
+              >
+                {t('paywall.legal.privacy')}
+              </Text>
+            </Text>
+          </View>
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={handleRestore}
