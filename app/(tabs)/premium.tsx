@@ -87,7 +87,7 @@ export default function PaywallMonthlyScreen({
       if (err.code !== 'E_USER_CANCELLED') {
         Alert.alert(t("paywall.error.title"), err.message || t("paywall.error.payment"));
       }
-    }, []),
+    }, [t]),
     onError: useCallback((err: Error) => {
       console.error('[IAP] onError:', err.message);
       setError(err.message);

@@ -1,7 +1,8 @@
 import { setAppLanguage } from "@/services/i18n";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { sendPasswordResetEmail, signOut } from "firebase/auth";
+import { deleteUser, sendPasswordResetEmail, signOut } from "firebase/auth";
+import { deleteDoc } from "firebase/firestore";
 import {
   Bell,
   ChevronRight,
@@ -262,7 +263,6 @@ export default function SettingsScreen() {
     await signOut(auth);
     router.replace("/login");
   }, [router]);
-
   const handleDeleteAccount = useCallback(async () => {
     Alert.alert(
       t("settings.deleteAccount"),
@@ -273,13 +273,40 @@ export default function SettingsScreen() {
           text: t("settings.deleteAccount.confirm.action"),
           style: "destructive",
           onPress: async () => {
-            // silme işlemi buraya
+            try {
+              const user = auth.currentUser;
+              if (!user) throw new Error(t("common.error"));
+
+              await deleteDoc(doc(db, "users", user.uid));
+              await deleteUser(user);
+
+            } catch (error: unknown) {
+              const err = error as { code?: string; message?: string };
+
+              if (err.code === "auth/requires-recent-login") {
+                Alert.alert(
+                  t("profile.alert.reAuthTitle"),
+                  t("profile.alert.reAuthMessage"),
+                  [
+                    { text: t("common.cancel"), style: "cancel" },
+                    {
+                      text: t("login.button.sign_in"),
+                      onPress: () => router.replace("/login"),
+                    },
+                  ]
+                );
+              } else {
+                Alert.alert(
+                  t("common.error"),
+                  err.message || t("profile.alert.deleteFailedMessage")
+                );
+              }
+            }
           },
         },
       ]
     );
-  }, [t]);
-
+  }, [t, router]);
   const handleChangePassword = useCallback(async () => {
     const email = auth.currentUser?.email;
     if (!email) {
@@ -297,7 +324,7 @@ export default function SettingsScreen() {
         (t("settings.security.resetSent")) + email
       );
     } catch (err: any) {
-      Alert.alert(t("login.error.prefix"), err?.message ?? "Unknown error");
+      Alert.alert(t("login.error.prefix"), err?.message ?? t("common.error"));
     }
   }, [t]);
 
