@@ -12,6 +12,7 @@ import { ActivityIndicator, Text, View } from "react-native";
 
 // ✅ SENİN THEME PROVIDER
 import { ThemeProvider as AppThemeProvider, useTheme } from "@/constants/usetheme";
+import { PremiumProvider } from "@/constants/PremiumContext";
 import { db } from "@/services/firebase";
 import { registerForPushNotificationsAsync } from "@/services/registerForPush";
 import * as Notifications from "expo-notifications";
@@ -140,7 +141,9 @@ export default function RootLayout() {
   // ✅ önce app theme hydrate olsun diye en dıştan sardırıyoruz
   return (
     <AppThemeProvider>
-      <AppNav />
+      <PremiumProvider>
+        <AppNav />
+      </PremiumProvider>
     </AppThemeProvider>
   );
 }

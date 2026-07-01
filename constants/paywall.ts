@@ -94,7 +94,7 @@ export function calcDisplayedPrice(plan: PlanDoc, billing: BillingCycle) {
 
     return {
         price: effectiveMonthly,
-        suffix: "/ month",
+        suffix: "/ annual",
         annualSavingsText: discount ? `Save %${discount}` : null,
         annualTotal,
     };

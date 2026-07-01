@@ -1,5 +1,6 @@
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
+import { usePremium } from "@/constants/PremiumContext";
 
 import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
@@ -7,7 +8,7 @@ import { studentsColRef } from "@/services/firestorePaths";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { addDoc, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, doc, getDoc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ArrowLeft, Calendar, Save, User as UserIcon } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -108,6 +109,7 @@ const YeniOgrenciScreen = () => {
 
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
+    const { studentLimit, isUnlimited, hasPremium, tier } = usePremium();
 
     const today = new Date().toISOString().split("T")[0];
 
@@ -321,6 +323,33 @@ const YeniOgrenciScreen = () => {
 
         try {
             setSaving(true);
+
+            // Yeni öğrenci eklenirken plan limitini kontrol et
+            if (!isEdit && !isUnlimited) {
+                const uid = auth.currentUser?.uid;
+                if (uid) {
+                    const snap = await getDocs(studentsColRef(uid));
+                    const currentCount = snap.size;
+                    const limit = studentLimit ?? 5; // fallback: ücretsiz plan limiti
+
+                    if (currentCount >= limit) {
+                        setSaving(false);
+                        const tierLabel = tier === 'free' ? 'Ücretsiz' : tier === 'core' ? 'Core' : tier === 'pro' ? 'Pro' : 'Studio';
+                        Alert.alert(
+                            'Öğrenci Limitine Ulaştınız',
+                            `${tierLabel} planınızda en fazla ${limit} öğrenci ekleyebilirsiniz. Daha fazla öğrenci eklemek için planınızı yükseltin.`,
+                            [
+                                { text: 'İptal', style: 'cancel' },
+                                {
+                                    text: 'Premium\'a Geç',
+                                    onPress: () => router.push('/(tabs)/premium'),
+                                },
+                            ]
+                        );
+                        return;
+                    }
+                }
+            }
 
             if (isEdit) {
                 await updateDoc(doc(studentsColRef(auth.currentUser?.uid!), id!), {

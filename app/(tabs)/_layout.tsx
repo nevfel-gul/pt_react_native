@@ -1,5 +1,6 @@
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { usePremium } from "@/constants/PremiumContext";
 import PremiumStarIcon from "@/constants/PremiumStarIcon";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
@@ -15,7 +16,7 @@ export default function TabLayout() {
   const { theme, mode } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const hasPremium = false;
+  const { hasPremium } = usePremium();
   const router = useRouter();
   const [authReady, setAuthReady] = React.useState(false);
   const [isAuthed, setIsAuthed] = React.useState<boolean>(!!auth.currentUser);
