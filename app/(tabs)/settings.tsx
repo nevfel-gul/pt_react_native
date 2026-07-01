@@ -37,9 +37,16 @@ import { doc, setDoc } from "firebase/firestore";
 type TabKey = "preferences" | "security";
 
 const STORAGE_SETTINGS_KEY = "settings_v1";
-const PRIVACY_POLICY_URL = "https://www.athletrackai.com/tr/privacy-policy";
-const TERMS_OF_USE_URL = "https://www.athletrackai.com/en/terms-of-service";
-const COOKIE_POLICY_URL = "https://www.athletrackai.com/en/cookie-policy";
+
+// ✅ DİNAMİK LEGAL LİNKLER - dile göre otomatik değişir
+const getLegalLinks = (lang: string) => {
+  const l = lang.startsWith("tr") ? "tr" : "en";
+  return {
+    privacy: `https://www.athletrackai.com/${l}/privacy-policy`,
+    terms: `https://www.athletrackai.com/${l}/terms-of-service`,
+    cookie: `https://www.athletrackai.com/${l}/cookie-policy`,
+  };
+};
 
 type StoredSettings = {
   pushEnabled: boolean;
@@ -111,6 +118,9 @@ export default function SettingsScreen() {
 
   const [activeTab, setActiveTab] = useState<TabKey>("preferences");
   const [settingsReady, setSettingsReady] = useState(false);
+
+  // ✅ DİNAMİK LEGAL LİNKLER
+  const legalLinks = useMemo(() => getLegalLinks(i18n.language), [i18n.language]);
 
   // ✅ STATE - Her toggle için ayrı state
   const [isDarkMode, setIsDarkMode] = useState(mode === "dark");
@@ -194,12 +204,10 @@ export default function SettingsScreen() {
     async (newValue: boolean) => {
       setIsPushEnabled(newValue);
 
-      // AsyncStorage
       if (settingsReady) {
         await persistSettings({ pushEnabled: newValue });
       }
 
-      // 🔥 Firestore update
       const user = auth.currentUser;
       if (!user) return;
 
@@ -218,7 +226,6 @@ export default function SettingsScreen() {
     },
     [settingsReady, persistSettings]
   );
-
 
   const handleEmailToggle = useCallback(
     (newValue: boolean) => {
@@ -256,56 +263,56 @@ export default function SettingsScreen() {
     await signOut(auth);
     router.replace("/login");
   }, [router]);
-const handleDeleteAccount = useCallback(async () => {
-  Alert.alert(
-    t("settings.deleteAccount") || "Hesabı Sil",
-    t("settings.deleteAccount.confirm") || "Bu işlem geri alınamaz. Hesabınız kalıcı olarak silinecek.",
-    [
-      { text: t("common.cancel") || "İptal", style: "cancel" },
-      {
-        text: t("settings.deleteAccount.confirm.action") || "Sil",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const user = auth.currentUser;
-            if (!user) throw new Error("Kullanıcı bulunamadı");
+  const handleDeleteAccount = useCallback(async () => {
+    Alert.alert(
+      t("settings.deleteAccount"),
+      t("settings.deleteAccount.confirm"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("settings.deleteAccount.confirm.action"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const user = auth.currentUser;
+              if (!user) throw new Error(t("common.error"));
 
-            await deleteDoc(doc(db, "users", user.uid));
-            await deleteUser(user);
+              await deleteDoc(doc(db, "users", user.uid));
+              await deleteUser(user);
 
-          } catch (error: unknown) {
-            const err = error as { code?: string; message?: string };
+            } catch (error: unknown) {
+              const err = error as { code?: string; message?: string };
 
-            if (err.code === "auth/requires-recent-login") {
-              Alert.alert(
-                t("common.error") || "Yeniden Giriş Gerekli",
-                "Güvenlik nedeniyle hesabınızı silmek için tekrar giriş yapmanız gerekiyor.",
-                [
-                  { text: t("common.cancel") || "İptal", style: "cancel" },
-                  {
-                    text: "Giriş Yap",
-                    onPress: () => router.replace("/login"), // ✅ navigation yerine router
-                  },
-                ]
-              );
-            } else {
-              Alert.alert(
-                t("common.error") || "Hata",
-                err.message || "Hesap silinirken bir hata oluştu."
-              );
+              if (err.code === "auth/requires-recent-login") {
+                Alert.alert(
+                  t("profile.alert.reAuthTitle"),
+                  t("profile.alert.reAuthMessage"),
+                  [
+                    { text: t("common.cancel"), style: "cancel" },
+                    {
+                      text: t("login.button.sign_in"),
+                      onPress: () => router.replace("/login"),
+                    },
+                  ]
+                );
+              } else {
+                Alert.alert(
+                  t("common.error"),
+                  err.message || t("profile.alert.deleteFailedMessage")
+                );
+              }
             }
-          }
+          },
         },
-      },
-    ]
-  );
-}, [t, router]); // ✅ navigation yerine router
+      ]
+    );
+  }, [t, router]);
   const handleChangePassword = useCallback(async () => {
     const email = auth.currentUser?.email;
     if (!email) {
       Alert.alert(
-        t("login.error.prefix") || "Hata",
-        t("settings.security.noEmail") || "E-posta bulunamadı."
+        t("login.error.prefix"),
+        t("settings.security.noEmail"),
       );
       return;
     }
@@ -313,24 +320,21 @@ const handleDeleteAccount = useCallback(async () => {
     try {
       await sendPasswordResetEmail(auth, email);
       Alert.alert(
-        t("settings.security.changePassword") || "Şifre Değiştir",
-        (t("settings.security.resetSent") || "Şifre sıfırlama maili gönderildi: ") + email
+        t("settings.security.changePassword"),
+        (t("settings.security.resetSent")) + email
       );
     } catch (err: any) {
-      Alert.alert(t("login.error.prefix") || "Hata", err?.message ?? "Unknown error");
+      Alert.alert(t("login.error.prefix"), err?.message ?? t("common.error"));
     }
   }, [t]);
 
-  const handleOpenPrivacyPolicy = useCallback(async () => {
+  const handleOpenLink = useCallback(async (url: string) => {
     try {
-      const can = await Linking.canOpenURL(PRIVACY_POLICY_URL);
-      if (!can) {
-        Alert.alert(t("settings.about.privacyPolicy") || "Privacy Policy", "Link açılamıyor.");
-        return;
-      }
-      await Linking.openURL(PRIVACY_POLICY_URL);
+      const can = await Linking.canOpenURL(url);
+      if (!can) { Alert.alert(t("common.error"), t("settings.error.linkFailed")); return; }
+      await Linking.openURL(url);
     } catch {
-      Alert.alert(t("settings.about.privacyPolicy") || "Privacy Policy", "Link açılamıyor.");
+      Alert.alert(t("common.error"), t("settings.error.linkFailed"));
     }
   }, [t]);
 
@@ -517,25 +521,19 @@ const handleDeleteAccount = useCallback(async () => {
           <SettingRow
             label={t("settings.about.privacyPolicy")}
             right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
-            onPress={handleOpenPrivacyPolicy}
+            onPress={() => handleOpenLink(legalLinks.privacy)}
           />
 
           <SettingRow
-            label={t("settings.about.termsOfUse") || "Kullanım Koşulları"}
+            label={t("settings.about.termsOfUse")}
             right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
-            onPress={async () => {
-              const can = await Linking.canOpenURL(TERMS_OF_USE_URL);
-              if (can) await Linking.openURL(TERMS_OF_USE_URL);
-            }}
+            onPress={() => handleOpenLink(legalLinks.terms)}
           />
 
           <SettingRow
-            label={t("settings.about.cookiePolicy") || "Çerez Politikası"}
+            label={t("settings.about.cookiePolicy")}
             right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
-            onPress={async () => {
-              const can = await Linking.canOpenURL(COOKIE_POLICY_URL);
-              if (can) await Linking.openURL(COOKIE_POLICY_URL);
-            }}
+            onPress={() => handleOpenLink(legalLinks.cookie)}
             isLast
           />
         </View>
@@ -551,12 +549,13 @@ const handleDeleteAccount = useCallback(async () => {
       isHapticEnabled,
       i18n.language,
       colors,
+      legalLinks,
       handleThemeToggle,
       handlePushToggle,
       handleEmailToggle,
       handleHapticToggle,
       handleLanguagePress,
-      handleOpenPrivacyPolicy,
+      handleOpenLink,
       SectionHeader,
       SettingRow,
     ]
@@ -633,7 +632,19 @@ const handleDeleteAccount = useCallback(async () => {
           <SettingRow
             label={t("settings.about.privacyPolicy")}
             right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
-            onPress={handleOpenPrivacyPolicy}
+            onPress={() => handleOpenLink(legalLinks.privacy)}
+          />
+
+          <SettingRow
+            label={t("settings.about.termsOfUse")}
+            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
+            onPress={() => handleOpenLink(legalLinks.terms)}
+          />
+
+          <SettingRow
+            label={t("settings.about.cookiePolicy")}
+            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
+            onPress={() => handleOpenLink(legalLinks.cookie)}
             isLast
           />
         </View>
@@ -645,7 +656,7 @@ const handleDeleteAccount = useCallback(async () => {
 
         {/* ✅ HESABI SİL - Soluk, göze batmayan */}
         <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
-          <Text style={styles.deleteAccountText}>{t("settings.deleteAccount") || "Hesabı Sil"}</Text>
+          <Text style={styles.deleteAccountText}>{t("settings.deleteAccount")}</Text>
         </TouchableOpacity>
       </>
     ),
@@ -656,11 +667,13 @@ const handleDeleteAccount = useCallback(async () => {
       isSaveLoginEnabled,
       isTwoFactorEnabled,
       colors,
+      legalLinks,
       handleSaveLoginToggle,
       handleTwoFactorToggle,
       handleChangePassword,
-      handleOpenPrivacyPolicy,
+      handleOpenLink,
       handleLogout,
+      handleDeleteAccount,
       SectionHeader,
       SettingRow,
     ]
@@ -854,5 +867,4 @@ function makeStyles(theme: ThemeUI) {
       fontWeight: "700",
     },
   });
-
 }

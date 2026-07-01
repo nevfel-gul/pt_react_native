@@ -1,3 +1,5 @@
+import type { ThemeUI } from "@/constants/types";
+import { useTheme } from "@/constants/usetheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Cpu } from "lucide-react-native";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -5,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   ScrollView,
   StyleSheet,
   Switch,
@@ -14,18 +17,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { ThemeUI } from "@/constants/types";
-import { useTheme } from "@/constants/usetheme";
-
 import type { BillingCycle, PlanDoc } from "@/constants/paywall";
+import type { PremiumTier } from "@/constants/PremiumContext";
+import { TIER_STUDENT_LIMITS, usePremium } from "@/constants/PremiumContext";
 import { useTranslation } from "react-i18next";
 import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
-import { usePremium, TIER_STUDENT_LIMITS } from "@/constants/PremiumContext";
-import type { PremiumTier } from "@/constants/PremiumContext";
 
+import i18n from "@/services/i18n";
+import { useRouter } from 'expo-router';
 import type { Purchase } from 'react-native-iap';
 import { useIAP } from 'react-native-iap';
-import { useRouter } from 'expo-router';
 
 const ITEM_SKUS = [
   'athletrack_core_monthly',
@@ -199,16 +200,10 @@ export default function PaywallMonthlyScreen({
 
     onPurchaseError: useCallback((err: any) => {
       setBusyState(null);
-      // Kullanıcı kendi iptal ettiyse sessiz geç
-      if (err?.code === 'E_USER_CANCELLED') return;
-      Alert.alert('Ödeme Başarısız', iapErrorMessage(err));
-    }, []),
-
-    onError: useCallback((err: Error) => {
-      console.error('[IAP] onError:', err.message);
-      setFetchError('Mağaza bağlantısı kurulamadı.');
-      setLoading(false);
-    }, []),
+      if (err?.code !== 'E_USER_CANCELLED') {
+        Alert.alert(t("paywall.error.title"), err?.message || t("paywall.error.payment"));
+      }
+    }, [t]),
   });
 
   // Mevcut aktif abonelik (varsa)
@@ -257,6 +252,7 @@ export default function PaywallMonthlyScreen({
       })
       .finally(() => setLoading(false));
   }, [fetchSubs, getActiveSubscriptions]);
+
 
   useEffect(() => {
     if (!connected) return;
@@ -382,14 +378,14 @@ export default function PaywallMonthlyScreen({
       await requestPurchase({ request: { apple: { sku: productId } }, type: 'subs' });
       // onPurchaseSuccess callback'i başarıda tetiklenir, burada setBusy(null) gerek yok
     } catch (e: any) {
-      // E_USER_CANCELLED sessiz geçer, diğerleri onPurchaseError'da handle edilir
-      // Sadece requestPurchase'ın direkt throw ettiği hatalar için:
       if (e?.code !== 'E_USER_CANCELLED') {
-        Alert.alert('Ödeme Başarısız', iapErrorMessage(e));
+        Alert.alert(t("paywall.error.title"), e?.message || t("paywall.error.payment"));
       }
       setBusyState(null);
     }
   }, [billing, busyState, getAppleProductId, purchaseAction, requestPurchase, selectedPlan]);
+
+
 
   // Satın almaları geri yükle
   const handleRestore = useCallback(async () => {
@@ -416,8 +412,8 @@ export default function PaywallMonthlyScreen({
           const tier = (restoredProductId.includes('core')
             ? 'core'
             : restoredProductId.includes('studio')
-            ? 'studio'
-            : 'pro') as PremiumTier;
+              ? 'studio'
+              : 'pro') as PremiumTier;
           const billing = restoredProductId.includes('annually') ? 'annual' : 'monthly';
           const isUnlimited = tier === 'studio';
           try {
@@ -615,49 +611,80 @@ export default function PaywallMonthlyScreen({
           ))}
         </View>
 
-        <Text style={styles.cancelText}>{t('paywall.cancel_text')}</Text>
-      </ScrollView>
+        <Text style={styles.cancelText}>{t("paywall.cancel_text")}</Text>
 
-      {/* Butonlar ScrollView dışında — ekranın altında sabit */}
-      <View style={[styles.fixedBottom, { paddingBottom: 8 + insets.bottom }]}>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={handlePurchase}
-          disabled={continueDisabled}
-          style={[styles.buyBtnWrap, continueDisabled && styles.ctaDisabled]}
+        <View
+          style={[styles.fixedBottom, { paddingBottom: 8 + insets.bottom }]}
         >
-          <LinearGradient
-            colors={buyButtonGradient}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            locations={[0, 0.25, 0.5, 0.75, 1]}
-            style={styles.buyBtnGradient}
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handlePurchase}
+            disabled={continueDisabled}
+            style={[styles.buyBtnWrap, continueDisabled && styles.ctaDisabled]}
           >
-            {busyState === 'purchase' ? (
-              <ActivityIndicator color="#fff" size="small" />
+            <LinearGradient
+              colors={buyButtonGradient}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              locations={[0, 0.25, 0.5, 0.75, 1]}
+              style={styles.buyBtnGradient}
+            >
+              {busyState === 'purchase' ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.buyBtnText}>{ctaLabel}</Text>
+              )}
+              <Text style={styles.buyBtnArrow}>→</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          {/* EULA - Apple Guideline 3.1.2(c) */}
+          <View style={{ marginTop: 8, marginBottom: 4, alignItems: 'center' }}>
+            <Text style={{
+              color: theme.colors.text.muted,
+              fontSize: 11,
+              textAlign: 'center',
+              lineHeight: 16,
+              fontWeight: '600'
+            }}>
+              {t('paywall.legal.agree_prefix')}
+              <Text
+                style={{ color: theme.colors.primary, textDecorationLine: 'underline' }}
+                onPress={() => {
+                  const l = i18n.language.startsWith('tr') ? 'tr' : 'en';
+                  Linking.openURL(`https://www.athletrackai.com/${l}/terms-of-service`);
+                }}
+              >
+                {t('paywall.legal.terms')}
+              </Text>
+              {' & '}
+              <Text
+                style={{ color: theme.colors.primary, textDecorationLine: 'underline' }}
+                onPress={() => {
+                  const l = i18n.language.startsWith('tr') ? 'tr' : 'en';
+                  Linking.openURL(`https://www.athletrackai.com/${l}/privacy-policy`);
+                }}
+              >
+                {t('paywall.legal.privacy')}
+              </Text>
+            </Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handleRestore}
+            disabled={isBusy}
+            style={[styles.restoreBtn, isBusy && styles.ctaDisabled]}
+          >
+            {busyState === 'restore' ? (
+              <ActivityIndicator color={theme.colors.text.muted} size="small" />
             ) : (
-              <Text style={styles.buyBtnText}>{ctaLabel}</Text>
+              <Text style={styles.restoreText}>{t("paywall.cta.restore")}</Text>
             )}
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={handleRestore}
-          disabled={isBusy}
-          style={[styles.restoreBtn, isBusy && styles.ctaDisabled]}
-        >
-          {busyState === 'restore' ? (
-            <ActivityIndicator color={theme.colors.text.muted} size="small" />
-          ) : (
-            <Text style={styles.restoreText}>{t('paywall.cta.restore')}</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 }
-
 // ─────────────────────────────────────────────
 // PlanCard
 // ─────────────────────────────────────────────
@@ -972,7 +999,7 @@ function makeStyles(theme: ThemeUI, mode: 'dark' | 'light') {
       gap: 10,
     },
     buyBtnText: { color: '#ffffff', fontSize: 17, fontWeight: '900' },
-
+    buyBtnArrow: { color: '#ffffff', fontSize: 17, fontWeight: '900', marginLeft: 4 },
     ctaDisabled: { opacity: 0.55 },
 
     restoreBtn: {
