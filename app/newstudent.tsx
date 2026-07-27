@@ -1,6 +1,6 @@
+import { usePremium } from "@/constants/PremiumContext";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
-import { usePremium } from "@/constants/PremiumContext";
 
 import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
@@ -496,6 +496,8 @@ const YeniOgrenciScreen = () => {
                                                     value={parseISODate(form.dateOfBirth) ?? new Date(2000, 0, 1)}
                                                     mode="date"
                                                     display={Platform.OS === "ios" ? "spinner" : "default"}
+                                                    textColor={theme.colors.text.primary}
+                                                    themeVariant={theme.colors.background === "#020617" ? "dark" : "light"}
                                                     onChange={(event, selected) => {
                                                         // Android seçince kapat
                                                         if (Platform.OS !== "ios") setShowDobPicker(false);
