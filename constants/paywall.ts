@@ -31,6 +31,12 @@ export type PlanDoc = {
     monthlyPrice: number;
     annualDiscountPercent?: number;
 
+    // App Store Connect'ten gelen fiyatı OLDUĞU GİBI göster.
+    // displayPrice: Apple'ın localized fiyat string'i (ör. "$89.99", "₺1.499,99")
+    // priceAmount: aynı fiyatın sayısal karşılığı (bu ürünün dönemine ait: aylık ürün → aylık, yıllık ürün → yıllık)
+    displayPrice?: string;
+    priceAmount?: number;
+
     perClientNoteMode?: "auto" | "custom";
     footnote?: string | null;
 
@@ -75,28 +81,25 @@ export async function fetchActivePlans(): Promise<PlanDoc[]> {
     });
 }
 
+// App Store Connect / Apple'ın verdiği fiyatı OLDUĞU GİBI döndürür.
+// Uygulama tarafında HİÇBİR fiyat hesabı yapılmaz — Apple ne diyorsa o gösterilir
+// (Apple reddi bu yüzdendi: ekrandaki fiyat App Store Connect fiyatından farklıydı).
 export function calcDisplayedPrice(plan: PlanDoc, billing: BillingCycle) {
-    const monthly = Number(plan.monthlyPrice || 0);
-
-    if (billing === "monthly") {
-        return {
-            price: monthly,
-            suffix: "/ month",
-            annualSavingsText: plan.annualDiscountPercent
-                ? `Save %${plan.annualDiscountPercent}`
-                : null,
-        };
-    }
-
-    const discount = Math.max(0, Math.min(100, Number(plan.annualDiscountPercent || 0)));
-    const annualTotal = monthly * 12 * (1 - discount / 100);
-    const effectiveMonthly = annualTotal / 12;
+    const amount = Number(plan.priceAmount ?? plan.monthlyPrice ?? 0);
+    // Apple localized string yoksa sayısal fiyattan güvenli bir fallback üret.
+    const display = plan.displayPrice && plan.displayPrice.length > 0
+        ? plan.displayPrice
+        : `${amount.toFixed(2)}`;
 
     return {
-        price: effectiveMonthly,
-        suffix: "/ annual",
-        annualSavingsText: discount ? `Save %${discount}` : null,
-        annualTotal,
+        // price: doğrudan gösterilecek Apple string'i (para birimi sembolü dahil)
+        price: display,
+        amount,
+        // suffix i18n olarak component'te belirleniyor; burada dönem bilgisi taşınır
+        period: billing === "annual" ? "year" : "month",
+        annualSavingsText: plan.annualDiscountPercent
+            ? `Save %${plan.annualDiscountPercent}`
+            : null,
     };
 }
 
@@ -108,8 +111,12 @@ export function calcPerClientText(plan: PlanDoc, billing: BillingCycle) {
     const limit = Number(plan.studentLimit || 0);
     if (!limit) return null;
 
-    const perClient = Number(billing === "monthly" ? plan.monthlyPrice : (plan.monthlyPrice * (1 - (plan.annualDiscountPercent || 0) / 100))) / limit;
-    return `$ ${perClient.toFixed(2)} Each Client`;
+    // Gerçek Apple fiyatı üzerinden aylık eşdeğer öğrenci başı maliyet.
+    // Yıllık üründe priceAmount yıllık tutardır → aylığa bölerek karşılaştırılabilir tutulur.
+    const amount = Number(plan.priceAmount ?? plan.monthlyPrice ?? 0);
+    const perMonth = billing === "annual" ? amount / 12 : amount;
+    const perClient = perMonth / limit;
+    return `${perClient.toFixed(2)} / client`;
 }
 
 export async function createPendingSubscription(params: {

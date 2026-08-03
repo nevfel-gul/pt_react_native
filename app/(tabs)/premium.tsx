@@ -262,28 +262,69 @@ export default function PaywallMonthlyScreen({
   // subscriptions gelince PlanDoc'a dönüştür
   useEffect(() => {
     if (subscriptions.length === 0) return;
-    const formatted: PlanDoc[] = subscriptions.map((prod, index) => {
-      const pId = prod.id;
-      const rawPrice = prod.price;
-      const numericPrice = typeof rawPrice === 'number'
-        ? rawPrice
-        : parseFloat(String(rawPrice).replace(/[^0-9.]/g, '')) || 0;
 
-      const tier = pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro';
+    const parseAmount = (raw: unknown): number =>
+      typeof raw === 'number'
+        ? raw
+        : parseFloat(String(raw).replace(/[^0-9.]/g, '')) || 0;
+
+    // Apple'ın localized fiyat string'i. react-native-iap v14 → displayPrice;
+    // eski sürüm alanı localizedPrice; ikisi de yoksa sayısaldan güvenli fallback.
+    const pickDisplayPrice = (prod: any, amount: number): string => {
+      const s = prod?.displayPrice ?? prod?.localizedPrice;
+      return typeof s === 'string' && s.length > 0 ? s : amount.toFixed(2);
+    };
+
+    const getTier = (pId: string) =>
+      pId.includes('core') ? 'core' : pId.includes('studio') ? 'studio' : 'pro';
+
+    // 1) Ham ürünleri çıkar (fiyat Apple'dan olduğu gibi alınır)
+    const base = subscriptions.map((prod, index) => {
+      const pId = prod.id;
+      const amount = parseAmount(prod.price);
       return {
-        id: pId,
+        prod,
+        index,
+        pId,
+        tier: getTier(pId),
+        amount,
+        displayPrice: pickDisplayPrice(prod, amount),
+      };
+    });
+
+    // 2) Tier başına aylık ürün fiyatını topla (gerçek indirim yüzdesi hesabı için)
+    const monthlyByTier: Record<string, number> = {};
+    base.forEach((b) => {
+      if (b.pId.includes('monthly')) monthlyByTier[b.tier] = b.amount;
+    });
+
+    const formatted: PlanDoc[] = base.map((b) => {
+      // İndirim yüzdesi = gerçek aylık ve yıllık Apple fiyatlarından türetilir (uydurma değil).
+      let annualDiscountPercent = 0;
+      if (b.pId.includes('annually')) {
+        const monthly = monthlyByTier[b.tier];
+        if (monthly && monthly > 0) {
+          annualDiscountPercent = Math.round((1 - b.amount / (monthly * 12)) * 100);
+          if (annualDiscountPercent < 0) annualDiscountPercent = 0;
+        }
+      }
+
+      return {
+        id: b.pId,
         active: true,
-        sortOrder: index + 1,
-        tier,
-        title: prod.title || 'Plan',
-        subtitle: prod.description || '',
-        currency: prod.currency || 'USD',
-        monthlyPrice: numericPrice,
-        topPick: pId.includes('pro'),
+        sortOrder: b.index + 1,
+        tier: b.tier,
+        title: b.prod.title || 'Plan',
+        subtitle: b.prod.description || '',
+        currency: b.prod.currency || 'USD',
+        monthlyPrice: b.amount,
+        priceAmount: b.amount,
+        displayPrice: b.displayPrice,
+        topPick: b.pId.includes('pro'),
         features: [],
-        annualDiscountPercent: 25,
-        isUnlimited: pId.includes('studio'),
-        studentLimit: TIER_STUDENT_LIMITS[tier as PremiumTier] ?? null,
+        annualDiscountPercent,
+        isUnlimited: b.pId.includes('studio'),
+        studentLimit: TIER_STUDENT_LIMITS[b.tier as PremiumTier] ?? null,
         perClientNoteMode: 'auto',
         footnote: null,
       };
@@ -462,9 +503,14 @@ export default function PaywallMonthlyScreen({
   }, [busyState, purchaseAction, t]);
 
   const saveText = useMemo(() => {
-    const d = plans[0]?.annualDiscountPercent ?? 0;
+    // Aylık/yıllık her iki görünümde de yıllık tasarrufu tanıt.
+    // Yüzde gerçek Apple fiyatlarından hesaplandı; en yüksek tasarrufu ("up to") göster.
+    const annualDiscounts = allProducts
+      .filter((p) => p.id.includes('annually'))
+      .map((p) => p.annualDiscountPercent ?? 0);
+    const d = annualDiscounts.length ? Math.max(...annualDiscounts) : 0;
     return d ? t('paywall.billing.save', { percent: d }) : null;
-  }, [plans, t]);
+  }, [allProducts, t]);
 
   const accent = billing === 'annual' ? theme.colors.premium : theme.colors.primary;
 
@@ -831,9 +877,12 @@ const PlanCard = memo(function PlanCard({
               letterSpacing: -0.5,
             }}
           >
-            ${Number(priceInfo.price).toFixed(2)}{' '}
+            {/* App Store Connect fiyatı OLDUĞU GİBI (para birimi sembolü Apple string'inde) */}
+            {priceInfo.price}{' '}
             <Text style={{ color: theme.colors.text.muted, fontSize: 12, fontWeight: '900' }}>
-              {priceInfo.suffix}
+              {priceInfo.period === 'year'
+                ? t('paywall.plan.period_year')
+                : t('paywall.plan.period_month')}
             </Text>
           </Text>
 

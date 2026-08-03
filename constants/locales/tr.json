@@ -682,6 +682,8 @@
   "paywall.plan.studio.subtitle": "Sınırsız Öğrenci",
   "paywall.plan.top_pick": "En Popüler",
   "paywall.plan.unlimited_note": "* öğrenci sayısı arttıkça düşer",
+  "paywall.plan.period_month": "/ ay",
+  "paywall.plan.period_year": "/ yıl",
   "paywall.features.ai_detection.title": "AI Tespiti",
   "paywall.features.ai_detection.description": "Gelişmiş algoritmalar\nkullanarak içerik\nanalizi yapar ve\nAI tarafından\nüretilip üretilmediğini\nbelirler.",
   "paywall.cancel_text": "Planı istediğin zaman değiştirebilir veya iptal edebilirsin.",
