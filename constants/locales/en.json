@@ -679,6 +679,8 @@
   "paywall.plan.studio.subtitle": "Unlimited Students",
   "paywall.plan.top_pick": "Top Pick",
   "paywall.plan.unlimited_note": "* decreases as you add",
+  "paywall.plan.period_month": "/ month",
+  "paywall.plan.period_year": "/ year",
   "paywall.features.ai_detection.title": "AI Detection",
   "paywall.features.ai_detection.description": "Uses advanced\nalgorithms to analyze\npatterns and detect\nwhether content is AI\ngenerated.",
   "paywall.cancel_text": "Change plans or cancel anytime.",
