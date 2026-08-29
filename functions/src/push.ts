@@ -1,5 +1,4 @@
-import fetch from "node-fetch";
-
+// Node 20 runtime'da global fetch mevcut (node-fetch gerekmez).
 export async function sendPush(
     token: string,
     title: string,

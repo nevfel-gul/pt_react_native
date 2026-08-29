@@ -3,7 +3,6 @@ import * as logger from "firebase-functions/logger";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import fetch from "node-fetch";
 import OpenAI from "openai";
 
 setGlobalOptions({ region: "europe-west1" });
