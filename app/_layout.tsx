@@ -8,26 +8,43 @@ import { initI18n } from "@/services/i18n";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Text, View } from "react-native";
 
 // ✅ SENİN THEME PROVIDER
 import { ThemeProvider as AppThemeProvider, useTheme } from "@/constants/usetheme";
 import { PremiumProvider } from "@/constants/PremiumContext";
 import { db } from "@/services/firebase";
-import { registerForPushNotificationsAsync } from "@/services/registerForPush";
+import {
+  ensureAndroidChannelAsync,
+  registerForPushNotificationsAsync,
+} from "@/services/registerForPush";
 import * as Notifications from "expo-notifications";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 // 🔔 FOREGROUND BİLDİRİM HANDLER
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
 });
+
+// 🔗 Bildirime tıklandığında gidilecek ekran
+function routeForNotification(data: any): string | null {
+  const studentId = typeof data?.studentId === "string" ? data.studentId : null;
+  if (studentId) return `/student/${studentId}`;
+
+  switch (data?.screen) {
+    case "analytics":
+      return "/(tabs)/analiz";
+    case "premium":
+      return "/(tabs)/premium";
+    default:
+      return null;
+  }
+}
 
 export const unstable_settings = {
   anchor: "/",
@@ -52,38 +69,72 @@ function AppNav() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function setupPush() {
+      // Android kanalı kullanıcıdan bağımsız, açılışta bir kez kurulur.
+      try {
+        await ensureAndroidChannelAsync();
+      } catch (err) {
+        console.warn("Push channel error:", err);
+      }
+
       if (!user) return;
 
       try {
-        // 🔎 Önce user doc’u çek
         const userRef = doc(db, "users", user.uid);
         const snap = await getDoc(userRef);
 
-        const pushEnabled = snap.data()?.pushEnabled ?? false;
+        // Kayıt sırasında pushEnabled true yazılır; alan yoksa da açık kabul et.
+        const pushEnabled = snap.data()?.pushEnabled ?? true;
+        if (!pushEnabled) return;
 
-        if (!pushEnabled) {
-          return;
-        }
+        const result = await registerForPushNotificationsAsync();
+        if (cancelled || result.status !== "granted") return;
 
-        const token = await registerForPushNotificationsAsync();
-        if (!token) return;
+        // Token değişmediyse gereksiz yazma yapma.
+        if (snap.data()?.pushToken === result.token) return;
 
         await setDoc(
           userRef,
           {
-            pushToken: token,
-            updatedAt: new Date(),
+            pushToken: result.token,
+            pushPlatform: Platform.OS,
+            pushTokenUpdatedAt: new Date(),
           },
           { merge: true }
         );
       } catch (err) {
-        console.log("Push setup error:", err);
+        console.warn("Push setup error:", err);
       }
     }
 
     setupPush();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
+
+  // 🔔 Bildirime tıklama → ilgili ekrana git (uygulama kapalıyken de çalışır)
+  useEffect(() => {
+    if (!user) return;
+
+    const go = (response: Notifications.NotificationResponse | null) => {
+      if (!response) return;
+      const data = response.notification.request.content.data;
+      const route = routeForNotification(data);
+      if (route) router.push(route as any);
+    };
+
+    // Uygulama bildirime tıklanarak açıldıysa
+    Notifications.getLastNotificationResponseAsync().then(go).catch(() => {});
+
+    const subscription =
+      Notifications.addNotificationResponseReceivedListener(go);
+
+    return () => subscription.remove();
+  }, [user, router]);
 
 
   useEffect(() => {

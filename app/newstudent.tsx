@@ -8,7 +8,7 @@ import { studentsColRef } from "@/services/firestorePaths";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { addDoc, doc, getDoc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, doc, getCountFromServer, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ArrowLeft, Calendar, Save, User as UserIcon } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -328,20 +328,25 @@ const YeniOgrenciScreen = () => {
             if (!isEdit && !isUnlimited) {
                 const uid = auth.currentUser?.uid;
                 if (uid) {
-                    const snap = await getDocs(studentsColRef(uid));
-                    const currentCount = snap.size;
+                    // Sayım için tüm öğrenci dokümanlarını indirmeye gerek yok.
+                    const countSnap = await getCountFromServer(studentsColRef(uid));
+                    const currentCount = countSnap.data().count;
                     const limit = studentLimit ?? 5; // fallback: ücretsiz plan limiti
 
                     if (currentCount >= limit) {
                         setSaving(false);
-                        const tierLabel = tier === 'free' ? 'Ücretsiz' : tier === 'core' ? 'Core' : tier === 'pro' ? 'Pro' : 'Studio';
+                        const tierLabel =
+                            tier === 'free' ? t('plan.tier.free')
+                                : tier === 'core' ? 'Core'
+                                    : tier === 'pro' ? 'Pro'
+                                        : 'Studio';
                         Alert.alert(
-                            'Öğrenci Limitine Ulaştınız',
-                            `${tierLabel} planınızda en fazla ${limit} öğrenci ekleyebilirsiniz. Daha fazla öğrenci eklemek için planınızı yükseltin.`,
+                            t('newstudent.limit.title'),
+                            t('newstudent.limit.message', { plan: tierLabel, limit }),
                             [
-                                { text: 'İptal', style: 'cancel' },
+                                { text: t('common.cancel'), style: 'cancel' },
                                 {
-                                    text: 'Premium\'a Geç',
+                                    text: t('newstudent.limit.upgrade'),
                                     onPress: () => router.push('/(tabs)/premium'),
                                 },
                             ]

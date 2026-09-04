@@ -1,15 +1,5 @@
-// services/paywall.ts
-import {
-    addDoc,
-    collection,
-    getDocs,
-    orderBy,
-    query,
-    serverTimestamp,
-    where,
-} from "firebase/firestore";
-import { Platform } from "react-native";
-import { auth, db } from "../services/firebase";
+// constants/paywall.ts
+import { TIER_STUDENT_LIMITS, type PremiumTier } from "./PremiumContext";
 
 export type BillingCycle = "monthly" | "annual";
 
@@ -43,42 +33,24 @@ export type PlanDoc = {
     features?: string[];
 };
 
-export async function fetchActivePlans(): Promise<PlanDoc[]> {
-    // ✅ DEBUG: koleksiyonda hiç plan var mı?
-    const col = collection(db, "plans");
-    const allSnap = await getDocs(col);
+// ─────────────────────────────────────────────
+// ÖĞRENCİ LİMİTİ — TEK DOĞRULUK KAYNAĞI
+//
+// Limit üç ayrı yerde tutuluyordu (TIER_STUDENT_LIMITS, i18n metinleri ve
+// App Store Connect ürün açıklaması) ve üçü birbirini tutmuyordu: kart
+// "50 müşteri" derken uygulama 30'da kilitliyordu. Ekranda gösterilen her
+// sayı artık TIER_STUDENT_LIMITS'ten türetiliyor.
+// ─────────────────────────────────────────────
+export function planTierOf(plan: Pick<PlanDoc, "tier" | "id">): PremiumTier {
+    const raw = (plan.tier ?? plan.id ?? "").toLowerCase();
+    if (raw.includes("studio")) return "studio";
+    if (raw.includes("core")) return "core";
+    // ITEM_SKUS dışında bir id gelirse premium.tsx'teki getTier ile aynı davran.
+    return "pro";
+}
 
-    // ✅ Asıl query: sadece active olanlar
-    const qy = query(col, where("active", "==", true), orderBy("sortOrder", "asc"));
-    const snap = await getDocs(qy);
-
-
-    return snap.docs.map((d) => {
-        const data = d.data() as any;
-
-        return {
-            id: d.id,
-            active: !!data.active,
-            sortOrder: Number(data.sortOrder ?? 0),
-
-            tier: data.tier ?? "",
-            title: data.title ?? "",
-            subtitle: data.subtitle ?? "",
-
-            studentLimit: data.studentLimit ?? null,
-            isUnlimited: !!data.isUnlimited,
-            topPick: !!data.topPick,
-
-            currency: data.currency ?? "USD",
-            monthlyPrice: Number(data.monthlyPrice ?? 0),
-            annualDiscountPercent: Number(data.annualDiscountPercent ?? 0),
-
-            perClientNoteMode: data.perClientNoteMode,
-            footnote: data.footnote ?? null,
-
-            features: Array.isArray(data.features) ? data.features : [],
-        } as PlanDoc;
-    });
+export function planStudentLimit(plan: Pick<PlanDoc, "tier" | "id">): number | null {
+    return TIER_STUDENT_LIMITS[planTierOf(plan)];
 }
 
 // App Store Connect / Apple'ın verdiği fiyatı OLDUĞU GİBI döndürür.
@@ -103,38 +75,42 @@ export function calcDisplayedPrice(plan: PlanDoc, billing: BillingCycle) {
     };
 }
 
-export function calcPerClientText(plan: PlanDoc, billing: BillingCycle) {
-    if (plan.isUnlimited) {
-        return plan.footnote ? plan.footnote : "* decreases as you add";
+/** Tutarı ürünün para birimi + kullanıcının diliyle biçimlendirir. */
+export function formatCurrency(
+    amount: number,
+    currency: string | undefined,
+    locale: string
+): string {
+    try {
+        return new Intl.NumberFormat(locale, {
+            style: "currency",
+            currency: currency || "USD",
+            maximumFractionDigits: 2,
+        }).format(amount);
+    } catch {
+        // Intl/para birimi desteklenmiyorsa sembolsüz de olsa doğru sayıyı göster.
+        return amount.toFixed(2);
     }
-
-    const limit = Number(plan.studentLimit || 0);
-    if (!limit) return null;
-
-    // Gerçek Apple fiyatı üzerinden aylık eşdeğer öğrenci başı maliyet.
-    // Yıllık üründe priceAmount yıllık tutardır → aylığa bölerek karşılaştırılabilir tutulur.
-    const amount = Number(plan.priceAmount ?? plan.monthlyPrice ?? 0);
-    const perMonth = billing === "annual" ? amount / 12 : amount;
-    const perClient = perMonth / limit;
-    return `${perClient.toFixed(2)} / client`;
 }
 
-export async function createPendingSubscription(params: {
-    planId: string;
-    billing: BillingCycle;
-}) {
-    const user = auth.currentUser;
-    if (!user) throw new Error("Not authenticated");
+/**
+ * Öğrenci başına AYLIK maliyet.
+ * Yıllık üründe priceAmount yıllık tutardır → aylığa bölerek karşılaştırılabilir tutulur.
+ * Fiyat sembolsüz düz sayı olarak basılıyordu ("150.00"), üstündeki fiyat ise
+ * Apple'ın localized string'i ("₺1.499,99") — artık ikisi de aynı biçimde.
+ */
+export function calcPerClientAmount(
+    plan: PlanDoc,
+    billing: BillingCycle
+): number | null {
+    if (plan.isUnlimited) return null;
 
-    const ref = collection(db, "users", user.uid, "subscription_intents");
+    const limit = Number(planStudentLimit(plan) ?? 0);
+    if (!limit) return null;
 
-    const docRef = await addDoc(ref, {
-        planId: params.planId,
-        billing: params.billing,
-        status: "pending",
-        platform: Platform.OS,
-        createdAt: serverTimestamp(),
-    });
+    const amount = Number(plan.priceAmount ?? plan.monthlyPrice ?? 0);
+    if (!amount) return null;
 
-    return docRef.id;
+    const perMonth = billing === "annual" ? amount / 12 : amount;
+    return perMonth / limit;
 }

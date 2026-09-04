@@ -4,6 +4,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import OpenAI from "openai";
+import { PushTarget, sendPushBatch } from "./push";
 
 setGlobalOptions({ region: "europe-west1" });
 
@@ -103,30 +104,6 @@ function pickStringArray(v: any, max = 20): string[] {
 
 function makeTraceId() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-async function sendPush(
-    token: string,
-    title: string,
-    body: string
-) {
-    if (!token) return;
-
-    await fetch(
-        "https://exp.host/--/api/v2/push/send",
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                to: token,
-                title,
-                body,
-                sound: "default",
-            }),
-        }
-    );
 }
 
 // -------------------------
@@ -482,7 +459,18 @@ export const campaignPush = onCall(
             throw new HttpsError("unauthenticated", "Login required");
         }
 
-        const { title, body } = request.data;
+        // 🔒 Bu fonksiyon TÜM kullanıcılara bildirim gönderiyor.
+        // Sadece auth kontrolü vardı: giriş yapan herhangi bir kullanıcı
+        // tüm kullanıcı tabanına push atabiliyordu.
+        // Yetki için Firebase Auth custom claim gerekir:
+        //   admin.auth().setCustomUserClaims(uid, { admin: true })
+        if (request.auth.token?.admin !== true) {
+            logger.warn("campaignPush denied", { uid: request.auth.uid });
+            throw new HttpsError("permission-denied", "Admin only");
+        }
+
+        const title = typeof request.data?.title === "string" ? request.data.title.trim() : "";
+        const body = typeof request.data?.body === "string" ? request.data.body.trim() : "";
 
         if (!title || !body) {
             throw new HttpsError(
@@ -498,23 +486,28 @@ export const campaignPush = onCall(
             .where("pushEnabled", "==", true)
             .get();
 
-        const jobs: any[] = [];
+        const targets: PushTarget[] = [];
 
         snap.forEach((doc) => {
             const u = doc.data();
-
-            if (u.pushToken) {
-                jobs.push(
-                    sendPush(u.pushToken, title, body)
-                );
+            if (typeof u.pushToken === "string" && u.pushToken) {
+                targets.push({
+                    userId: doc.id,
+                    token: u.pushToken,
+                    title,
+                    body,
+                    data: { type: "campaign" },
+                });
             }
         });
 
-        await Promise.all(jobs);
+        const sent = await sendPushBatch(targets);
+
+        logger.info("campaignPush sent", { uid: request.auth.uid, sent });
 
         return {
             success: true,
-            count: jobs.length,
+            count: sent,
         };
     }
 );
@@ -534,37 +527,33 @@ export const morningMotivation = onSchedule(
             .get();
 
         const messages = [
-            "Kalk kanka 💪 spor vakti!",
             "Bugün antrenman günü 🔥",
             "Hedefine 1 gün daha yaklaştın 🏋️",
-            "Erteleme, başla!",
-            "Salon seni bekliyor 👀",
+            "Öğrencilerin seni bekliyor 👀",
+            "Güne bir ölçümle başla 💪",
         ];
 
         const random =
             messages[Math.floor(Math.random() * messages.length)];
 
-        const jobs: any[] = [];
+        const targets: PushTarget[] = [];
 
         snap.forEach((doc) => {
             const u = doc.data();
-
-            if (u.pushToken) {
-                jobs.push(
-                    sendPush(
-                        u.pushToken,
-                        "Günaydın ☀️",
-                        random
-                    )
-                );
+            if (typeof u.pushToken === "string" && u.pushToken) {
+                targets.push({
+                    userId: doc.id,
+                    token: u.pushToken,
+                    title: "Günaydın ☀️",
+                    body: random,
+                    data: { type: "morningMotivation" },
+                });
             }
         });
 
-        await Promise.all(jobs);
+        const sent = await sendPushBatch(targets);
 
-        logger.info("Morning push sent", {
-            count: jobs.length,
-        });
+        logger.info("Morning push sent", { count: sent });
     }
 );
 

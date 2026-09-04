@@ -2,7 +2,6 @@ import { setAppLanguage } from "@/services/i18n";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { deleteUser, sendPasswordResetEmail, signOut } from "firebase/auth";
-import { deleteDoc } from "firebase/firestore";
 import {
   Bell,
   ChevronRight,
@@ -27,12 +26,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { registerForPushNotificationsAsync } from "@/services/registerForPush";
 import { auth, db } from "../../services/firebase";
 
 // ✅ THEME
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
-import { doc, setDoc } from "firebase/firestore";
+import { deleteDoc, deleteField, doc, getDoc, setDoc } from "firebase/firestore";
 
 type TabKey = "preferences" | "security";
 
@@ -189,6 +189,45 @@ export default function SettingsScreen() {
     }
   }, []);
 
+  // ✅ SUNUCUDAKİ DEĞERİ SENKRONLA
+  // AsyncStorage cihaza özel; bildirimleri gerçekten gönderen taraf Firestore.
+  // Yeni cihaz / yeniden kurulumda switch'in yalan söylememesi için sunucudan oku.
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      // Önce AsyncStorage yüklensin, yoksa yerel değer sunucu değerini ezer.
+      if (!settingsReady) return;
+
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (!mounted || !snap.exists()) return;
+
+        const remote = snap.data()?.pushEnabled;
+        if (typeof remote !== "boolean") return;
+
+        // Sunucu açık diyor ama cihazda token yoksa (izin verilmemiş / yeni cihaz)
+        // gerçek durum kapalıdır.
+        const effective = remote
+          ? (await registerForPushNotificationsAsync(false)).status === "granted"
+          : false;
+
+        if (!mounted) return;
+        setIsPushEnabled(effective);
+        persistSettings({ pushEnabled: effective });
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [settingsReady, persistSettings]);
+
   // ✅ HANDLERS
   const handleThemeToggle = useCallback(
     (newValue: boolean) => {
@@ -202,29 +241,75 @@ export default function SettingsScreen() {
 
   const handlePushToggle = useCallback(
     async (newValue: boolean) => {
-      setIsPushEnabled(newValue);
+      const user = auth.currentUser;
 
-      if (settingsReady) {
-        await persistSettings({ pushEnabled: newValue });
+      // Açılırken: önce izin + token al. Token yoksa sunucu bildirim gönderemez,
+      // bu yüzden switch'i "açık" göstermek kullanıcıyı yanıltır.
+      if (newValue) {
+        setIsPushEnabled(true);
+
+        const result = await registerForPushNotificationsAsync();
+
+        if (result.status !== "granted") {
+          setIsPushEnabled(false);
+          if (settingsReady) await persistSettings({ pushEnabled: false });
+
+          if (result.status === "denied") {
+            Alert.alert(
+              t("settings.push.permissionTitle"),
+              t("settings.push.permissionMessage"),
+              [
+                { text: t("common.cancel"), style: "cancel" },
+                {
+                  text: t("settings.push.openSettings"),
+                  onPress: () => Linking.openSettings(),
+                },
+              ]
+            );
+          }
+          return;
+        }
+
+        if (settingsReady) await persistSettings({ pushEnabled: true });
+        if (!user) return;
+
+        try {
+          await setDoc(
+            doc(db, "users", user.uid),
+            {
+              pushEnabled: true,
+              pushToken: result.token,
+              pushTokenUpdatedAt: new Date(),
+            },
+            { merge: true }
+          );
+        } catch (err) {
+          console.warn("pushEnabled update error:", err);
+        }
+        return;
       }
 
-      const user = auth.currentUser;
+      // Kapatırken: token'ı da sil ki sunucu tarafındaki job'lar bu cihaza
+      // bildirim göndermeye devam etmesin.
+      setIsPushEnabled(false);
+      if (settingsReady) await persistSettings({ pushEnabled: false });
       if (!user) return;
 
       try {
         await setDoc(
           doc(db, "users", user.uid),
           {
-            pushEnabled: newValue,
-            updatedAt: new Date(),
+            pushEnabled: false,
+            pushToken: deleteField(),
+            pushTokenUpdatedAt: new Date(),
           },
           { merge: true }
         );
       } catch (err) {
-        console.log("pushEnabled update error:", err);
+        console.warn("pushEnabled update error:", err);
       }
     },
-    [settingsReady, persistSettings]
+    [settingsReady, persistSettings, t]
   );
 
   const handleEmailToggle = useCallback(
@@ -260,6 +345,21 @@ export default function SettingsScreen() {
   );
 
   const handleLogout = useCallback(async () => {
+    // Token cihaza bağlıdır: temizlenmezse çıkış yapan kullanıcının
+    // bildirimleri aynı cihaza girecek bir sonraki hesaba düşer.
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        await setDoc(
+          doc(db, "users", user.uid),
+          { pushToken: deleteField() },
+          { merge: true }
+        );
+      } catch (err) {
+        console.warn("push token cleanup error:", err);
+      }
+    }
+
     await signOut(auth);
     router.replace("/login");
   }, [router]);

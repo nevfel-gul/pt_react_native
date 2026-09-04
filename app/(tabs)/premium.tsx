@@ -21,7 +21,13 @@ import type { BillingCycle, PlanDoc } from "@/constants/paywall";
 import type { PremiumTier } from "@/constants/PremiumContext";
 import { TIER_STUDENT_LIMITS, usePremium } from "@/constants/PremiumContext";
 import { useTranslation } from "react-i18next";
-import { calcDisplayedPrice, calcPerClientText } from "../../constants/paywall";
+import {
+  calcDisplayedPrice,
+  calcPerClientAmount,
+  formatCurrency,
+  planStudentLimit,
+  planTierOf,
+} from "../../constants/paywall";
 
 import i18n from "@/services/i18n";
 import { useRouter } from 'expo-router';
@@ -41,22 +47,22 @@ const ITEM_SKUS = [
 const TIER_RANK: Record<string, number> = { core: 1, pro: 2, studio: 3 };
 
 // IAP hata kodlarını kullanıcı dostu Türkçe mesajlara çevir
-function iapErrorMessage(err: any): string {
+function iapErrorMessage(err: any, t: (key: string) => string): string {
   const code: string = err?.code ?? '';
   switch (code) {
     case 'E_NETWORK_ERROR':
-      return 'İnternet bağlantınızı kontrol edip tekrar deneyin.';
+      return t('paywall.iap_error.network');
     case 'E_SERVICE_ERROR':
-      return 'App Store şu an yanıt vermiyor. Lütfen biraz sonra tekrar deneyin.';
+      return t('paywall.iap_error.service');
     case 'E_ITEM_UNAVAILABLE':
-      return 'Seçilen paket şu an satışta değil.';
+      return t('paywall.iap_error.unavailable');
     case 'E_PAYMENT_NOT_ALLOWED':
-      return 'Bu cihazda satın alma işlemi kısıtlanmış (Ebeveyn Denetimleri).';
+      return t('paywall.iap_error.not_allowed');
     case 'E_ALREADY_OWNED':
-      return 'Bu pakete zaten abonesiniz. Satın almaları geri yüklemeyi deneyin.';
+      return t('paywall.iap_error.already_owned');
     case 'E_UNKNOWN':
     default:
-      return err?.message || 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.';
+      return err?.message || t('paywall.iap_error.unknown');
   }
 }
 
@@ -170,17 +176,17 @@ export default function PaywallMonthlyScreen({
       if (premiumActivated) {
         const tierLabel = activatedTier === 'studio' ? 'Studio' : activatedTier === 'pro' ? 'Pro' : 'Core';
         const limitText = activatedIsUnlimited
-          ? 'Sınırsız öğrenci ekleyebilirsiniz.'
-          : `${TIER_STUDENT_LIMITS[activatedTier]} öğrenciye kadar ekleyebilirsiniz.`;
+          ? t('paywall.success.unlimited')
+          : t('paywall.success.limit', { limit: TIER_STUDENT_LIMITS[activatedTier] ?? 0 });
         Alert.alert(
-          'Premium Aktif!',
-          `${tierLabel} planınız başarıyla aktif edildi.\n${limitText}`,
-          [{ text: 'Harika!', onPress: () => router.replace('/(tabs)') }],
+          t('paywall.success.title'),
+          `${t('paywall.success.message', { plan: tierLabel })}\n${limitText}`,
+          [{ text: t('paywall.success.ok'), onPress: () => router.replace('/(tabs)') }],
         );
       } else {
         Alert.alert(
-          'Ödeme Alındı',
-          'Ödemeniz alındı ancak hesabınıza yansıtılması biraz zaman alabilir. Sorun devam ederse "Satın Almaları Geri Yükle" seçeneğini deneyin.',
+          t('paywall.pending.title'),
+          t('paywall.pending.message'),
         );
       }
 
@@ -196,7 +202,7 @@ export default function PaywallMonthlyScreen({
           });
         }
       }
-    }, [onPurchase, router, updateSubscription]),
+    }, [onPurchase, router, t, updateSubscription]),
 
     onPurchaseError: useCallback((err: any) => {
       setBusyState(null);
@@ -248,10 +254,10 @@ export default function PaywallMonthlyScreen({
     ])
       .catch((e) => {
         console.error('[IAP] fetchSubs error:', e);
-        setFetchError('Paketler yüklenemedi. İnternet bağlantınızı kontrol edin.');
+        setFetchError(t('paywall.error.load_network'));
       })
       .finally(() => setLoading(false));
-  }, [fetchSubs, getActiveSubscriptions]);
+  }, [fetchSubs, getActiveSubscriptions, t]);
 
 
   useEffect(() => {
@@ -315,7 +321,10 @@ export default function PaywallMonthlyScreen({
         sortOrder: b.index + 1,
         tier: b.tier,
         title: b.prod.title || 'Plan',
-        subtitle: b.prod.description || '',
+        // ⚠️ App Store Connect açıklaması BİLEREK kullanılmıyor: oradaki
+        // "50 müşteri" gibi metinler uygulamanın gerçek limitiyle (30) çelişiyordu.
+        // Kart metni tek doğruluk kaynağı olan TIER_STUDENT_LIMITS'ten üretilir.
+        subtitle: '',
         currency: b.prod.currency || 'USD',
         monthlyPrice: b.amount,
         priceAmount: b.amount,
@@ -323,7 +332,7 @@ export default function PaywallMonthlyScreen({
         topPick: b.pId.includes('pro'),
         features: [],
         annualDiscountPercent,
-        isUnlimited: b.pId.includes('studio'),
+        isUnlimited: b.tier === 'studio',
         studentLimit: TIER_STUDENT_LIMITS[b.tier as PremiumTier] ?? null,
         perClientNoteMode: 'auto',
         footnote: null,
@@ -390,21 +399,24 @@ export default function PaywallMonthlyScreen({
 
     // Mevcut plana tıklandıysa işlem yok
     if (purchaseAction === 'same') {
-      Alert.alert('Mevcut Planınız', 'Bu pakete zaten abonesiniz.');
+      Alert.alert(t('paywall.plan.current'), t('paywall.alert.already_subscribed'));
       return;
     }
 
     // Upgrade/downgrade için onay al
     if (purchaseAction === 'upgrade' || purchaseAction === 'downgrade') {
-      const actionLabel = purchaseAction === 'upgrade' ? 'yükseltmek' : 'düşürmek';
       const confirm = await new Promise<boolean>((resolve) => {
         Alert.alert(
-          purchaseAction === 'upgrade' ? 'Planı Yükselt' : 'Planı Değiştir',
-          `Aboneliğinizi ${selectedPlan.title} planına ${actionLabel} istiyor musunuz?\n\nDeğişiklik bir sonraki faturalama döneminde geçerli olur.`,
+          purchaseAction === 'upgrade'
+            ? t('paywall.change.upgrade_title')
+            : t('paywall.change.downgrade_title'),
+          `${t(`paywall.change.${purchaseAction}_message`, { plan: selectedPlan.title })}\n\n${t('paywall.change.note')}`,
           [
-            { text: 'Vazgeç', style: 'cancel', onPress: () => resolve(false) },
+            { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
             {
-              text: purchaseAction === 'upgrade' ? 'Yükselt' : 'Değiştir',
+              text: purchaseAction === 'upgrade'
+                ? t('paywall.change.upgrade_action')
+                : t('paywall.change.downgrade_action'),
               style: purchaseAction === 'upgrade' ? 'default' : 'destructive',
               onPress: () => resolve(true),
             },
@@ -424,7 +436,7 @@ export default function PaywallMonthlyScreen({
       }
       setBusyState(null);
     }
-  }, [billing, busyState, getAppleProductId, purchaseAction, requestPurchase, selectedPlan]);
+  }, [billing, busyState, getAppleProductId, purchaseAction, requestPurchase, selectedPlan, t]);
 
 
 
@@ -479,26 +491,26 @@ export default function PaywallMonthlyScreen({
         await onRestorePurchases();
       } else {
         Alert.alert(
-          'Satın Almalar Geri Yüklendi',
-          'Aktif abonelikleriniz başarıyla geri yüklendi.',
+          t('paywall.restore.success_title'),
+          t('paywall.restore.success_message'),
         );
       }
     } catch (e: any) {
       Alert.alert(
-        'Geri Yükleme Başarısız',
-        iapErrorMessage(e),
+        t('paywall.restore.error_title'),
+        iapErrorMessage(e, t),
       );
     } finally {
       setBusyState(null);
     }
-  }, [activeSubscriptions, busyState, onRestorePurchases, restorePurchases, updateSubscription]);
+  }, [activeSubscriptions, busyState, onRestorePurchases, restorePurchases, t, updateSubscription]);
 
   // CTA etiketini duruma göre belirle
   const ctaLabel = useMemo(() => {
     if (busyState === 'purchase') return t('paywall.cta.processing');
-    if (purchaseAction === 'upgrade') return 'Planı Yükselt →';
-    if (purchaseAction === 'downgrade') return 'Planı Değiştir →';
-    if (purchaseAction === 'same') return 'Mevcut Planınız';
+    if (purchaseAction === 'upgrade') return `${t('paywall.change.upgrade_title')} →`;
+    if (purchaseAction === 'downgrade') return `${t('paywall.change.downgrade_title')} →`;
+    if (purchaseAction === 'same') return t('paywall.plan.current');
     return t('paywall.cta.buy');
   }, [busyState, purchaseAction, t]);
 
@@ -616,7 +628,7 @@ export default function PaywallMonthlyScreen({
               onPress={doFetchSubs}
               style={[styles.retryBtn, { borderColor: accent }]}
             >
-              <Text style={[styles.retryText, { color: accent }]}>Tekrar Dene</Text>
+              <Text style={[styles.retryText, { color: accent }]}>{t('common.retry')}</Text>
             </TouchableOpacity>
           </View>
         ) : plans.length === 0 ? (
@@ -753,14 +765,39 @@ const PlanCard = memo(function PlanCard({
   theme: ThemeUI;
   mode: 'dark' | 'light';
 }) {
+  const { t, i18n: i18nInstance } = useTranslation();
+
   const priceInfo = useMemo(() => calcDisplayedPrice(plan, billing), [plan, billing]);
+
+  const tier = planTierOf(plan);
+  const limit = planStudentLimit(plan);
+
   const perClient = useMemo(() => {
     if (plan.isUnlimited) return null;
     if (plan.perClientNoteMode === 'custom') return plan.footnote ?? null;
-    return calcPerClientText(plan, billing);
-  }, [plan, billing]);
 
-  const { t } = useTranslation();
+    const amount = calcPerClientAmount(plan, billing);
+    if (amount === null) return null;
+
+    // Üstteki fiyat Apple'ın localized string'i; bu satır da aynı para birimi
+    // ve dille biçimlendirilir (önceden sembolsüz "150.00" basılıyordu).
+    return t('paywall.plan.per_client', {
+      price: formatCurrency(amount, plan.currency, i18nInstance.language),
+    });
+  }, [plan, billing, t, i18nInstance.language]);
+
+  const subtitle = useMemo(
+    () =>
+      plan.isUnlimited
+        ? t('paywall.plan.studio.subtitle')
+        : t(`paywall.plan.${tier}.subtitle`, { limit: limit ?? 0 }),
+    [plan.isUnlimited, tier, limit, t],
+  );
+
+  const limitText = plan.isUnlimited
+    ? t('paywall.plan.unlimited')
+    : t('paywall.plan.limit', { limit: limit ?? 0 });
+
   const cardBg = mode === 'light' ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.1)';
   const border = mode === 'light' ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.06)';
 
@@ -826,7 +863,7 @@ const PlanCard = memo(function PlanCard({
           }}
         >
           <Text style={{ color: '#fff', fontWeight: '900', fontSize: 11 }}>
-            Mevcut Planınız
+            {t('paywall.plan.current')}
           </Text>
         </View>
       ) : null}
@@ -852,7 +889,7 @@ const PlanCard = memo(function PlanCard({
               lineHeight: 18,
             }}
           >
-            {plan.subtitle}
+            {subtitle}
           </Text>
           <Text
             style={{
@@ -862,9 +899,7 @@ const PlanCard = memo(function PlanCard({
               marginTop: 6,
             }}
           >
-            {plan.isUnlimited
-              ? 'Sınırsız öğrenci'
-              : `${TIER_STUDENT_LIMITS[(plan.tier ?? 'pro') as PremiumTier] ?? 0} öğrenciye kadar`}
+            {limitText}
           </Text>
         </View>
 
