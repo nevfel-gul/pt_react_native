@@ -16,7 +16,7 @@ export default function TabLayout() {
   const { theme, mode } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const { hasPremium } = usePremium();
+  const { hasPremium, tier } = usePremium();
   const router = useRouter();
   const [authReady, setAuthReady] = React.useState(false);
   const [isAuthed, setIsAuthed] = React.useState<boolean>(!!auth.currentUser);
@@ -34,7 +34,15 @@ export default function TabLayout() {
   if (!authReady) return null;
   if (!isAuthed) return null;
 
-  const premiumHref = hasPremium ? undefined : "/premium";
+  // En üst pakette (Studio) yükseltilecek bir şey kalmıyor → sekme gizlenir,
+  // sayfaya Ayarlar > Abonelik üzerinden ulaşılır.
+  // Not: expo-router'da sekmeyi gizleyen değer `null`; `undefined` "varsayılan"
+  // demek olduğu için eski kod aslında hiçbir zaman gizlemiyordu.
+  const isTopTier = tier === "studio";
+  const premiumHref = isTopTier ? null : undefined;
+
+  // Premium kullanıcıya "Premium Al" demek anlamsız.
+  const premiumLabel = hasPremium ? t("tabs.upgrade") : t("tabs.premium");
 
   const glow = {
     backgroundColor: theme.colors.accentSoft,
@@ -160,7 +168,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="premium"
         options={{
-          title: t("tabs.premium"),
+          title: premiumLabel,
           href: premiumHref,
 
           tabBarLabel: ({ focused }) => (
@@ -173,7 +181,7 @@ export default function TabLayout() {
                   opacity: focused ? 1 : 0.75,
                 }}
               >
-                {t("tabs.premium")}
+                {premiumLabel}
               </Text>
             </View>
           ),

@@ -17,8 +17,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { TIER_STUDENT_LIMITS, usePremium } from "@/constants/PremiumContext";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
+import { studentsColRef } from "@/services/firestorePaths";
 
 import {
   deleteUser,
@@ -29,6 +31,7 @@ import {
 import {
   deleteDoc,
   doc,
+  getCountFromServer,
   getDoc,
   serverTimestamp,
   setDoc,
@@ -56,23 +59,178 @@ const emptyProfile: ProfileState = {
   business: "",
 };
 
+// input klavyeden ne kadar yukarida dursun?
+const KEYBOARD_GAP = 130;
+
+const sanitizePhone = (v: string) => {
+  const digits = (v ?? "").replace(/\D/g, "");
+  return digits.length > 11 ? digits.slice(0, 11) : digits;
+};
+
+// ⚠️ Bu iki bileşen daha önce ProfileScreen'in İÇİNDE tanımlıydı. Her render'da
+// yeni bir fonksiyon kimliği oluştuğu için React tüm satırları unmount/remount
+// ediyordu: kaydederken klavye kapanıyor, input odağı ve yerel metin kayboluyordu.
+// Modül seviyesine alındı, ihtiyaç duydukları her şey prop olarak geçiyor.
+const Section = ({
+  title,
+  icon,
+  styles,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  styles: ReturnType<typeof createStyles>;
+}) => (
+  <View style={styles.sectionHeader}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      {icon}
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  </View>
+);
+
+const SettingRow = ({
+  label,
+  subtitle,
+  fieldKey,
+  value,
+  isLast,
+  placeholder,
+  isEditing,
+  onStartEdit,
+  onSave,
+  onScrollToInput,
+  theme,
+  styles,
+  editLabel,
+  saving,
+}: {
+  label: string;
+  subtitle?: string;
+  fieldKey: keyof ProfileState;
+  value: string;
+  isLast?: boolean;
+  placeholder?: string;
+  isEditing: boolean;
+  onStartEdit: (key: keyof ProfileState) => void;
+  onSave: (key: keyof ProfileState, next: string) => void;
+  onScrollToInput: (input: TextInput | null) => void;
+  theme: ThemeUI;
+  styles: ReturnType<typeof createStyles>;
+  editLabel: string;
+  saving: boolean;
+}) => {
+  const [localValue, setLocalValue] = React.useState(value);
+  const inputRef = React.useRef<TextInput>(null);
+  const isPhone = fieldKey === "phone";
+
+  React.useEffect(() => {
+    if (isEditing) {
+      setLocalValue(value);
+      requestAnimationFrame(() => {
+        inputRef.current?.focus?.();
+        onScrollToInput(inputRef.current);
+      });
+    }
+    // onScrollToInput parent'ta useCallback ile sabit
+  }, [isEditing, value, onScrollToInput]);
+
+  return (
+    <View style={[styles.settingRow, isLast && styles.settingRowLast]}>
+      <View style={styles.leftCol}>
+        <Text style={styles.settingLabel}>{label}</Text>
+        {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
+      </View>
+
+      <View style={styles.rightCol}>
+        {!isEditing ? (
+          <>
+            <Text style={styles.settingValueText} numberOfLines={1}>
+              {value || editLabel}
+            </Text>
+            <TouchableOpacity onPress={() => onStartEdit(fieldKey)}>
+              <Edit3 size={16} color={theme.colors.text.secondary} />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <View style={styles.inlineEditor}>
+              <TextInput
+                ref={inputRef}
+                value={localValue}
+                onChangeText={(v) =>
+                  setLocalValue(isPhone ? sanitizePhone(v) : v)
+                }
+                placeholder={placeholder}
+                placeholderTextColor={theme.colors.text.muted}
+                style={styles.inlineEditorInput}
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={() => {
+                  if (!saving) onSave(fieldKey, localValue);
+                }}
+                autoCapitalize={
+                  fieldKey === "username" || isPhone ? "none" : "sentences"
+                }
+                autoCorrect={fieldKey !== "username"}
+                keyboardType={isPhone ? "number-pad" : "default"}
+                maxLength={isPhone ? 11 : undefined}
+              />
+            </View>
+
+            {/* ✅ X: basınca yazıyı SİL */}
+            <TouchableOpacity
+              onPress={() => setLocalValue("")}
+              activeOpacity={0.75}
+              style={[styles.actionBtn, styles.actionBtnGhost]}
+              hitSlop={10}
+            >
+              <X size={16} color={theme.colors.text.secondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => onSave(fieldKey, localValue)}
+              activeOpacity={0.75}
+              disabled={saving}
+              style={[
+                styles.actionBtn,
+                styles.actionBtnPrimary,
+                saving && { opacity: 0.6 },
+              ]}
+              hitSlop={10}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color={theme.colors.surface} />
+              ) : (
+                <Check size={16} color={theme.colors.surface} />
+              )}
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </View>
+  );
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
   const scrollRef = React.useRef<ScrollView>(null);
 
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const { tier, hasPremium, isUnlimited } = usePremium();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   const [profile, setProfile] = React.useState<ProfileState>(emptyProfile);
   const [editKey, setEditKey] = React.useState<keyof ProfileState | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
   const [deletingAccount, setDeletingAccount] = React.useState(false);
 
-  // ✅ input klavyeden ne kadar yukarıda dursun?
-  const KEYBOARD_GAP = 130;
+  // ✅ Profil kartındaki gerçek veriler
+  const [studentCount, setStudentCount] = React.useState<number | null>(null);
+  const [memberSince, setMemberSince] = React.useState<string | null>(null);
 
-  const startEdit = (key: keyof ProfileState) => {
+  const startEdit = React.useCallback((key: keyof ProfileState) => {
     // ✅ email'i şimdilik kilitli (reauth gerekir)
     if (key === "email") {
       Alert.alert(
@@ -82,10 +240,10 @@ export default function ProfileScreen() {
       return;
     }
     setEditKey(key);
-  };
+  }, [t]);
 
   // ✅ focus olunca input'u klavyenin üstüne al
-  const scrollToKeyboard = (input: TextInput | null) => {
+  const scrollToKeyboard = React.useCallback((input: TextInput | null) => {
     if (!input) return;
     const node = findNodeHandle(input);
     if (!node) return;
@@ -95,7 +253,7 @@ export default function ProfileScreen() {
       KEYBOARD_GAP,
       true,
     );
-  };
+  }, []);
 
   // ✅ Auth + Firestore'dan profili otomatik doldur
   React.useEffect(() => {
@@ -105,6 +263,8 @@ export default function ProfileScreen() {
 
         if (!user) {
           setProfile(emptyProfile);
+          setStudentCount(null);
+          setMemberSince(null);
           return;
         }
 
@@ -140,6 +300,8 @@ export default function ProfileScreen() {
           );
 
           setProfile(base);
+          setStudentCount(0);
+          setMemberSince(String(new Date().getFullYear()));
           return;
         }
 
@@ -162,6 +324,22 @@ export default function ProfileScreen() {
           skills: (data?.skills ?? "").toString(),
           business: (data?.business ?? "").toString(),
         });
+
+        // ⚠️ Kartaki "32 aktif" ve "2024" değerleri sabit yazılmıştı; herkese
+        // aynı sahte rakamlar gösteriliyordu. Artık gerçek veriden geliyor.
+        const createdAt =
+          data?.createdAt?.toDate?.() ??
+          (user.metadata?.creationTime
+            ? new Date(user.metadata.creationTime)
+            : null);
+        setMemberSince(createdAt ? String(createdAt.getFullYear()) : null);
+
+        try {
+          const countSnap = await getCountFromServer(studentsColRef(uid));
+          setStudentCount(countSnap.data().count);
+        } catch {
+          setStudentCount(null);
+        }
       } catch (e: any) {
         Alert.alert(t("recordNew.alert.errorTitle"), e?.message ?? t("profile.alert.fetchError"));
       } finally {
@@ -170,7 +348,7 @@ export default function ProfileScreen() {
     });
 
     return () => unsub();
-  }, []);
+  }, [t]);
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -235,71 +413,43 @@ export default function ProfileScreen() {
     );
   };
 
-  const Section = ({
-    title,
-    icon,
-  }: {
-    title: string;
-    icon?: React.ReactNode;
-  }) => (
-    <View style={styles.sectionHeader}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        {icon}
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-    </View>
-  );
+  // ⚠️ Bu üç değer ("Pro", "32 aktif", "2024") ve alttaki tagline koda sabit
+  // yazılmıştı: ücretsiz kullanıcı da kendini Pro, hiç öğrencisi olmayan da
+  // 32 müşterili görüyordu. Hepsi artık gerçek veriden türetiliyor.
+  const membershipLabel = React.useMemo(() => {
+    if (!hasPremium) return t("plan.tier.free");
+    if (isUnlimited || tier === "studio") return "Studio";
+    return tier === "core" ? "Core" : "Pro";
+  }, [hasPremium, isUnlimited, tier, t]);
 
-  const SettingRow = ({
-    label,
-    subtitle,
-    fieldKey,
-    value,
-    isLast,
-    placeholder,
-  }: {
-    label: string;
-    subtitle?: string;
-    fieldKey: keyof ProfileState;
-    value: string;
-    isLast?: boolean;
-    placeholder?: string;
-  }) => {
-    const isEditing = editKey === fieldKey;
-    const [localValue, setLocalValue] = React.useState(value);
+  const customersLabel = React.useMemo(() => {
+    if (studentCount === null) return "—";
+    const limit = TIER_STUDENT_LIMITS[tier];
+    return limit === null
+      ? t("profile.meta.customers_count", { count: studentCount })
+      : `${studentCount} / ${limit}`;
+  }, [studentCount, tier, t]);
 
-    const inputRef = React.useRef<TextInput>(null);
+  // Kullanıcının kendi girdiği uzmanlık / işletme bilgisinden kurulur.
+  const tagline = React.useMemo(() => {
+    const parts = [
+      profile.username || null,
+      profile.business.trim() || null,
+      profile.skills.trim() || null,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(" • ") : t("profile.card.tagline_empty");
+  }, [profile.username, profile.business, profile.skills, t]);
 
-    const isPhone = fieldKey === "phone";
-
-    const sanitizePhone = (v: string) => {
-      let digits = (v ?? "").replace(/\D/g, "");
-      if (digits.length > 11) digits = digits.slice(0, 11);
-      return digits;
-    };
-
-    React.useEffect(() => {
-      if (isEditing) {
-        setLocalValue(value);
-        requestAnimationFrame(() => {
-          inputRef.current?.focus?.();
-          scrollToKeyboard(inputRef.current);
-        });
-      }
-    }, [isEditing, value]);
-
-    const saveField = async () => {
+  const saveField = React.useCallback(
+    async (fieldKey: keyof ProfileState, rawValue: string) => {
       const user = auth.currentUser;
       if (!user) return;
 
-      const uid = user.uid;
-      const userRef = doc(db, "users", uid);
+      const userRef = doc(db, "users", user.uid);
 
-      // ✅ normalize
-      let next = (localValue ?? "").toString().trim();
-      if (isPhone) next = sanitizePhone(next);
+      let next = (rawValue ?? "").toString().trim();
+      if (fieldKey === "phone") next = sanitizePhone(next);
 
-      // username normalize: @ kaldır, lowercase
       if (fieldKey === "username") {
         next = next.replace(/^@+/, "").trim().toLowerCase();
         setProfile((p) => ({ ...p, username: next ? `@${next}` : "" }));
@@ -308,11 +458,11 @@ export default function ProfileScreen() {
       }
 
       try {
-        setLoading(true);
+        // ⚠️ Eskiden setLoading(true) çağrılıyordu; o state tam ekran spinner'ı
+        // kontrol ediyor ve kayıt sırasında ekranı boşaltabiliyordu.
+        setSaving(true);
 
-        const patch: any = {
-          updatedAt: serverTimestamp(),
-        };
+        const patch: any = { updatedAt: serverTimestamp() };
 
         if (fieldKey === "name") {
           patch.displayName = next;
@@ -328,78 +478,16 @@ export default function ProfileScreen() {
         await updateDoc(userRef, patch);
         setEditKey(null);
       } catch (e: any) {
-        Alert.alert(t("recordNew.alert.errorTitle"), e?.message ?? t("profile.alert.saveError"));
+        Alert.alert(
+          t("recordNew.alert.errorTitle"),
+          e?.message ?? t("profile.alert.saveError"),
+        );
       } finally {
-        setLoading(false);
+        setSaving(false);
       }
-    };
-
-    return (
-      <View style={[styles.settingRow, isLast && styles.settingRowLast]}>
-        <View style={styles.leftCol}>
-          <Text style={styles.settingLabel}>{label}</Text>
-          {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
-        </View>
-
-        <View style={styles.rightCol}>
-          {!isEditing ? (
-            <>
-              <Text style={styles.settingValueText} numberOfLines={1}>
-                {value || t("profile.value.edit")}
-              </Text>
-              <TouchableOpacity onPress={() => startEdit(fieldKey)}>
-                <Edit3 size={16} color={theme.colors.text.secondary} />
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <View style={styles.inlineEditor}>
-                <TextInput
-                  ref={inputRef}
-                  value={localValue}
-                  onChangeText={(v) => {
-                    if (isPhone) setLocalValue(sanitizePhone(v));
-                    else setLocalValue(v);
-                  }}
-                  placeholder={placeholder}
-                  placeholderTextColor={theme.colors.text.muted}
-                  style={styles.inlineEditorInput}
-                  returnKeyType="done"
-                  blurOnSubmit
-                  onSubmitEditing={saveField}
-                  autoCapitalize={
-                    fieldKey === "username" || isPhone ? "none" : "sentences"
-                  }
-                  autoCorrect={fieldKey === "username" ? false : true}
-                  keyboardType={isPhone ? "number-pad" : "default"}
-                  maxLength={isPhone ? 11 : undefined}
-                />
-              </View>
-
-              {/* ✅ X: basınca yazıyı SİL */}
-              <TouchableOpacity
-                onPress={() => setLocalValue("")}
-                activeOpacity={0.75}
-                style={[styles.actionBtn, styles.actionBtnGhost]}
-                hitSlop={10}
-              >
-                <X size={16} color={theme.colors.text.secondary} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={saveField}
-                activeOpacity={0.75}
-                style={[styles.actionBtn, styles.actionBtnPrimary]}
-                hitSlop={10}
-              >
-                <Check size={16} color={theme.colors.surface} />
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      </View>
-    );
-  };
+    },
+    [t],
+  );
 
   if (loading && !profile.email && !profile.name) {
     return (
@@ -462,6 +550,7 @@ export default function ProfileScreen() {
             <Section
               title={t("profile.section.profile")}
               icon={<User size={18} color={theme.colors.primary} />}
+              styles={styles}
             />
 
             {/* PROFILE CARD */}
@@ -478,35 +567,41 @@ export default function ProfileScreen() {
                   <Text style={styles.profileEmail}>
                     {profile.email || "—"}
                   </Text>
-                  <Text style={styles.profileTag}>
-                    {profile.username ? `${profile.username} • ` : ""}PT •
-                    Reformer Pilates • Online Coaching
-                  </Text>
+                  <Text style={styles.profileTag}>{tagline}</Text>
                 </View>
               </View>
 
               <View style={styles.profileMetaRow}>
                 <View style={styles.profileMetaItem}>
                   <Text style={styles.profileMetaLabel}>{t("profile.meta.membership")}</Text>
-                  <Text style={styles.profileMetaValue}>{t("profile.meta.membership_value")}</Text>
+                  <Text style={styles.profileMetaValue}>{membershipLabel}</Text>
                 </View>
                 <View style={styles.profileMetaItem}>
                   <Text style={styles.profileMetaLabel}>{t("profile.meta.customers")}</Text>
-                  <Text style={styles.profileMetaValue}>{t("profile.meta.customers_value")}</Text>
+                  <Text style={styles.profileMetaValue}>{customersLabel}</Text>
                 </View>
                 <View style={styles.profileMetaItem}>
                   <Text style={styles.profileMetaLabel}>{t("profile.meta.registered")}</Text>
-                  <Text style={styles.profileMetaValue}>{t("profile.meta.registered_value")}</Text>
+                  <Text style={styles.profileMetaValue}>{memberSince ?? "—"}</Text>
                 </View>
               </View>
             </View>
 
             {/* USER INFO */}
+            <Section title={t("profile.section.user_info")} styles={styles} />
             <View style={styles.card}>
               <SettingRow
                 label={t("profile.field.name.label")}
                 subtitle={t("profile.field.name.subtitle")}
                 fieldKey="name"
+                isEditing={editKey === "name"}
+                onStartEdit={startEdit}
+                onSave={saveField}
+                onScrollToInput={scrollToKeyboard}
+                theme={theme}
+                styles={styles}
+                editLabel={t("profile.value.edit")}
+                saving={saving}
                 value={profile.name}
                 placeholder={t("profile.field.name.placeholder")}
               />
@@ -514,6 +609,14 @@ export default function ProfileScreen() {
                 label={t("profile.field.username.label")}
                 subtitle={t("profile.field.username.subtitle")}
                 fieldKey="username"
+                isEditing={editKey === "username"}
+                onStartEdit={startEdit}
+                onSave={saveField}
+                onScrollToInput={scrollToKeyboard}
+                theme={theme}
+                styles={styles}
+                editLabel={t("profile.value.edit")}
+                saving={saving}
                 value={profile.username}
                 placeholder={t("profile.field.username.placeholder")}
               />
@@ -521,6 +624,14 @@ export default function ProfileScreen() {
                 label={t("profile.field.email.label")}
                 subtitle={t("profile.field.email.subtitle")}
                 fieldKey="email"
+                isEditing={editKey === "email"}
+                onStartEdit={startEdit}
+                onSave={saveField}
+                onScrollToInput={scrollToKeyboard}
+                theme={theme}
+                styles={styles}
+                editLabel={t("profile.value.edit")}
+                saving={saving}
                 value={profile.email}
                 placeholder={t("profile.field.email.placeholder")}
               />
@@ -528,6 +639,14 @@ export default function ProfileScreen() {
                 label={t("profile.field.phone.label")}
                 subtitle={t("profile.field.phone.subtitle")}
                 fieldKey="phone"
+                isEditing={editKey === "phone"}
+                onStartEdit={startEdit}
+                onSave={saveField}
+                onScrollToInput={scrollToKeyboard}
+                theme={theme}
+                styles={styles}
+                editLabel={t("profile.value.edit")}
+                saving={saving}
                 value={profile.phone}
                 placeholder={t("profile.field.phone.placeholder")}
                 isLast
@@ -535,11 +654,20 @@ export default function ProfileScreen() {
             </View>
 
             {/* BIO */}
+            <Section title={t("profile.section.bio")} styles={styles} />
             <View style={styles.card}>
               <SettingRow
                 label={t("profile.field.bio.label")}
                 subtitle={t("profile.field.bio.subtitle")}
                 fieldKey="bio"
+                isEditing={editKey === "bio"}
+                onStartEdit={startEdit}
+                onSave={saveField}
+                onScrollToInput={scrollToKeyboard}
+                theme={theme}
+                styles={styles}
+                editLabel={t("profile.value.edit")}
+                saving={saving}
                 value={profile.bio}
                 placeholder={t("profile.field.bio.placeholder")}
               />
@@ -547,6 +675,14 @@ export default function ProfileScreen() {
                 label={t("profile.field.skills.label")}
                 subtitle={t("profile.field.skills.subtitle")}
                 fieldKey="skills"
+                isEditing={editKey === "skills"}
+                onStartEdit={startEdit}
+                onSave={saveField}
+                onScrollToInput={scrollToKeyboard}
+                theme={theme}
+                styles={styles}
+                editLabel={t("profile.value.edit")}
+                saving={saving}
                 value={profile.skills}
                 placeholder={t("profile.field.skills.placeholder")}
               />
@@ -554,6 +690,14 @@ export default function ProfileScreen() {
                 label={t("profile.field.business.label")}
                 subtitle={t("profile.field.business.subtitle")}
                 fieldKey="business"
+                isEditing={editKey === "business"}
+                onStartEdit={startEdit}
+                onSave={saveField}
+                onScrollToInput={scrollToKeyboard}
+                theme={theme}
+                styles={styles}
+                editLabel={t("profile.value.edit")}
+                saving={saving}
                 value={profile.business}
                 placeholder={t("profile.field.business.placeholder")}
                 isLast

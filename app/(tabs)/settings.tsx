@@ -11,6 +11,7 @@ import {
   Palette,
   Shield,
   Smartphone,
+  Star,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,6 +31,7 @@ import { registerForPushNotificationsAsync } from "@/services/registerForPush";
 import { auth, db } from "../../services/firebase";
 
 // ✅ THEME
+import { TIER_STUDENT_LIMITS, usePremium } from "@/constants/PremiumContext";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 import { deleteDoc, deleteField, doc, getDoc, setDoc } from "firebase/firestore";
@@ -115,6 +117,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const { theme, mode, setMode } = useTheme();
+  const { hasPremium, tier, isUnlimited } = usePremium();
 
   const [activeTab, setActiveTab] = useState<TabKey>("preferences");
   const [settingsReady, setSettingsReady] = useState(false);
@@ -129,6 +132,24 @@ export default function SettingsScreen() {
   const [isHapticEnabled, setIsHapticEnabled] = useState(DEFAULT_SETTINGS.hapticEnabled);
   const [isSaveLoginEnabled, setIsSaveLoginEnabled] = useState(DEFAULT_SETTINGS.saveLogin);
   const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(DEFAULT_SETTINGS.twoFactor);
+
+  // ✅ ABONELİK ÖZETİ
+  // Studio kullanıcısında premium sekmesi alt menüden kalkıyor; sayfaya
+  // erişimin tek yolu burası. Diğer paketlerde de mevcut planı görünür kılar.
+  const planLabel = useMemo(() => {
+    if (!hasPremium) return t("plan.tier.free");
+    if (isUnlimited || tier === "studio") return "Studio";
+    return tier === "core" ? "Core" : "Pro";
+  }, [hasPremium, isUnlimited, tier, t]);
+
+  const planSubtitle = useMemo(() => {
+    // Limit metne gömülmez; tek doğruluk kaynağı TIER_STUDENT_LIMITS.
+    const limit = TIER_STUDENT_LIMITS[tier];
+    if (limit === null) return t("settings.subscription.unlimited_sub");
+    return hasPremium
+      ? t("settings.subscription.limit_sub", { limit })
+      : t("settings.subscription.free_sub", { limit });
+  }, [hasPremium, tier, t]);
 
   // ✅ COLORS - Memoized
   const colors = useMemo(
@@ -515,6 +536,28 @@ export default function SettingsScreen() {
     () => (
       <>
         <SectionHeader
+          title={t("settings.section.subscription")}
+          icon={<Star size={18} color={theme.colors.gold} />}
+        />
+
+        <View style={styles.card}>
+          <SettingRow
+            label={planLabel}
+            subtitle={planSubtitle}
+            right={
+              <Text style={[styles.settingValueText, { color: theme.colors.gold }]}>
+                {hasPremium
+                  ? t("settings.subscription.manage")
+                  : t("settings.subscription.upgrade")}
+              </Text>
+            }
+            onPress={() => router.push("/(tabs)/premium")}
+            showChevron
+            isLast
+          />
+        </View>
+
+        <SectionHeader
           title={t("settings.section.preferences")}
           icon={<Palette size={18} color={theme.colors.premium} />}
         />
@@ -658,6 +701,10 @@ export default function SettingsScreen() {
       handleOpenLink,
       SectionHeader,
       SettingRow,
+      planLabel,
+      planSubtitle,
+      hasPremium,
+      router,
     ]
   );
 

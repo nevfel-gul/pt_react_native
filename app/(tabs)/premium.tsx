@@ -84,7 +84,7 @@ export default function PaywallMonthlyScreen({
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { theme, mode } = useTheme();
-  const { updateSubscription } = usePremium();
+  const { updateSubscription, subscription, hasPremium, tier: currentTier } = usePremium();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -226,8 +226,12 @@ export default function PaywallMonthlyScreen({
     const fromSub = currentActiveSub?.currentPlanId ?? currentActiveSub?.productId ?? null;
     if (fromSub && fromSub.length > 0) return fromSub;
     if (purchasedProductId && purchasedProductId.length > 0) return purchasedProductId;
+    // StoreKit gecikirse/başarısız olursa Firestore'daki kayıt devreye girer.
+    // Aksi halde premium kullanıcı ekranı "Satın Al" diye karşılıyordu.
+    const fromFirestore = subscription?.isActive ? subscription.productId : null;
+    if (fromFirestore && fromFirestore.length > 0) return fromFirestore;
     return null;
-  }, [currentActiveSub, purchasedProductId]);
+  }, [currentActiveSub, purchasedProductId, subscription]);
 
   // Mevcut plandaki tier (upgrade/downgrade kararı için)
   const currentTierRank = useMemo(() => {
@@ -511,8 +515,8 @@ export default function PaywallMonthlyScreen({
     if (purchaseAction === 'upgrade') return `${t('paywall.change.upgrade_title')} →`;
     if (purchaseAction === 'downgrade') return `${t('paywall.change.downgrade_title')} →`;
     if (purchaseAction === 'same') return t('paywall.plan.current');
-    return t('paywall.cta.buy');
-  }, [busyState, purchaseAction, t]);
+    return hasPremium ? t('paywall.cta.upgrade') : t('paywall.cta.buy');
+  }, [busyState, hasPremium, purchaseAction, t]);
 
   const saveText = useMemo(() => {
     // Aylık/yıllık her iki görünümde de yıllık tasarrufu tanıt.
@@ -523,6 +527,24 @@ export default function PaywallMonthlyScreen({
     const d = annualDiscounts.length ? Math.max(...annualDiscounts) : 0;
     return d ? t('paywall.billing.save', { percent: d }) : null;
   }, [allProducts, t]);
+
+  // Aktif planın görünen adı ve en üst pakette olup olmadığı
+  const activeTier = useMemo(() => {
+    if (activeProductId) {
+      return activeProductId.includes('core') ? 'core'
+        : activeProductId.includes('studio') ? 'studio' : 'pro';
+    }
+    // Hediye edilmiş abonelikte productId anlamsız olabilir; Firestore'daki
+    // tier alanı son çare olarak devreye girer.
+    return hasPremium && currentTier !== 'free' ? currentTier : null;
+  }, [activeProductId, hasPremium, currentTier]);
+
+  const activePlanLabel = useMemo(() => {
+    if (!activeTier) return '';
+    return activeTier === 'studio' ? 'Studio' : activeTier === 'core' ? 'Core' : 'Pro';
+  }, [activeTier]);
+
+  const isTopTier = activeTier === 'studio';
 
   const accent = billing === 'annual' ? theme.colors.premium : theme.colors.primary;
 
@@ -594,6 +616,21 @@ export default function PaywallMonthlyScreen({
             {t('paywall.hero.title')}
           </Text>
           <Text style={styles.desc}>{t('paywall.hero.description')}</Text>
+
+          {/* Aktif abonelik bildirimi — premium kullanıcı hangi pakette
+              olduğunu hiçbir yerde göremiyordu. */}
+          {hasPremium ? (
+            <View style={[styles.activeBanner, { borderColor: theme.colors.gold }]}>
+              <Text style={[styles.activeBannerTitle, { color: theme.colors.gold }]}>
+                {t('paywall.status.active', { plan: activePlanLabel })}
+              </Text>
+              <Text style={styles.activeBannerSub}>
+                {isTopTier
+                  ? t('paywall.status.top_tier')
+                  : t('paywall.status.can_upgrade')}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.toggleRow}>
             <Text style={styles.toggleLabel}>{t('paywall.billing.monthly')}</Text>
@@ -794,10 +831,6 @@ const PlanCard = memo(function PlanCard({
     [plan.isUnlimited, tier, limit, t],
   );
 
-  const limitText = plan.isUnlimited
-    ? t('paywall.plan.unlimited')
-    : t('paywall.plan.limit', { limit: limit ?? 0 });
-
   const cardBg = mode === 'light' ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.1)';
   const border = mode === 'light' ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.06)';
 
@@ -890,16 +923,6 @@ const PlanCard = memo(function PlanCard({
             }}
           >
             {subtitle}
-          </Text>
-          <Text
-            style={{
-              color: plan.isUnlimited ? accent : theme.colors.text.muted,
-              fontSize: 12,
-              fontWeight: '900',
-              marginTop: 6,
-            }}
-          >
-            {limitText}
           </Text>
         </View>
 
@@ -1029,6 +1052,24 @@ function makeStyles(theme: ThemeUI, mode: 'dark' | 'light') {
       lineHeight: 17,
       marginBottom: 12,
       fontWeight: '700',
+    },
+
+    activeBanner: {
+      alignSelf: 'stretch',
+      borderWidth: 1,
+      borderRadius: theme.radius.lg,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      marginBottom: 12,
+      backgroundColor:
+        mode === 'light' ? 'rgba(250,204,21,0.10)' : 'rgba(250,204,21,0.08)',
+    },
+    activeBannerTitle: { fontWeight: '900', fontSize: 14 },
+    activeBannerSub: {
+      color: theme.colors.text.secondary,
+      fontSize: 12,
+      fontWeight: '700',
+      marginTop: 2,
     },
 
     toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
