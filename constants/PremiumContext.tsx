@@ -13,7 +13,19 @@ export type SubscriptionData = {
   studentLimit: number | null; // null = sınırsız
   isUnlimited: boolean;
   purchasedAt?: string;
+
+  // Elle verilen (hediye) abonelikler için: kaynak ve bitiş tarihi.
+  // Apple satın alımlarında bu alanlar boş kalır.
+  source?: 'gift' | 'apple';
+  expiresAt?: string | null;
 };
+
+/** Süreli hediye abonelikler için bitiş kontrolü. */
+function isExpired(sub: SubscriptionData | null | undefined): boolean {
+  if (!sub?.expiresAt) return false;
+  const ts = Date.parse(sub.expiresAt);
+  return Number.isFinite(ts) && ts <= Date.now();
+}
 
 // Plan başına öğrenci limiti
 export const TIER_STUDENT_LIMITS: Record<PremiumTier, number | null> = {
@@ -70,9 +82,10 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
         (snap) => {
           if (snap.exists()) {
             const data = snap.data();
-            const sub = data?.subscription;
-            if (sub?.isActive) {
-              setSubscription(sub as SubscriptionData);
+            const sub = data?.subscription as SubscriptionData | undefined;
+            // Süresi dolmuş hediye abonelik aktif sayılmaz.
+            if (sub?.isActive && !isExpired(sub)) {
+              setSubscription(sub);
             } else {
               setSubscription(null);
             }

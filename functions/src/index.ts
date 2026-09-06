@@ -557,6 +557,8 @@ export const morningMotivation = onSchedule(
     }
 );
 
+export { grantPremium } from "./admin/grantPremium";
+
 export { followUpReminderJob } from "./jobs/followUpReminderJob";
 
 export { noRecordReminderJob } from "./jobs/noRecordReminderJob";

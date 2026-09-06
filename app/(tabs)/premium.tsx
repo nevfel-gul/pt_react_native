@@ -512,8 +512,10 @@ export default function PaywallMonthlyScreen({
   // CTA etiketini duruma göre belirle
   const ctaLabel = useMemo(() => {
     if (busyState === 'purchase') return t('paywall.cta.processing');
-    if (purchaseAction === 'upgrade') return `${t('paywall.change.upgrade_title')} →`;
-    if (purchaseAction === 'downgrade') return `${t('paywall.change.downgrade_title')} →`;
+    // Ok işareti butonun kendi <Text style={styles.buyBtnArrow}> öğesinden
+    // geliyor; metne de eklenince çift ok çıkıyordu.
+    if (purchaseAction === 'upgrade') return t('paywall.change.upgrade_title');
+    if (purchaseAction === 'downgrade') return t('paywall.change.downgrade_title');
     if (purchaseAction === 'same') return t('paywall.plan.current');
     return hasPremium ? t('paywall.cta.upgrade') : t('paywall.cta.buy');
   }, [busyState, hasPremium, purchaseAction, t]);
@@ -727,9 +729,14 @@ export default function PaywallMonthlyScreen({
               {busyState === 'purchase' ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.buyBtnText}>{ctaLabel}</Text>
+                <>
+                  <Text style={styles.buyBtnText}>{ctaLabel}</Text>
+                  {/* Devre dışı "Mevcut Planınız" butonunda ok anlamsız */}
+                  {purchaseAction !== 'same' ? (
+                    <Text style={styles.buyBtnArrow}>→</Text>
+                  ) : null}
+                </>
               )}
-              <Text style={styles.buyBtnArrow}>→</Text>
             </LinearGradient>
           </TouchableOpacity>
           {/* EULA - Apple Guideline 3.1.2(c) */}
