@@ -6,31 +6,37 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import {
   ActivityIndicator,
   Alert,
+  AppState,
+  type AppStateStatus,
   Image,
   Linking,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { BillingCycle, PlanDoc } from "@/constants/paywall";
+import type { BillingCycle, PlanDoc, PlanOffer } from "@/constants/paywall";
 import type { PremiumTier } from "@/constants/PremiumContext";
 import { TIER_STUDENT_LIMITS, usePremium } from "@/constants/PremiumContext";
 import { useTranslation } from "react-i18next";
 import {
   calcDisplayedPrice,
   calcPerClientAmount,
+  findPlanOffer,
   formatCurrency,
   planStudentLimit,
   planTierOf,
 } from "../../constants/paywall";
+import { usePromo } from "@/constants/PromoContext";
+import { formatRemaining, promoErrorKey, redeemPromoCoupon } from "@/services/promo";
 
 import i18n from "@/services/i18n";
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Purchase } from 'react-native-iap';
 import { useIAP } from 'react-native-iap';
 
@@ -86,6 +92,13 @@ export default function PaywallMonthlyScreen({
   const { theme, mode } = useTheme();
   const { updateSubscription, subscription, hasPremium, tier: currentTier } = usePremium();
   const router = useRouter();
+  const { coupon, remainingMs, refresh: refreshPromo } = usePromo();
+  const params = useLocalSearchParams<{ promo?: string }>();
+
+  // Promosyon kodu — popup'tan gelen kod otomatik dolar, kullanıcı elle de girebilir.
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -148,14 +161,23 @@ export default function PaywallMonthlyScreen({
       try {
         const planId = selectedPlanRef.current;
         const plan = allProductsRef.current.find((p) => p.id === planId) ?? null;
-        if (plan) {
-          const tier = (plan.tier ?? 'pro') as PremiumTier;
+        // Teklif kodu App Store'da kullanıldığında uygulama arada kapanmış
+        // olabilir; dönüşte seçili plan boş olur. Tier'ı o zaman doğrudan
+        // satın alınan productId'den türet, yoksa abonelik hiç yazılmıyordu.
+        const productId = purchase.productId ?? '';
+        const fallbackTier: PremiumTier = productId.includes('core')
+          ? 'core'
+          : productId.includes('studio')
+            ? 'studio'
+            : 'pro';
+        {
+          const tier = (plan?.tier ?? fallbackTier) as PremiumTier;
           const isUnlimited = tier === 'studio';
           const studentLimit = TIER_STUDENT_LIMITS[tier];
           await updateSubscription({
             productId: purchase.productId,
             tier,
-            billing: billingRef.current,
+            billing: productId.includes('annually') ? 'annual' : billingRef.current,
             isActive: true,
             studentLimit: studentLimit ?? null,
             isUnlimited,
@@ -292,12 +314,32 @@ export default function PaywallMonthlyScreen({
     const base = subscriptions.map((prod, index) => {
       const pId = prod.id;
       const amount = parseAmount(prod.price);
+      // App Store Connect'te tanımlı promotional offer'lar. İndirimli tutarı
+      // biz hesaplamıyoruz — Apple'ın localized fiyatını olduğu gibi taşıyoruz,
+      // yoksa ekrandaki fiyat ASC ile yine tutmaz.
+      const offers: PlanOffer[] = Array.isArray((prod as any)?.discountsIOS)
+        ? (prod as any).discountsIOS.map((d: any) => {
+          const offerAmount = parseAmount(d?.priceAmount ?? d?.price);
+          return {
+            identifier: String(d?.identifier ?? ''),
+            displayPrice:
+              typeof d?.localizedPrice === 'string' && d.localizedPrice.length > 0
+                ? d.localizedPrice
+                : offerAmount.toFixed(2),
+            priceAmount: offerAmount,
+            paymentMode: d?.paymentMode,
+            numberOfPeriods: d?.numberOfPeriods,
+          };
+        })
+        : [];
+
       return {
         prod,
         index,
         pId,
         tier: getTier(pId),
         amount,
+        offers,
         displayPrice: pickDisplayPrice(prod, amount),
       };
     });
@@ -333,6 +375,7 @@ export default function PaywallMonthlyScreen({
         monthlyPrice: b.amount,
         priceAmount: b.amount,
         displayPrice: b.displayPrice,
+        offers: b.offers,
         topPick: b.pId.includes('pro'),
         features: [],
         annualDiscountPercent,
@@ -385,6 +428,111 @@ export default function PaywallMonthlyScreen({
     [],
   );
 
+  // ─────────────────────────────────────────────────────────
+  // PROMOSYON KODU
+  //
+  // Apple'da uygulama içinden fiyat düşürülemiyor: indirimli tutar App Store
+  // Connect'teki promotional offer'dan gelir. Bizim kodumuz sadece kimin hak
+  // ettiğini belirler; kod uygulanınca kullanıcı Apple'ın kod ekranına gider.
+  // ─────────────────────────────────────────────────────────
+  const selectedProductId = useMemo(
+    () => (selectedPlan ? getAppleProductId(selectedPlan, billing) : null),
+    [selectedPlan, billing, getAppleProductId],
+  );
+
+  // Popup'tan gelen kod alanı kendiliğinden doldurur; kullanıcı tekrar yazmasın.
+  useEffect(() => {
+    const incoming = String(params.promo ?? coupon?.code ?? '').toUpperCase();
+    if (!incoming) return;
+    setPromoInput((prev) => (prev.length > 0 ? prev : incoming));
+    setAppliedCode((prev) => prev ?? incoming);
+  }, [params.promo, coupon?.code]);
+
+  const promoActive =
+    !!appliedCode && !!coupon && coupon.code === appliedCode && remainingMs > 0;
+
+  const promoCoversSelected =
+    promoActive && !!selectedProductId && !!coupon?.productIds.includes(selectedProductId);
+
+  // Kuponun bu üründeki Apple teklifi — indirimli fiyatı Apple'ın kendi
+  // localized string'inden gösteririz, hesaplamayız.
+  const promoOffer = useMemo(() => {
+    if (!promoCoversSelected || !selectedPlan || !coupon) return null;
+    return findPlanOffer(selectedPlan, coupon.offerIdentifier);
+  }, [promoCoversSelected, selectedPlan, coupon]);
+
+  const handleApplyPromo = useCallback(() => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    if (coupon && coupon.code === code && remainingMs > 0) {
+      setPromoError(null);
+      setAppliedCode(code);
+      return;
+    }
+    if (coupon && coupon.code === code) {
+      setPromoError(t('promo.error.expired'));
+      setAppliedCode(null);
+      return;
+    }
+    // Kupon henüz sunucudan gelmemiş olabilir → tazele, gelirse aşağıdaki
+    // effect kodu kendisi uygular.
+    setPromoError(t('promo.error.invalid'));
+    setAppliedCode(null);
+    refreshPromo();
+  }, [promoInput, coupon, remainingMs, refreshPromo, t]);
+
+  // Tazelemeden sonra kupon gelirse yazılan kodu kendiliğinden kabul et.
+  useEffect(() => {
+    if (!promoError || !coupon) return;
+    if (coupon.code !== promoInput.trim().toUpperCase()) return;
+    if (remainingMs <= 0) return;
+    setPromoError(null);
+    setAppliedCode(coupon.code);
+  }, [coupon, promoError, promoInput, remainingMs]);
+
+  const clearPromo = useCallback(() => {
+    setAppliedCode(null);
+    setPromoInput('');
+    setPromoError(null);
+  }, []);
+
+  // Kupon süresi dolarsa uygulanmış kod da düşsün.
+  useEffect(() => {
+    if (appliedCode && (!coupon || remainingMs <= 0)) setAppliedCode(null);
+  }, [appliedCode, coupon, remainingMs]);
+
+  // App Store'da kod kullanıldıktan sonra uygulamaya dönüşte durumu tazele.
+  useEffect(() => {
+    const onChange = (state: AppStateStatus) => {
+      if (state !== 'active') return;
+      getActiveSubscriptionsRef.current?.().catch(() => { });
+      refreshPromo();
+    };
+    const sub = AppState.addEventListener('change', onChange);
+    return () => sub.remove();
+  }, [refreshPromo]);
+
+  // StoreKit'te aktif abonelik görünüyor ama Firestore'da yoksa eşitle.
+  // Teklif kodu App Store'da kullanıldığında satın alma bizim ekranımızdan
+  // geçmiyor; bu olmadan premium hiç açılmıyordu.
+  useEffect(() => {
+    const active = activeSubscriptions.find((s) => s.isActive);
+    const pid = active?.currentPlanId ?? active?.productId ?? '';
+    if (!pid) return;
+    if (subscription?.isActive && subscription.productId === pid) return;
+
+    const tier = (pid.includes('core') ? 'core' : pid.includes('studio') ? 'studio' : 'pro') as PremiumTier;
+    updateSubscription({
+      productId: pid,
+      tier,
+      billing: pid.includes('annually') ? 'annual' : 'monthly',
+      isActive: true,
+      studentLimit: TIER_STUDENT_LIMITS[tier] ?? null,
+      isUnlimited: tier === 'studio',
+      purchasedAt: new Date().toISOString(),
+    }).catch((e) => console.warn('[IAP] abonelik eşitlenemedi:', e));
+  }, [activeSubscriptions, subscription, updateSubscription]);
+
   // Seçilen plan ile mevcut abonelik arasındaki ilişki
   const purchaseAction = useMemo((): 'new' | 'upgrade' | 'downgrade' | 'same' => {
     if (!activeProductId) return 'new';
@@ -400,6 +548,22 @@ export default function PaywallMonthlyScreen({
     if (!selectedPlan || busyState) return;
 
     const productId = getAppleProductId(selectedPlan, billing);
+
+    // Kupon uygulanmışsa normal satın alma yerine Apple'ın kod kullanma
+    // ekranına gidilir — indirimli fiyat App Store Connect'teki teklifte
+    // tanımlı, uygulama içinden fiyat düşürmek mümkün değil.
+    if (promoCoversSelected && appliedCode) {
+      setBusyState('purchase');
+      try {
+        const res = await redeemPromoCoupon(appliedCode, productId);
+        await Linking.openURL(res.redeemUrl);
+      } catch (e: any) {
+        Alert.alert(t('paywall.error.title'), t(promoErrorKey(e)));
+      } finally {
+        setBusyState(null);
+      }
+      return;
+    }
 
     // Mevcut plana tıklandıysa işlem yok
     if (purchaseAction === 'same') {
@@ -440,7 +604,7 @@ export default function PaywallMonthlyScreen({
       }
       setBusyState(null);
     }
-  }, [billing, busyState, getAppleProductId, purchaseAction, requestPurchase, selectedPlan, t]);
+  }, [appliedCode, billing, busyState, getAppleProductId, promoCoversSelected, purchaseAction, requestPurchase, selectedPlan, t]);
 
 
 
@@ -512,13 +676,15 @@ export default function PaywallMonthlyScreen({
   // CTA etiketini duruma göre belirle
   const ctaLabel = useMemo(() => {
     if (busyState === 'purchase') return t('paywall.cta.processing');
+    // Kupon uygulanmışsa satın alma Apple'ın kod ekranında tamamlanıyor.
+    if (promoCoversSelected) return t('promo.paywall.cta');
     // Ok işareti butonun kendi <Text style={styles.buyBtnArrow}> öğesinden
     // geliyor; metne de eklenince çift ok çıkıyordu.
     if (purchaseAction === 'upgrade') return t('paywall.change.upgrade_title');
     if (purchaseAction === 'downgrade') return t('paywall.change.downgrade_title');
     if (purchaseAction === 'same') return t('paywall.plan.current');
     return hasPremium ? t('paywall.cta.upgrade') : t('paywall.cta.buy');
-  }, [busyState, hasPremium, purchaseAction, t]);
+  }, [busyState, hasPremium, promoCoversSelected, purchaseAction, t]);
 
   const saveText = useMemo(() => {
     // Aylık/yıllık her iki görünümde de yıllık tasarrufu tanıt.
@@ -706,6 +872,79 @@ export default function PaywallMonthlyScreen({
               muted={false}
             />
           ))}
+        </View>
+
+        {/* ── Promosyon kodu ───────────────────────────────── */}
+        <View style={styles.promoBox}>
+          {promoActive && appliedCode ? (
+            <>
+              <View style={styles.promoAppliedRow}>
+                <Text style={styles.promoAppliedCode}>{appliedCode}</Text>
+                <TouchableOpacity onPress={clearPromo} hitSlop={8}>
+                  <Text style={styles.promoRemove}>{t('promo.paywall.remove')}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {promoCoversSelected ? (
+                promoOffer ? (
+                  // Apple'ın kendi indirimli fiyatı — biz hesaplamıyoruz.
+                  <Text style={styles.promoOfferText}>
+                    {t('promo.paywall.offer_price', {
+                      price: promoOffer.displayPrice,
+                      percent: coupon?.discountPercent ?? 0,
+                    })}
+                  </Text>
+                ) : (
+                  <Text style={styles.promoOfferText}>
+                    {t('promo.paywall.offer_generic', {
+                      percent: coupon?.discountPercent ?? 0,
+                    })}
+                  </Text>
+                )
+              ) : (
+                <Text style={styles.promoWarn}>{t('promo.paywall.not_covered')}</Text>
+              )}
+
+              <Text style={styles.promoTimer}>
+                {t('promo.paywall.expires_in', { time: formatRemaining(remainingMs) })}
+              </Text>
+              <Text style={styles.promoNote}>{t('promo.paywall.redeem_note')}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.promoLabel}>{t('promo.paywall.label')}</Text>
+              <View style={styles.promoInputRow}>
+                <TextInput
+                  value={promoInput}
+                  onChangeText={(v) => {
+                    setPromoInput(v.toUpperCase());
+                    if (promoError) setPromoError(null);
+                  }}
+                  placeholder={t('promo.paywall.placeholder')}
+                  placeholderTextColor={theme.colors.text.muted}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  style={styles.promoInput}
+                  onSubmitEditing={handleApplyPromo}
+                  returnKeyType="done"
+                />
+                <TouchableOpacity
+                  onPress={handleApplyPromo}
+                  disabled={promoInput.trim().length === 0}
+                  style={[
+                    styles.promoApplyBtn,
+                    { borderColor: accent },
+                    promoInput.trim().length === 0 && styles.ctaDisabled,
+                  ]}
+                >
+                  <Text style={[styles.promoApplyText, { color: accent }]}>
+                    {t('promo.paywall.apply')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {promoError ? <Text style={styles.promoError}>{promoError}</Text> : null}
+            </>
+          )}
         </View>
 
         <Text style={styles.cancelText}>{t("paywall.cancel_text")}</Text>
@@ -1103,6 +1342,93 @@ function makeStyles(theme: ThemeUI, mode: 'dark' | 'light') {
       marginTop: 18,
       paddingTop: 6,
       opacity: mode === 'dark' ? 0.82 : 0.96,
+    },
+
+    // ── Promosyon kodu kutusu ──────────────────────────────
+    promoBox: {
+      marginTop: 18,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: mode === 'light' ? 'rgba(15,23,42,0.12)' : 'rgba(255,255,255,0.14)',
+      backgroundColor:
+        mode === 'light' ? 'rgba(255,255,255,0.72)' : 'rgba(15,23,42,0.55)',
+      padding: 14,
+    },
+    promoLabel: {
+      color: theme.colors.text.secondary,
+      fontSize: 12,
+      fontWeight: '800',
+      marginBottom: 8,
+    },
+    promoInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    promoInput: {
+      flex: 1,
+      height: 44,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: mode === 'light' ? 'rgba(15,23,42,0.15)' : 'rgba(255,255,255,0.18)',
+      backgroundColor: mode === 'light' ? '#fff' : 'rgba(2,6,23,0.5)',
+      paddingHorizontal: 12,
+      color: theme.colors.text.primary,
+      fontWeight: '800',
+      letterSpacing: 1.5,
+    },
+    promoApplyBtn: {
+      height: 44,
+      paddingHorizontal: 16,
+      borderRadius: theme.radius.md,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    promoApplyText: { fontWeight: '900', fontSize: 13 },
+    promoError: {
+      marginTop: 8,
+      color: theme.colors.danger,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    promoAppliedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    promoAppliedCode: {
+      color: theme.colors.success,
+      fontSize: 16,
+      fontWeight: '900',
+      letterSpacing: 2,
+    },
+    promoRemove: {
+      color: theme.colors.text.muted,
+      fontSize: 12,
+      fontWeight: '700',
+      textDecorationLine: 'underline',
+    },
+    promoOfferText: {
+      marginTop: 6,
+      color: theme.colors.text.primary,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    promoWarn: {
+      marginTop: 6,
+      color: theme.colors.warning,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    promoTimer: {
+      marginTop: 6,
+      color: theme.colors.warning,
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    promoNote: {
+      marginTop: 6,
+      color: theme.colors.text.muted,
+      fontSize: 11,
+      lineHeight: 15,
+      fontWeight: '600',
     },
 
     cancelText: {

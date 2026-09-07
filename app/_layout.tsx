@@ -13,6 +13,8 @@ import { ActivityIndicator, Platform, Text, View } from "react-native";
 // ✅ SENİN THEME PROVIDER
 import { ThemeProvider as AppThemeProvider, useTheme } from "@/constants/usetheme";
 import { PremiumProvider } from "@/constants/PremiumContext";
+import { PromoProvider } from "@/constants/PromoContext";
+import PromoPopup from "@/components/PromoPopup";
 import { db } from "@/services/firebase";
 import {
   ensureAndroidChannelAsync,
@@ -183,6 +185,9 @@ function AppNav() {
         <Stack.Screen name="newstudent" options={{ title: t("screen.newStudent"), headerShown: false }} />
         <Stack.Screen name="landing" options={{ title: t("screen.welcome"), headerShown: false }} />
       </Stack>
+      {/* Kupon popup'ı — kullanıcı hangi ekranda olursa olsun çıkabilsin diye
+          navigasyonun dışında, en üstte duruyor. */}
+      {user ? <PromoPopup /> : null}
       <StatusBar style="auto" />
     </ThemeProvider>
   );
@@ -193,7 +198,9 @@ export default function RootLayout() {
   return (
     <AppThemeProvider>
       <PremiumProvider>
-        <AppNav />
+        <PromoProvider>
+          <AppNav />
+        </PromoProvider>
       </PremiumProvider>
     </AppThemeProvider>
   );

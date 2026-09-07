@@ -44,3 +44,6 @@ app-example
 
 package-lock.json
 functions/serviceAccountKey.json
+
+# App Store Connect teklif kodlari — gercek, kullanilabilir indirim kodlari
+oneTimeOfferCodes/
