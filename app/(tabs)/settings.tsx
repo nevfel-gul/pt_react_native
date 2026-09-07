@@ -1,7 +1,8 @@
 import { setAppLanguage } from "@/services/i18n";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { deleteUser, sendPasswordResetEmail, signOut } from "firebase/auth";
+import { requestPasswordReset } from "@/services/passwordReset";
+import { deleteUser, signOut } from "firebase/auth";
 import {
   Bell,
   ChevronRight,
@@ -439,15 +440,22 @@ export default function SettingsScreen() {
     }
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      await requestPasswordReset({
+        email,
+        locale: (i18n.language || "tr").startsWith("tr") ? "tr" : "en",
+      });
       Alert.alert(
         t("settings.security.changePassword"),
         (t("settings.security.resetSent")) + email
       );
     } catch (err: any) {
-      Alert.alert(t("login.error.prefix"), err?.message ?? t("common.error"));
+      const message =
+        err?.code === "functions/resource-exhausted"
+          ? t("login.forgot.tooMany")
+          : t("login.forgot.failed");
+      Alert.alert(t("login.error.prefix"), message);
     }
-  }, [t]);
+  }, [t, i18n.language]);
 
   const handleOpenLink = useCallback(async (url: string) => {
     try {

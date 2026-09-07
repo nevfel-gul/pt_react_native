@@ -2,7 +2,7 @@
   "expo": {
     "name": "AthleTrack AI",
     "slug": "pt_react_native",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ptreactnative",
@@ -64,6 +64,13 @@
         "projectId": "d10c4dd5-b0ff-4cb8-9cb0-ceafd45790a9"
       }
     },
-    "owner": "nevfelbusiness"
+    "owner": "nevfelbusiness",
+    "updates": {
+      "url": "https://u.expo.dev/d10c4dd5-b0ff-4cb8-9cb0-ceafd45790a9",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

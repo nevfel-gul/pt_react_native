@@ -6,10 +6,10 @@ import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import {
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
+import { requestPasswordReset } from "@/services/passwordReset";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
@@ -144,10 +144,17 @@ export default function LoginScreen() {
     }
     try {
       setLoading(true);
-      await sendPasswordResetEmail(auth, email.trim());
-      Alert.alert(t("login.error.prefix"), t("login.forgot.sent"));
+      await requestPasswordReset({
+        email: email.trim(),
+        locale: (i18n.language || "tr").startsWith("tr") ? "tr" : "en",
+      });
+      Alert.alert(t("login.forgot.sentTitle"), t("login.forgot.sent"));
     } catch (err: any) {
-      Alert.alert(t("login.error.prefix"), err?.message ?? t("common.error"));
+      const message =
+        err?.code === "functions/resource-exhausted"
+          ? t("login.forgot.tooMany")
+          : t("login.forgot.failed");
+      Alert.alert(t("login.error.prefix"), message);
     } finally {
       setLoading(false);
     }

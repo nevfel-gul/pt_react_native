@@ -480,7 +480,7 @@
   "landing.feature.students.desc": "PAR-Q testleri ve kişisel hedeflerle her sporcuya özel plan oluşturun.",
   "landing.cta.title": "Spora Bilim Katmaya Hazır mısın?",
   "landing.cta.button": "Hemen Başla",
-  "login.validation.fill_all": "Lütfen tüm alanları doldur cano.",
+  "login.validation.fill_all": "Lütfen tüm alanları doldurunuz.",
   "login.error.prefix": "Hata:",
   "login.header.welcome_back": "Tekrar Hoş Geldin",
   "login.header.join_us": "Aramıza Katıl",
@@ -798,7 +798,7 @@
   "login.error.passwords_mismatch": "Şifreler aynı değil.",
   "login.error.password_too_short": "Şifre en az 6 karakter olmalı.",
   "login.error.legal_required": "Devam etmek için gerekli yasal onayları vermelisin.",
-  "login.forgot.sent": "Şifre sıfırlama maili gönderildi.",
+  "login.forgot.sent": "Şifre sıfırlama bağlantısını mail adresine gönderdik. Bağlantı 1 saat geçerli.",
   "login.legal.accept_prefix": "Kabul ediyorum: ",
   "login.legal.terms": "Kullanıcı Sözleşmesi",
   "login.legal.and": " ve ",
@@ -857,5 +857,8 @@
   "settings.subscription.upgrade": "Premium Al",
   "settings.subscription.free_sub": "Ücretsiz plan • {{limit}} öğrenciye kadar",
   "settings.subscription.limit_sub": "Aktif abonelik • {{limit}} öğrenciye kadar",
-  "settings.subscription.unlimited_sub": "Aktif abonelik • Sınırsız öğrenci"
+  "settings.subscription.unlimited_sub": "Aktif abonelik • Sınırsız öğrenci",
+  "login.forgot.sentTitle": "Mail yolda",
+  "login.forgot.tooMany": "Çok fazla deneme yaptın. Lütfen bir süre sonra tekrar dene.",
+  "login.forgot.failed": "Şifre sıfırlama maili gönderilemedi. Lütfen tekrar dene."
 }

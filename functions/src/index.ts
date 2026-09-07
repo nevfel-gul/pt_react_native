@@ -566,3 +566,6 @@ export { noRecordReminderJob } from "./jobs/noRecordReminderJob";
 export { noStudentReminderJob } from "./jobs/noStudentReminderJob";
 
 export { weeklyAnalyticsReminderJob } from "./jobs/weeklyAnalyticsReminderJob";
+
+// Şifre sıfırlama akışı (Resend + athletrackai.com üzerindeki kendi sayfamız).
+export { requestPasswordReset } from "./passwordReset";

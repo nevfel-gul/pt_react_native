@@ -795,7 +795,7 @@
   "login.error.passwords_mismatch": "Passwords do not match.",
   "login.error.password_too_short": "Password must be at least 6 characters.",
   "login.error.legal_required": "You must accept the required legal agreements to continue.",
-  "login.forgot.sent": "Reset email sent.",
+  "login.forgot.sent": "We sent a password reset link to your email address. It is valid for 1 hour.",
   "login.legal.accept_prefix": "I agree to: ",
   "login.legal.terms": "Terms of Use",
   "login.legal.and": " and ",
@@ -854,5 +854,8 @@
   "settings.subscription.upgrade": "Go Premium",
   "settings.subscription.free_sub": "Free plan • Up to {{limit}} students",
   "settings.subscription.limit_sub": "Active subscription • Up to {{limit}} students",
-  "settings.subscription.unlimited_sub": "Active subscription • Unlimited students"
+  "settings.subscription.unlimited_sub": "Active subscription • Unlimited students",
+  "login.forgot.sentTitle": "Check your inbox",
+  "login.forgot.tooMany": "Too many attempts. Please try again later.",
+  "login.forgot.failed": "We could not send the reset email. Please try again."
 }
