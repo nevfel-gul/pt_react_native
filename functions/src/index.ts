@@ -569,3 +569,7 @@ export { weeklyAnalyticsReminderJob } from "./jobs/weeklyAnalyticsReminderJob";
 
 // Şifre sıfırlama akışı (Resend + athletrackai.com üzerindeki kendi sayfamız).
 export { requestPasswordReset } from "./passwordReset";
+
+export { issuePromoCoupon, redeemPromoCoupon } from "./promo/promo";
+
+export { promoAdmin } from "./admin/promoAdmin";

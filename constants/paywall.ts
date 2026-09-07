@@ -3,6 +3,18 @@ import { TIER_STUDENT_LIMITS, type PremiumTier } from "./PremiumContext";
 
 export type BillingCycle = "monthly" | "annual";
 
+/** App Store Connect'te tanımlı bir promotional offer. */
+export type PlanOffer = {
+    /** ASC'deki teklif kimliği (Product Code / Reference Name). */
+    identifier: string;
+    /** Apple'ın localized indirimli fiyatı, ör. "₺2.999,99". */
+    displayPrice: string;
+    priceAmount: number;
+    /** payAsYouGo | payUpFront | freeTrial */
+    paymentMode?: string;
+    numberOfPeriods?: number;
+};
+
 export type PlanDoc = {
     id: string;
 
@@ -26,6 +38,10 @@ export type PlanDoc = {
     // priceAmount: aynı fiyatın sayısal karşılığı (bu ürünün dönemine ait: aylık ürün → aylık, yıllık ürün → yıllık)
     displayPrice?: string;
     priceAmount?: number;
+
+    // Apple'ın üründe tanımlı promotional offer'ları (App Store Connect).
+    // Fiyat yine Apple'dan olduğu gibi alınır — indirimli tutarı biz hesaplamayız.
+    offers?: PlanOffer[];
 
     perClientNoteMode?: "auto" | "custom";
     footnote?: string | null;
@@ -113,4 +129,17 @@ export function calcPerClientAmount(
 
     const perMonth = billing === "annual" ? amount / 12 : amount;
     return perMonth / limit;
+}
+
+/**
+ * Kupon kampanyasının teklifini ürün üzerinde bulur.
+ * Bulunamazsa null döner — o üründe teklif tanımlanmamış demektir ve
+ * kullanıcıya indirimli fiyat gösterilmez (Apple ne diyorsa o).
+ */
+export function findPlanOffer(
+    plan: Pick<PlanDoc, "offers">,
+    offerIdentifier: string | null | undefined
+): PlanOffer | null {
+    if (!offerIdentifier) return null;
+    return plan.offers?.find((o) => o.identifier === offerIdentifier) ?? null;
 }
