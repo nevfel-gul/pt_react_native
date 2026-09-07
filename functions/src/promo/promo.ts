@@ -179,11 +179,10 @@ export const issuePromoCoupon = onCall(async (req) => {
         return { eligible: false, reason: "already_subscribed", coupon: null };
     }
 
+    // createdAt yalnızca YENİ kupon üretirken gerekli. Elle verilmiş
+    // (issueTo) kuponlar hesabın yaşından bağımsız çalışmalı, yoksa
+    // createdAt alanı olmayan eski hesaplarda test bile edilemiyordu.
     const createdAt = readCreatedAt(userData);
-    if (!createdAt) {
-        // createdAt yoksa (eski kullanıcılar) yaşını bilemeyiz; kupon verme.
-        return { eligible: false, reason: "no_created_at", coupon: null };
-    }
 
     const campaignsSnap = await db()
         .collection(CAMPAIGNS)
@@ -215,6 +214,12 @@ export const issuePromoCoupon = onCall(async (req) => {
             }
             // Süresi geçmiş veya kullanılmış → bu kampanyada tekrar kupon yok.
             continue;
+        }
+
+        if (!createdAt) {
+            // Kayıt tarihi bilinmiyorsa yaşını hesaplayamayız → kendiliğinden
+            // kupon verilmez. Elle verilen kupon yukarıda zaten dönmüş olurdu.
+            return { eligible: false, reason: "no_created_at", coupon: null };
         }
 
         const ageMinutes = (now.getTime() - createdAt.getTime()) / 60000;
