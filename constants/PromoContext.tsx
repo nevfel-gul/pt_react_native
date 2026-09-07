@@ -76,9 +76,20 @@ export function PromoProvider({ children }: { children: React.ReactNode }) {
 
       if (res.coupon) {
         setCoupon(res.coupon);
-        const seen = await AsyncStorage.getItem(seenKey(res.coupon.code));
+        // Geliştirme build'inde "görüldü" bayrağı yok sayılır: popup her
+        // açılışta çıkar, test için her seferinde yeni kupon üretmek gerekmez.
+        const seen = __DEV__ ? null : await AsyncStorage.getItem(seenKey(res.coupon.code));
         setPopupPending(!seen);
+        if (__DEV__) {
+          console.log(`[Promo] kupon: ${res.coupon.code} — kapsam:`, res.coupon.productIds);
+        }
         return;
+      }
+
+      // Popup çıkmadığında sebebini görmek testte çok zaman kazandırıyor:
+      // already_subscribed, no_campaign, too_early, no_stock...
+      if (__DEV__) {
+        console.log('[Promo] kupon yok — sebep:', res.reason, res.availableInMinutes ?? '');
       }
 
       setCoupon(null);
