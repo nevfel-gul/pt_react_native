@@ -1,4 +1,5 @@
 // app/(tabs)/calendar.tsx
+import { CALENDAR_LOCALES, calendarFirstDay, calendarLangOf, type CalendarLang } from "@/constants/calendarLocale";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
@@ -6,15 +7,17 @@ import { appointmentDocRef, appointmentsColRef, recordsColRef, studentsColRef } 
 import { useFocusEffect } from "expo-router";
 import { addDoc, deleteDoc, onSnapshot, orderBy, query, serverTimestamp, Timestamp } from "firebase/firestore";
 import { Trash2, X } from "lucide-react-native";
+import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
     Alert,
     FlatList,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     Pressable,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -22,6 +25,7 @@ import {
     View
 } from "react-native";
 import { Calendar } from "react-native-calendars";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 /* ------------------------------------------------------------------ */
 /*  TYPES                                                               */
@@ -214,28 +218,24 @@ function WheelPicker({
 /* ------------------------------------------------------------------ */
 /*  STATIC DATA FOR PICKERS                                             */
 /* ------------------------------------------------------------------ */
-const TR_MONTHS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
-const TR_DAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
-
-function buildDayLabels(): { label: string; date: Date }[] {
+function buildDayLabels(lang: CalendarLang, t: (key: string) => string): { label: string; date: Date }[] {
+    const { monthNamesShort, dayNamesShort } = CALENDAR_LOCALES[lang];
     const result: { label: string; date: Date }[] = [];
     const today = startOfDay(new Date());
     for (let i = 0; i < 60; i++) {
         const d = new Date(today);
         d.setDate(today.getDate() + i);
-        const dayName = TR_DAYS[d.getDay()];
-        const label =
-            i === 0
-                ? `Bugün ${d.getDate()} ${TR_MONTHS[d.getMonth()]}`
-                : i === 1
-                    ? `Yarın ${d.getDate()} ${TR_MONTHS[d.getMonth()]}`
-                    : `${dayName} ${d.getDate()} ${TR_MONTHS[d.getMonth()]}`;
+        const prefix =
+            i === 0 ? t("calendar.day.today")
+                : i === 1 ? t("calendar.day.tomorrow")
+                    : dayNamesShort[d.getDay()];
+        const month = monthNamesShort[d.getMonth()];
+        // tr: "Pzt 8 Eyl" / en: "Mon, Sep 8"
+        const label = lang === "tr" ? `${prefix} ${d.getDate()} ${month}` : `${prefix}, ${month} ${d.getDate()}`;
         result.push({ label, date: d });
     }
     return result;
 }
-
-const DAY_ITEMS = buildDayLabels();
 
 // Tek sütun saat: 06:00 → 22:30, 30dk aralıkla
 const TIME_ITEMS: string[] = [];
@@ -245,12 +245,12 @@ for (let h = 6; h <= 22; h++) {
 }
 
 const REPEAT_OPTIONS = [
-    { label: "Tekrar Yok", days: 0 },
-    { label: "Her Gün", days: 1 },
-    { label: "2 Günde Bir", days: 2 },
-    { label: "3 Günde Bir", days: 3 },
-    { label: "Haftada Bir", days: 7 },
-    { label: "2 Haftada Bir", days: 14 },
+    { labelKey: "calendar.appointment.repeat.none", days: 0 },
+    { labelKey: "calendar.appointment.repeat.daily", days: 1 },
+    { labelKey: "calendar.appointment.repeat.every2Days", days: 2 },
+    { labelKey: "calendar.appointment.repeat.every3Days", days: 3 },
+    { labelKey: "calendar.appointment.repeat.weekly", days: 7 },
+    { labelKey: "calendar.appointment.repeat.biweekly", days: 14 },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -291,6 +291,7 @@ function AddAppointmentModal({
     onClose,
     onSave,
     t,
+    lang,
 }: {
     visible: boolean;
     students: Student[];
@@ -298,6 +299,7 @@ function AddAppointmentModal({
     onClose: () => void;
     onSave: (studentId: string, studentName: string, date: Date, note: string, repeatDays: number) => void;
     t: (key: string, opts?: any) => string;
+    lang: CalendarLang;
 }) {
     const [step, setStep] = useState<"student" | "datetime">("student");
     const [search, setSearch] = useState("");
@@ -307,6 +309,11 @@ function AddAppointmentModal({
     const [timeIndex, setTimeIndex] = useState(6); // 09:00
     const [repeatDays, setRepeatDays] = useState(0);
     const [note, setNote] = useState("");
+
+    // Gün etiketleri hem dile hem de "bugün"e bağlı; gece yarısını geçmiş olabiliriz
+    // diye modal her açıldığında yeniden üretiliyor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const dayItems = useMemo(() => buildDayLabels(lang, t), [lang, t, visible]);
 
     useEffect(() => {
         if (visible) {
@@ -336,7 +343,7 @@ function AddAppointmentModal({
     };
 
     const handleSave = () => {
-        const dayInfo = DAY_ITEMS[dayIndex];
+        const dayInfo = dayItems[dayIndex];
         const timeStr = TIME_ITEMS[timeIndex] ?? "09:00";
         if (!dayInfo || !selectedStudentId) return;
 
@@ -348,11 +355,15 @@ function AddAppointmentModal({
         onSave(selectedStudentId, selectedStudentName, date, note, repeatDays);
     };
 
-    const selectedDayLabel = DAY_ITEMS[dayIndex]?.label ?? "";
+    const selectedDayLabel = dayItems[dayIndex]?.label ?? "";
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: theme.colors.overlay }}>
+            {/* Klavye açılınca not alanı ve Kaydet butonu klavyenin altında kalmasın */}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={{ flex: 1, justifyContent: "flex-end", backgroundColor: theme.colors.overlay }}
+            >
                 <Pressable style={{ flex: 1 }} onPress={onClose} />
 
                 <View style={{ backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: "90%" }}>
@@ -431,7 +442,7 @@ function AddAppointmentModal({
                                 {/* Gün kolonu */}
                                 <View style={{ flex: 3, borderRightWidth: 1, borderRightColor: theme.colors.border }}>
                                     <Text style={{ textAlign: "center", color: theme.colors.text.muted, fontSize: 10, fontWeight: "800", paddingTop: 8 }}>{t("calendar.appointment.dateHeader")}</Text>
-                                    <WheelPicker data={DAY_ITEMS.map((d) => d.label)} initialIndex={dayIndex} onChange={setDayIndex} theme={theme} />
+                                    <WheelPicker data={dayItems.map((d) => d.label)} initialIndex={dayIndex} onChange={setDayIndex} theme={theme} />
                                 </View>
                                 {/* Saat kolonu */}
                                 <View style={{ flex: 2 }}>
@@ -458,7 +469,7 @@ function AddAppointmentModal({
                                             }}
                                         >
                                             <Text style={{ color: repeatDays === opt.days ? theme.colors.accent : theme.colors.text.secondary, fontSize: 13, fontWeight: "700" }}>
-                                                {opt.label}
+                                                {t(opt.labelKey)}
                                             </Text>
                                         </Pressable>
                                     ))}
@@ -490,7 +501,7 @@ function AddAppointmentModal({
                         </ScrollView>
                     )}
                 </View>
-            </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 }
@@ -500,7 +511,10 @@ function AddAppointmentModal({
 /* ------------------------------------------------------------------ */
 export default function CalendarFollowUpScreen() {
     const { theme } = useTheme();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    // Tab bar "position: absolute" olduğu için içerik onun altında kalıyordu.
+    const tabBarHeight = React.useContext(BottomTabBarHeightContext) ?? 0;
+    const lang = calendarLangOf(i18n.language);
     const uid = auth.currentUser?.uid;
 
     const [loading, setLoading] = useState(true);
@@ -670,7 +684,7 @@ export default function CalendarFollowUpScreen() {
 
     if (!uid) {
         return (
-            <SafeAreaView style={[s.safeArea, { backgroundColor: theme.colors.background }]}>
+            <SafeAreaView edges={["top"]} style={[s.safeArea, { backgroundColor: theme.colors.background }]}>
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 20 }}>
                     <Text style={{ color: theme.colors.text.primary, fontSize: 18, fontWeight: "900" }}>{t("calendar.auth.requiredTitle")}</Text>
                     <Text style={{ color: theme.colors.text.secondary, fontSize: 13, fontWeight: "700", marginTop: 6 }}>{t("calendar.auth.requiredDesc")}</Text>
@@ -680,9 +694,9 @@ export default function CalendarFollowUpScreen() {
     }
 
     return (
-        <SafeAreaView style={[s.safeArea, { backgroundColor: theme.colors.background }]}>
+        <SafeAreaView edges={["top"]} style={[s.safeArea, { backgroundColor: theme.colors.background }]}>
             <View style={{ flex: 1 }}>
-                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }} showsVerticalScrollIndicator={false}>
 
                     {/* HEADER */}
                     <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 }}>
@@ -707,8 +721,9 @@ export default function CalendarFollowUpScreen() {
                                 </View>
                             ) : (
                                 <Calendar
-                                    key={calKey}
+                                    key={`${calKey}-${lang}`}
                                     style={{ backgroundColor: theme.colors.surface }}
+                                    firstDay={calendarFirstDay(lang)}
                                     onDayPress={(day) => { setSelectedDay(day.dateString); setFilter("all"); }}
                                     markedDates={markedDates}
                                     theme={{
@@ -890,6 +905,7 @@ export default function CalendarFollowUpScreen() {
                 onClose={() => setShowAddModal(false)}
                 onSave={handleSaveAppointment}
                 t={t}
+                lang={lang}
             />
         </SafeAreaView>
     );

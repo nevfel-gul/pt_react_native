@@ -884,5 +884,14 @@
   "promo.error.not_yours": "Bu kod senin hesabına tanımlı değil.",
   "promo.error.product": "Bu kupon seçtiğin pakette geçerli değil.",
   "promo.error.unavailable": "Kupon şu an kullanılamıyor, birazdan tekrar dene.",
-  "promo.error.generic": "Kupon uygulanamadı."
+  "promo.error.generic": "Kupon uygulanamadı.",
+  "common.done": "Tamam",
+  "calendar.day.today": "Bugün",
+  "calendar.day.tomorrow": "Yarın",
+  "calendar.appointment.repeat.none": "Tekrar Yok",
+  "calendar.appointment.repeat.daily": "Her Gün",
+  "calendar.appointment.repeat.every2Days": "2 Günde Bir",
+  "calendar.appointment.repeat.every3Days": "3 Günde Bir",
+  "calendar.appointment.repeat.weekly": "Haftada Bir",
+  "calendar.appointment.repeat.biweekly": "2 Haftada Bir"
 }

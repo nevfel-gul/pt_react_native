@@ -6,6 +6,7 @@ import { auth } from "@/services/firebase";
 import { studentsColRef } from "@/services/firestorePaths";
 
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import { calendarLangOf, pickerLocaleOf } from "@/constants/calendarLocale";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { addDoc, doc, getCountFromServer, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
@@ -103,7 +104,8 @@ type FormErrors = {
 
 const YeniOgrenciScreen = () => {
     const router = useRouter();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const pickerLocale = pickerLocaleOf(calendarLangOf(i18n.language));
     const { id, mode } = useLocalSearchParams<{ id?: string; mode?: string }>();
     const isEdit = mode === "edit" && !!id;
 
@@ -500,6 +502,7 @@ const YeniOgrenciScreen = () => {
                                                 <DateTimePicker
                                                     value={parseISODate(form.dateOfBirth) ?? new Date(2000, 0, 1)}
                                                     mode="date"
+                                                    locale={pickerLocale}
                                                     display={Platform.OS === "ios" ? "spinner" : "default"}
                                                     textColor={theme.colors.text.primary}
                                                     themeVariant={theme.colors.background === "#020617" ? "dark" : "light"}
@@ -521,7 +524,7 @@ const YeniOgrenciScreen = () => {
                                                         style={[styles.saveButton, { marginTop: 10 }]}
                                                         onPress={() => setShowDobPicker(false)}
                                                     >
-                                                        <Text style={styles.saveButtonText}>Tamam</Text>
+                                                        <Text style={styles.saveButtonText}>{t("common.done")}</Text>
                                                     </TouchableOpacity>
                                                 )}
                                             </Pressable>

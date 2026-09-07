@@ -881,5 +881,14 @@
   "promo.error.not_yours": "This code is not linked to your account.",
   "promo.error.product": "This coupon does not apply to the selected plan.",
   "promo.error.unavailable": "The coupon is unavailable right now, please try again shortly.",
-  "promo.error.generic": "Could not apply the coupon."
+  "promo.error.generic": "Could not apply the coupon.",
+  "common.done": "Done",
+  "calendar.day.today": "Today",
+  "calendar.day.tomorrow": "Tomorrow",
+  "calendar.appointment.repeat.none": "No repeat",
+  "calendar.appointment.repeat.daily": "Every day",
+  "calendar.appointment.repeat.every2Days": "Every 2 days",
+  "calendar.appointment.repeat.every3Days": "Every 3 days",
+  "calendar.appointment.repeat.weekly": "Every week",
+  "calendar.appointment.repeat.biweekly": "Every 2 weeks"
 }

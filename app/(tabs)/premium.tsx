@@ -1,5 +1,6 @@
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
+import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
 import { LinearGradient } from "expo-linear-gradient";
 import { Cpu } from "lucide-react-native";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -88,6 +89,8 @@ export default function PaywallMonthlyScreen({
   onRestorePurchases,
 }: Props) {
   const insets = useSafeAreaInsets();
+  // Tab bar "position: absolute" olduğu için içerik onun altında kalıyordu.
+  const tabBarHeight = React.useContext(BottomTabBarHeightContext) ?? insets.bottom;
   const { t } = useTranslation();
   const { theme, mode } = useTheme();
   const { updateSubscription, subscription, hasPremium, tier: currentTier } = usePremium();
@@ -776,6 +779,10 @@ export default function PaywallMonthlyScreen({
         style={{ flex: 1 }}
         contentContainerStyle={[styles.content, { paddingBottom: 16 }]}
         showsVerticalScrollIndicator={false}
+        /* Promosyon kodu alanı klavyenin altında kalmasın */
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         bounces
         alwaysBounceVertical
       >
@@ -950,7 +957,7 @@ export default function PaywallMonthlyScreen({
         <Text style={styles.cancelText}>{t("paywall.cancel_text")}</Text>
 
         <View
-          style={[styles.fixedBottom, { paddingBottom: 8 + insets.bottom }]}
+          style={[styles.fixedBottom, { paddingBottom: 8 + tabBarHeight }]}
         >
           <TouchableOpacity
             activeOpacity={0.9}
