@@ -1,5 +1,7 @@
+import { goalLabel, normalizeGoals, parqYesCount } from "@/constants/studentForm";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
+import { track } from "@/services/analytics";
 import { auth } from "@/services/firebase";
 import {
   recordsColRef,
@@ -18,6 +20,7 @@ import {
   where,
 } from "firebase/firestore";
 import {
+  AlertTriangle,
   ArrowLeft,
   Calendar,
   ChevronDown,
@@ -25,6 +28,7 @@ import {
   Eye,
   Mail,
   Phone,
+  ShieldCheck,
   User,
 } from "lucide-react-native";
 import React, {
@@ -1821,9 +1825,11 @@ export default function StudentDetailScreen() {
     () => [
       { key: "hadPainOrInjury" as const, noteKey: "hadPainOrInjuryNote" as const, labelKey: "personal.q1" },
       { key: "hadSurgery" as const, noteKey: "hadSurgeryNote" as const, labelKey: "personal.q2" },
-      { key: "diagnosedChronicDiseaseByDoctor" as const, noteKey: "diagnosedChronicDiseaseByDoctorNote" as const, labelKey: "personal.q3" },
-      { key: "currentlyUsesMedications" as const, noteKey: "currentlyUsesMedicationsNote" as const, labelKey: "personal.q4" },
-      { key: "weeklyPhysicalActivity30MinOrLess" as const, noteKey: "weeklyPhysicalActivity30MinOrLessNote" as const, labelKey: "personal.q5" },
+      // q3–q5 artık formda yok (q3/q4 PAR-Q ile aynıydı, q5 yerine haftalık aktivite seviyesi soruluyor);
+      // eski kayıtlarda cevap varsa göstermeye devam ediyoruz.
+      { key: "diagnosedChronicDiseaseByDoctor" as const, noteKey: "diagnosedChronicDiseaseByDoctorNote" as const, labelKey: "personal.q3", legacy: true },
+      { key: "currentlyUsesMedications" as const, noteKey: "currentlyUsesMedicationsNote" as const, labelKey: "personal.q4", legacy: true },
+      { key: "weeklyPhysicalActivity30MinOrLess" as const, noteKey: "weeklyPhysicalActivity30MinOrLessNote" as const, labelKey: "personal.q5", legacy: true },
       { key: "hasSportsHistoryOrCurrentlyDoingSport" as const, noteKey: "hasSportsHistoryOrCurrentlyDoingSportNote" as const, labelKey: "personal.q6" },
       { key: "jobRequiresLongSitting" as const, labelKey: "personal.q7" },
       { key: "jobRequiresRepetitiveMovement" as const, labelKey: "personal.q8" },
@@ -1845,7 +1851,7 @@ export default function StudentDetailScreen() {
         setStudent({
           id: snap.id, ...d,
           aktif: d.aktif ?? "Aktif",
-          trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
+          trainingGoals: normalizeGoals(d.trainingGoals),
           followUpDays: typeof d.followUpDays === "number" ? d.followUpDays : 30,
         });
         setPtNote((d.ptNote as string) ?? "");
@@ -1901,6 +1907,7 @@ export default function StudentDetailScreen() {
       const newStatus = student.aktif === "Aktif" ? "Pasif" : "Aktif";
       await updateDoc(studentDocRef(auth.currentUser?.uid!, student.id), { aktif: newStatus });
       setStudent({ ...student, aktif: newStatus });
+      track("student_status_changed", { status: newStatus === "Aktif" ? "active" : "passive" });
     } catch (err) { console.error(err); }
     finally { setToggling(false); }
   };
@@ -1914,6 +1921,7 @@ export default function StudentDetailScreen() {
         followUpDaysUpdatedAt: serverTimestamp(),
       });
       setStudent({ ...student, followUpDays: days });
+      track("follow_up_period_changed", { days });
     } catch (err) {
       console.error(err);
       Alert.alert(t("common.error"), t("studentDetail.followUp.saveError"));
@@ -1945,6 +1953,7 @@ export default function StudentDetailScreen() {
       });
       setNoteModalOpen(false);
       setNewNoteText("");
+      track("student_note_added", { hasTitle: !!title.length, length: text.length });
     } catch (e) {
       console.error(e);
       Alert.alert(t("common.error"), t("studentDetail.notes.saveError"));
@@ -2158,9 +2167,18 @@ export default function StudentDetailScreen() {
                 </Text>
                 <InfoRow styles={styles} label={t("studentDetail.label.email")} value={student.email || "-"} icon={<Mail size={16} color={theme.colors.primary} />} />
                 <InfoRow styles={styles} label={t("studentDetail.label.phone")} value={student.number || "-"} icon={<Phone size={16} color={theme.colors.primary} />} />
-                <InfoRow styles={styles} label={t("studentDetail.label.gender")} value={student.gender || "-"} icon={<User size={16} color={theme.colors.primary} />} />
+                <InfoRow styles={styles} label={t("studentDetail.label.gender")} value={student.gender === "F" ? t("newstudent.gender.female") : student.gender === "M" ? t("newstudent.gender.male") : "-"} icon={<User size={16} color={theme.colors.primary} />} />
                 <InfoRow styles={styles} label={t("studentDetail.label.birthDate")} value={formatDateTR(student.dateOfBirth)} icon={<Calendar size={16} color={theme.colors.primary} />} />
-                <InfoRow styles={styles} label={t("studentDetail.label.height")} value={student.boy || "-"} icon={<User size={16} color={theme.colors.primary} />} lastRow />
+                <InfoRow styles={styles} label={t("studentDetail.label.height")} value={student.boy || "-"} icon={<User size={16} color={theme.colors.primary} />} lastRow={!(student as any).emergencyContactPhone} />
+                {!!(student as any).emergencyContactPhone && (
+                  <InfoRow
+                    styles={styles}
+                    label={t("studentDetail.label.emergencyContact")}
+                    value={[(student as any).emergencyContactName, (student as any).emergencyContactPhone].filter(Boolean).join(" · ")}
+                    icon={<Phone size={16} color={theme.colors.danger} />}
+                    lastRow
+                  />
+                )}
               </View>
 
               {/* ✅ ANALİTİKLER — çizgi grafik dahil */}
@@ -2186,6 +2204,20 @@ export default function StudentDetailScreen() {
               {/* PARQ */}
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>{t("studentDetail.section.parq")}</Text>
+                {parqYesCount(student) > 0 && (
+                  <View style={[styles.parqBanner, (student as any).medicalClearance === true ? styles.parqBannerOk : styles.parqBannerWarn]}>
+                    {(student as any).medicalClearance === true ? (
+                      <ShieldCheck size={18} color={theme.colors.success} />
+                    ) : (
+                      <AlertTriangle size={18} color={theme.colors.warning} />
+                    )}
+                    <Text style={styles.parqBannerText}>
+                      {(student as any).medicalClearance === true
+                        ? t("studentDetail.parq.cleared", { date: formatDateTR((student as any).medicalClearanceDate) })
+                        : t("studentDetail.parq.needsClearance", { count: parqYesCount(student) })}
+                    </Text>
+                  </View>
+                )}
                 {parqQuestions.map((q, idx) => (
                   <QAItem
                     key={q.key}
@@ -2204,7 +2236,9 @@ export default function StudentDetailScreen() {
                 <Text style={styles.cardTitle}>
                   {t("studentDetail.section.personalDetails")}
                 </Text>
-                {personalQuestions.map((q, idx) => (
+                {personalQuestions
+                  .filter((q) => !(q as any).legacy || typeof (student as any)[q.key] === "boolean")
+                  .map((q, idx) => (
                   <QAItem
                     key={q.key}
                     styles={styles}
@@ -2226,12 +2260,13 @@ export default function StudentDetailScreen() {
                   value={student.jobDescription || "-"}
                   icon={<User size={16} color={theme.colors.primary} />}
                 />
+                <LifestyleRows styles={styles} student={student} />
                 <View style={{ marginTop: 12 }}>
                   <Text style={styles.subTitle}>{t("studentDetail.label.trainingGoals")}</Text>
                   <View style={styles.chipWrap}>
                     {student.trainingGoals && student.trainingGoals.length ? (
                       student.trainingGoals.map((g) => (
-                        <Chip key={g} styles={styles} label={g} />
+                        <Chip key={g} styles={styles} label={goalLabel(t, g)} />
                       ))
                     ) : (
                       <Text style={styles.mutedText}>-</Text>
@@ -2474,6 +2509,27 @@ function InfoRow({
   );
 }
 
+/** Formdaki yaşam tarzı soruları — sadece cevaplanmış olanlar gösterilir. */
+function LifestyleRows({ styles, student }: { styles: ReturnType<typeof makeStyles>; student: any }) {
+  const { t } = useTranslation();
+  const rows: { label: string; value: string }[] = [];
+  if (student.weeklyActivityLevel) rows.push({ label: t("newstudent.label.weekly_activity"), value: t(`newstudent.activity.${student.weeklyActivityLevel}`) });
+  if (student.experienceLevel) rows.push({ label: t("newstudent.label.experience"), value: t(`newstudent.experience.${student.experienceLevel}`) });
+  if (student.gender === "F" && student.pregnancyStatus) rows.push({ label: t("newstudent.label.pregnancy"), value: t(`newstudent.pregnancy.${student.pregnancyStatus}`) });
+  if (typeof student.smokes === "boolean") rows.push({ label: t("newstudent.details.smoking"), value: student.smokes ? t("recordNew.option.yes") : t("recordNew.option.no") });
+  if (student.sleepHours) rows.push({ label: t("newstudent.label.sleep"), value: t(`newstudent.sleep.${student.sleepHours}`) });
+  if (typeof student.stressLevel === "number") rows.push({ label: t("newstudent.label.stress"), value: `${student.stressLevel} / 5` });
+  if (student.nutritionNotes?.trim()) rows.push({ label: t("newstudent.label.nutrition"), value: student.nutritionNotes.trim() });
+  if (!rows.length) return null;
+  return (
+    <>
+      {rows.map((r) => (
+        <InfoRow key={r.label} styles={styles} label={r.label} value={r.value} />
+      ))}
+    </>
+  );
+}
+
 function QAItem({
   styles, index, question, answer, note, lastItem,
 }: {
@@ -2678,6 +2734,18 @@ function makeStyles(theme: ThemeUI) {
     infoLabelRow: { flexDirection: "row", alignItems: "center" },
     infoLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
     infoValue: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, maxWidth: "55%", textAlign: "right" },
+    parqBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      padding: 10,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      marginBottom: 8,
+    },
+    parqBannerWarn: { borderColor: theme.colors.warning, backgroundColor: theme.colors.goldSoft },
+    parqBannerOk: { borderColor: theme.colors.success, backgroundColor: theme.colors.successSoft },
+    parqBannerText: { flex: 1, color: theme.colors.text.primary, fontSize: theme.fontSize.sm, fontWeight: "600", lineHeight: 18 },
     qaItem: { paddingVertical: theme.spacing.sm - 2, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     qaItemLast: { paddingVertical: theme.spacing.sm - 2 },
     qaTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },

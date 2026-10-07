@@ -1,4 +1,5 @@
 import { auth, db } from '@/services/firebase';
+import { setUserProperties } from '@/services/analytics';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
@@ -128,6 +129,12 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   const studentLimit: number | null = isUnlimited
     ? null
     : (TIER_STUDENT_LIMITS[tier] ?? TIER_STUDENT_LIMITS.free);
+
+  // Analitikte her event plana göre kırılabilsin.
+  useEffect(() => {
+    if (loading) return;
+    setUserProperties({ plan: hasPremium ? tier : 'free', billing: subscription?.billing ?? null });
+  }, [loading, hasPremium, tier, subscription?.billing]);
 
   return (
     <PremiumContext.Provider

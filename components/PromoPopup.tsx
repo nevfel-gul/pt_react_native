@@ -1,10 +1,12 @@
+import { usePopupSlot } from '@/constants/PopupContext';
 import { usePromo } from '@/constants/PromoContext';
 import type { ThemeUI } from '@/constants/types';
 import { useTheme } from '@/constants/usetheme';
+import { track } from '@/services/analytics';
 import { formatRemaining } from '@/services/promo';
 import { LinearGradient } from 'expo-linear-gradient';
-import { usePathname, useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -20,23 +22,39 @@ export default function PromoPopup() {
   const { theme, mode } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
-  const pathname = usePathname();
 
   const styles = useMemo(() => makeStyles(theme, mode), [theme, mode]);
 
-  // Ödeme ekranındayken popup'ı üste bindirme — kupon zaten orada görünüyor.
-  const onPaywall = pathname?.includes('premium');
-  const visible = !!coupon && popupPending && !onPaywall;
+  // Süreli olduğu için oturum sınırına takılmaz ve diğer popup'lardan önce gelir.
+  // Ödeme ekranında zaten görünmez (popup sırası orada popup açmıyor).
+  const { visible, done } = usePopupSlot('promo', !!coupon && popupPending, {
+    priority: 100,
+    bypassSessionCap: true,
+  });
+
+  useEffect(() => {
+    if (visible && coupon) {
+      track('promo_popup_shown', { discountPercent: coupon.discountPercent });
+    }
+  }, [visible, coupon]);
 
   if (!coupon) return null;
 
-  const goToPaywall = () => {
+  const close = () => {
+    track('promo_popup_dismissed', { discountPercent: coupon.discountPercent });
     dismissPopup();
+    done();
+  };
+
+  const goToPaywall = () => {
+    track('promo_popup_claimed', { discountPercent: coupon.discountPercent });
+    dismissPopup();
+    done();
     router.push({ pathname: '/(tabs)/premium', params: { promo: coupon.code } } as any);
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={dismissPopup}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <LinearGradient
@@ -75,7 +93,7 @@ export default function PromoPopup() {
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={dismissPopup} style={styles.laterBtn}>
+          <TouchableOpacity onPress={close} style={styles.laterBtn}>
             <Text style={styles.laterText}>{t('promo.popup.later')}</Text>
           </TouchableOpacity>
         </View>

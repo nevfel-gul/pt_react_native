@@ -47,3 +47,7 @@ functions/serviceAccountKey.json
 
 # App Store Connect teklif kodlari — gercek, kullanilabilir indirim kodlari
 oneTimeOfferCodes/
+
+# @bacons/apple-targets her prebuild'de bunları targets/<ad>/ içine üretir
+targets/*/Assets.xcassets
+targets/*/Info.plist

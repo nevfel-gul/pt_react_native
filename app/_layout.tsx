@@ -14,7 +14,12 @@ import { ActivityIndicator, Platform, Text, View } from "react-native";
 import { ThemeProvider as AppThemeProvider, useTheme } from "@/constants/usetheme";
 import { PremiumProvider } from "@/constants/PremiumContext";
 import { PromoProvider } from "@/constants/PromoContext";
+import { PopupProvider } from "@/constants/PopupContext";
+import { RatingProvider } from "@/constants/RatingContext";
 import PromoPopup from "@/components/PromoPopup";
+import AnnouncementPopup from "@/components/AnnouncementPopup";
+import WidgetSync from "@/components/WidgetSync";
+import { identifyUser, resetAnalytics, setUserProperties, track } from "@/services/analytics";
 import { db } from "@/services/firebase";
 import {
   ensureAndroidChannelAsync,
@@ -55,20 +60,33 @@ export const unstable_settings = {
 function AppNav() {
   const { mode } = useTheme(); // ✅ artık cihaz değil, app theme
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [i18nReady, setI18nReady] = useState(false);
 
   useEffect(() => {
+    let prevUid: string | null = null;
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
+
+      // Analitik kimliği: sadece uid — e-posta/ad gönderilmez.
+      if (firebaseUser) {
+        identifyUser(firebaseUser.uid);
+      } else if (prevUid) {
+        resetAnalytics();
+      }
+      prevUid = firebaseUser?.uid ?? null;
     });
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (i18n.language) setUserProperties({ appLanguage: i18n.language });
+  }, [i18n.language]);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,6 +110,7 @@ function AppNav() {
         if (!pushEnabled) return;
 
         const result = await registerForPushNotificationsAsync();
+        track("push_permission_result", { status: result.status });
         if (cancelled || result.status !== "granted") return;
 
         // Token değişmediyse gereksiz yazma yapma.
@@ -125,6 +144,9 @@ function AppNav() {
     const go = (response: Notifications.NotificationResponse | null) => {
       if (!response) return;
       const data = response.notification.request.content.data;
+      track("push_opened", {
+        type: typeof data?.type === "string" ? data.type : typeof data?.screen === "string" ? data.screen : null,
+      });
       const route = routeForNotification(data);
       if (route) router.push(route as any);
     };
@@ -188,6 +210,8 @@ function AppNav() {
       {/* Kupon popup'ı — kullanıcı hangi ekranda olursa olsun çıkabilsin diye
           navigasyonun dışında, en üstte duruyor. */}
       {user ? <PromoPopup /> : null}
+      {user ? <AnnouncementPopup /> : null}
+      <WidgetSync />
       <StatusBar style="auto" />
     </ThemeProvider>
   );
@@ -199,7 +223,11 @@ export default function RootLayout() {
     <AppThemeProvider>
       <PremiumProvider>
         <PromoProvider>
-          <AppNav />
+          <PopupProvider>
+            <RatingProvider>
+              <AppNav />
+            </RatingProvider>
+          </PopupProvider>
         </PromoProvider>
       </PremiumProvider>
     </AppThemeProvider>

@@ -4,7 +4,11 @@ import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
 import { appointmentDocRef, appointmentsColRef, recordsColRef, studentsColRef } from "@/services/firestorePaths";
-import { useFocusEffect } from "expo-router";
+import { addDays, daysDiff, isAppointmentOnDay, startOfDay, toDateSafe, ymd } from "@/services/schedule";
+import { useRating } from "@/constants/RatingContext";
+import { track } from "@/services/analytics";
+import { requestWidgetRefresh } from "@/services/widgetData";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { addDoc, deleteDoc, onSnapshot, orderBy, query, serverTimestamp, Timestamp } from "firebase/firestore";
 import { Trash2, X } from "lucide-react-native";
 import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
@@ -70,59 +74,8 @@ type DueFilter = "all" | "overdue" | "dueSoon" | "ok";
 /* ------------------------------------------------------------------ */
 /*  HELPERS                                                             */
 /* ------------------------------------------------------------------ */
-function toDateSafe(v: any): Date | null {
-    if (!v) return null;
-    if (typeof v === "object" && typeof v.toDate === "function") {
-        try { return v.toDate(); } catch { }
-    }
-    if (typeof v === "number") { const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
-    if (typeof v === "string") { const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
-    if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
-    return null;
-}
-
-function ymd(d: Date): string {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-}
-
-function addDays(d: Date, days: number): Date {
-    const x = new Date(d);
-    x.setDate(x.getDate() + days);
-    return x;
-}
-
-function startOfDay(d: Date): Date {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function daysDiff(a: Date, b: Date): number {
-    return Math.round((startOfDay(a).getTime() - startOfDay(b).getTime()) / (1000 * 60 * 60 * 24));
-}
-
 function severityRank(s: DueItem["status"]) {
     return s === "overdue" ? 0 : s === "dueSoon" ? 1 : s === "ok" ? 2 : 3;
-}
-
-// Bir randevunun belirli bir güne denk gelip gelmediğini kontrol et (tekrar dahil)
-function isAppointmentOnDay(apt: Appointment, dayStr: string): boolean {
-    const aptDate = toDateSafe(apt.date);
-    if (!aptDate) return false;
-
-    const aptDayStr = ymd(aptDate);
-    if (aptDayStr === dayStr) return true;
-
-    const repeat = apt.repeatDays;
-    if (!repeat || repeat <= 0) return false;
-
-    const aptTime = startOfDay(aptDate).getTime();
-    const dayTime = startOfDay(new Date(dayStr + "T00:00:00")).getTime();
-    if (dayTime < aptTime) return false;
-
-    const diffDays = Math.round((dayTime - aptTime) / 86400000);
-    return diffDays % repeat === 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -528,6 +481,13 @@ export default function CalendarFollowUpScreen() {
 
     useFocusEffect(useCallback(() => { setCalKey((k) => k + 1); }, []));
 
+    const { notifyPositiveMoment } = useRating();
+    const params = useLocalSearchParams<{ source?: string }>();
+    useEffect(() => {
+        track("calendar_viewed", { source: params.source ?? "tab" });
+        if (params.source === "widget") track("widget_opened", { platform: Platform.OS });
+    }, [params.source]);
+
     useEffect(() => {
         if (!uid) return;
         setLoading(true);
@@ -569,8 +529,11 @@ export default function CalendarFollowUpScreen() {
                 createdAt: serverTimestamp(),
             });
             setShowAddModal(false);
+            track("appointment_created", { repeatDays: repeatDays > 0 ? repeatDays : 0, hasNote: !!note.trim() });
+            notifyPositiveMoment("appointment_created");
+            requestWidgetRefresh();
         } catch (e) { console.error(e); }
-    }, [uid]);
+    }, [uid, notifyPositiveMoment]);
 
     const handleDeleteAppointment = useCallback((aptId: string) => {
         if (!uid) return;
@@ -579,7 +542,7 @@ export default function CalendarFollowUpScreen() {
             t("calendar.appointment.deleteConfirm"),
             [
                 { text: t("calendar.appointment.cancel"), style: "cancel" },
-                { text: t("calendar.appointment.delete"), style: "destructive", onPress: async () => { try { await deleteDoc(appointmentDocRef(uid, aptId)); } catch (e) { console.error(e); } } },
+                { text: t("calendar.appointment.delete"), style: "destructive", onPress: async () => { try { await deleteDoc(appointmentDocRef(uid, aptId)); track("appointment_deleted"); requestWidgetRefresh(); } catch (e) { console.error(e); } } },
             ]
         );
     }, [uid, t]);

@@ -37,6 +37,7 @@ import { usePromo } from "@/constants/PromoContext";
 import { formatRemaining, promoErrorKey, redeemPromoCoupon } from "@/services/promo";
 
 import i18n from "@/services/i18n";
+import { track } from '@/services/analytics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Purchase } from 'react-native-iap';
 import { useIAP } from 'react-native-iap';
@@ -96,7 +97,16 @@ export default function PaywallMonthlyScreen({
   const { updateSubscription, subscription, hasPremium, tier: currentTier } = usePremium();
   const router = useRouter();
   const { coupon, remainingMs, refresh: refreshPromo } = usePromo();
-  const params = useLocalSearchParams<{ promo?: string }>();
+  const params = useLocalSearchParams<{ promo?: string; source?: string }>();
+
+  useEffect(() => {
+    track('paywall_viewed', {
+      source: params.source ?? (params.promo ? 'promo' : 'tab'),
+      currentTier,
+    });
+    // Sadece ekran açılışında bir kez.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Promosyon kodu — popup'tan gelen kod otomatik dolar, kullanıcı elle de girebilir.
   const [promoInput, setPromoInput] = useState('');
@@ -197,6 +207,12 @@ export default function PaywallMonthlyScreen({
 
       setBusyState(null);
 
+      track('purchase_completed', {
+        productId: purchase.productId ?? null,
+        tier: activatedTier ?? null,
+        activated: premiumActivated,
+      });
+
       // 5. Sonucu kullanıcıya bildir
       if (premiumActivated) {
         const tierLabel = activatedTier === 'studio' ? 'Studio' : activatedTier === 'pro' ? 'Pro' : 'Core';
@@ -231,6 +247,9 @@ export default function PaywallMonthlyScreen({
 
     onPurchaseError: useCallback((err: any) => {
       setBusyState(null);
+      track(err?.code === 'E_USER_CANCELLED' ? 'purchase_cancelled' : 'purchase_failed', {
+        code: err?.code ?? 'unknown',
+      });
       if (err?.code !== 'E_USER_CANCELLED') {
         Alert.alert(t("paywall.error.title"), err?.message || t("paywall.error.payment"));
       }
@@ -558,6 +577,7 @@ export default function PaywallMonthlyScreen({
     if (promoCoversSelected && appliedCode) {
       setBusyState('purchase');
       try {
+        track('purchase_started', { productId, billing, withPromo: true });
         const res = await redeemPromoCoupon(appliedCode, productId);
         await Linking.openURL(res.redeemUrl);
       } catch (e: any) {
@@ -598,6 +618,7 @@ export default function PaywallMonthlyScreen({
     }
 
     setBusyState('purchase');
+    track('purchase_started', { productId, billing, action: purchaseAction, withPromo: false });
     try {
       await requestPurchase({ request: { apple: { sku: productId } }, type: 'subs' });
       // onPurchaseSuccess callback'i başarıda tetiklenir, burada setBusy(null) gerek yok
@@ -614,22 +635,25 @@ export default function PaywallMonthlyScreen({
   // Satın almaları geri yükle
   const handleRestore = useCallback(async () => {
     if (busyState) return;
+    track('restore_tapped');
     setBusyState('restore');
     try {
       // Önce kütüphanenin kendi restore'unu çalıştır
       await restorePurchases();
 
-      // Aktif abonelikleri yenile
+      // Aktif abonelikleri yenile. Dönen listeyi kullan: `activeSubscriptions`
+      // state'i bu closure'da hâlâ restore öncesi değeri taşıyor.
+      let freshSubs: any[] | null = null;
       try {
-        await getActiveSubscriptionsRef.current?.();
+        freshSubs = (await getActiveSubscriptionsRef.current?.()) ?? null;
       } catch (e) {
         console.warn('[IAP] getActiveSubscriptions after restore error:', e);
       }
 
       // Geri yüklenen subscription varsa Firestore'a kaydet
-      // activeSubscriptions ref üzerinden kontrol — restore sonrası güncellenir
-      const activeSubs = activeSubscriptions;
+      const activeSubs = Array.isArray(freshSubs) ? freshSubs : activeSubscriptions;
       const restoredSub = activeSubs.find((s) => s.isActive);
+      track('restore_completed', { found: !!restoredSub });
       if (restoredSub) {
         const restoredProductId = restoredSub.currentPlanId ?? restoredSub.productId ?? '';
         if (restoredProductId) {
@@ -720,7 +744,10 @@ export default function PaywallMonthlyScreen({
   const accent = billing === 'annual' ? theme.colors.premium : theme.colors.primary;
 
   const onToggleBilling = useCallback((v: boolean) => setBilling(v ? 'annual' : 'monthly'), []);
-  const onSelectPlan = useCallback((id: string) => setSelectedPlanId(id), []);
+  const onSelectPlan = useCallback((id: string) => {
+    setSelectedPlanId(id);
+    track('paywall_plan_selected', { planId: id });
+  }, []);
 
   const isBusy = busyState !== null;
   const continueDisabled = !selectedPlan || isBusy || purchaseAction === 'same';

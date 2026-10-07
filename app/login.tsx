@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { track } from "@/services/analytics";
 import Checkbox from "expo-checkbox";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -148,6 +149,7 @@ export default function LoginScreen() {
         email: email.trim(),
         locale: (i18n.language || "tr").startsWith("tr") ? "tr" : "en",
       });
+      track("password_reset_requested");
       Alert.alert(t("login.forgot.sentTitle"), t("login.forgot.sent"));
     } catch (err: any) {
       const message =
@@ -192,6 +194,7 @@ export default function LoginScreen() {
 
       if (isLoginMode) {
         await signInWithEmailAndPassword(auth, email.trim(), password);
+        track("login_completed", { method: "email" });
       } else {
         const cleanName = name.trim();
         const cleanUsername = username.trim().toLowerCase();
@@ -213,11 +216,13 @@ export default function LoginScreen() {
           },
           createdAt: serverTimestamp(),
         });
+        track("signup_completed", { method: "email" });
       }
 
       await persistRemember(rememberMe, email.trim());
       router.replace("/(tabs)");
     } catch (err: any) {
+      track(isLoginMode ? "login_failed" : "signup_failed", { code: err?.code ?? "unknown" });
       Alert.alert(t("login.error.prefix"), err?.message ?? t("common.error"));
     } finally {
       setLoading(false);

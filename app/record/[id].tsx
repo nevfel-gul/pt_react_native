@@ -26,6 +26,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { track } from "@/services/analytics";
 import { auth } from "@/services/firebase";
 import { recordDocRef, studentDocRef } from "@/services/firestorePaths";
 import { getDoc } from "firebase/firestore";
@@ -59,6 +60,10 @@ export default function RecordDetailScreen() {
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        track("record_viewed");
+    }, []);
 
     useEffect(() => {
         if (!id) return;
@@ -318,6 +323,22 @@ export default function RecordDetailScreen() {
                             {record.analysis?.metabolicAgeStatus || "-"}
                         </Text>
 
+                        {record.visceralFat ? (
+                            <>
+                                <InfoRow
+                                    styles={styles}
+                                    label={t("recordNew.field.visceralFat")}
+                                    value={String(record.visceralFat)}
+                                />
+                                <Text style={styles.analysisText}>
+                                    {t("recordDetail.analysis.status")}{" "}
+                                    {record.analysis?.visceralFatStatus
+                                        ? t(`recordNew.visceralFat.${record.analysis.visceralFatStatus}`)
+                                        : "-"}
+                                </Text>
+                            </>
+                        ) : null}
+
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.label.impedance")}
@@ -423,6 +444,22 @@ export default function RecordDetailScreen() {
                             value={record.dinlenikNabiz?.toString() ?? "-"}
                             firstLine={true}
                         />
+
+                        {record.systolicBP && record.diastolicBP ? (
+                            <>
+                                <InfoRow
+                                    styles={styles}
+                                    label={t("recordDetail.aerobic.bloodPressure")}
+                                    value={`${record.systolicBP}/${record.diastolicBP} mmHg`}
+                                />
+                                <Text style={styles.analysisText}>
+                                    {t("recordDetail.analysis.status")}{" "}
+                                    {record.analysis?.bloodPressureCategory
+                                        ? t(`recordNew.bp.${record.analysis.bloodPressureCategory}`)
+                                        : "-"}
+                                </Text>
+                            </>
+                        ) : null}
 
                         <InfoRow
                             styles={styles}
@@ -583,46 +620,21 @@ export default function RecordDetailScreen() {
                     {/* OVERHEAD SQUAT + SIT & REACH */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>{t("recordDetail.section.ohs")}</Text>
-                        <InfoRow
-                            styles={styles}
-                            label={t("recordDetail.ohs.footTurnsOut")}
-                            value={boolBadge(record.footTurnsOut)}
-                            firstLine={true}
-                        />
-                        <InfoRow
-                            styles={styles}
-                            label={t("recordDetail.ohs.kneeMovesInward")}
-                            value={boolBadge(record.kneeMovesInward)}
-                        />
-                        <InfoRow
-                            styles={styles}
-                            label={t("recordDetail.ohs.kneeMovesOutward")}
-                            value={boolBadge(record.kneeMovesOutward)}
-                        />
-                        <InfoRow
-                            styles={styles}
-                            label={t("recordDetail.ohs.excessiveForwardLean")}
-                            value={boolBadge(record.excessiveForwardLean)}
-                        />
-                        <InfoRow
-                            styles={styles}
-                            label={t("recordDetail.ohs.lowBackArches")}
-                            value={boolBadge(record.lowBackArches)}
-                        />
-                        <InfoRow
-                            styles={styles}
-                            label={t("recordDetail.ohs.lowBackRound")}
-                            value={boolBadge(record.lowBackRound)}
-                        />
-                        <InfoRow
-                            styles={styles}
-                            label={t("recordDetail.ohs.armsFallForward")}
-                            value={boolBadge(record.armsFallForward)}
-                        />
+                        {/* Form OHS cevaplarını ohs* alanlarına yazıyor; footTurnsOut vb. eski
+                            boolean alanlar hiç doldurulmadığı için her şey "Hayır" görünüyordu. */}
+                        {OHS_ROWS.map((row, i) => (
+                            <InfoRow
+                                key={row.key}
+                                styles={styles}
+                                label={t(row.labelKey)}
+                                value={ohsAnswer(t, record[row.key], record[row.legacyKey])}
+                                firstLine={i === 0}
+                            />
+                        ))}
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.ohs.notes")}
-                            value={record.overheadsquatnotes || "-"}
+                            value={record.ohsNotes || record.overheadsquatnotes || "-"}
                             multiline
                         />
                     </View>
@@ -805,9 +817,25 @@ function formatVal(v: any, unit?: string) {
     return String(v);
 }
 
-function boolBadge(v: any): string {
-    if (v === true) return "Evet";
-    if (v === false) return "Hayır";
+const OHS_ROWS = [
+    { key: "ohsFeetTurnOut", legacyKey: "footTurnsOut", labelKey: "recordDetail.ohs.footTurnsOut" },
+    { key: "ohsKneesIn", legacyKey: "kneeMovesInward", labelKey: "recordDetail.ohs.kneeMovesInward" },
+    { key: "ohsForwardLean", legacyKey: "excessiveForwardLean", labelKey: "recordDetail.ohs.excessiveForwardLean" },
+    { key: "ohsLowBackArch", legacyKey: "lowBackArches", labelKey: "recordDetail.ohs.lowBackArches" },
+    { key: "ohsArmsFallForward", legacyKey: "armsFallForward", labelKey: "recordDetail.ohs.armsFallForward" },
+    { key: "ohsHeelsRise", legacyKey: "", labelKey: "recordNew.field.ohsHeelsRise" },
+    { key: "ohsAsymmetricShift", legacyKey: "", labelKey: "recordNew.field.ohsAsymmetricShift" },
+] as const;
+
+const YES_VALUES = new Set(["evet", "yes"]);
+const NO_VALUES = new Set(["hayır", "hayir", "no"]);
+
+/** OHS cevabı formda o anki dilde "Evet"/"Yes" olarak kaydediliyor; iki dili de tanı. */
+function ohsAnswer(t: (k: string) => string, value: any, legacy: any): string {
+    const v = String(value ?? "").trim().toLowerCase();
+    if (YES_VALUES.has(v) || value === true) return t("recordNew.option.yes");
+    if (NO_VALUES.has(v) || value === false) return t("recordNew.option.no");
+    if (legacy === true) return t("recordNew.option.yes");
     return "-";
 }
 

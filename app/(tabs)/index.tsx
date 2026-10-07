@@ -1,4 +1,5 @@
 import { auth, functions } from "@/services/firebase";
+import { track } from "@/services/analytics";
 import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
@@ -316,7 +317,10 @@ export default function KayitlarScreen() {
       setAiReason(reason);
       setAiDetails(details); // ✅ YENİ
       setAiMode(true);
+      // Sorgunun metni gönderilmez (öğrenci adı içerebilir); sadece uzunluk ve sonuç sayısı.
+      track("ai_search_used", { queryLength: q.length, results: idsArr.length, studentCount: students.length });
     } catch (e: any) {
+      track("ai_search_failed", { code: e?.code ?? "unknown" });
       const message = e?.message || "Unknown error";
       const details = e?.details || null;
       const traceId = details?.traceId ? String(details.traceId) : "";

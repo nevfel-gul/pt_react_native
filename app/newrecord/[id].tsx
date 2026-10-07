@@ -1,8 +1,18 @@
+import {
+  bloodPressureCategory,
+  bloodPressureNeedsReferral,
+  visceralFatStatus,
+} from "@/constants/healthRanges";
+import { useRating } from "@/constants/RatingContext";
+import { parqYesCount } from "@/constants/studentForm";
+import { track } from "@/services/analytics";
 import { auth } from "@/services/firebase";
+import { requestWidgetRefresh } from "@/services/widgetData";
 import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { addDoc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import {
+  AlertTriangle,
   ArrowLeft,
   BicepsFlexed,
   Calendar,
@@ -48,6 +58,9 @@ type Student = {
   boy?: string;
   gender?: string;
   dateOfBirth?: string;
+  parqYes?: number;
+  medicalClearance?: boolean | null;
+  isFirstRecord?: boolean;
 };
 
 type FormData = {
@@ -62,6 +75,11 @@ type FormData = {
   bodyWaterMass: string;
   impedance: string;
   metabolicAge: string;
+  visceralFat: string;
+
+  // Dinlenik tansiyon (mmHg)
+  systolicBP: string;
+  diastolicBP: string;
 
   // Mezura çevre ölçümleri
   boyun: string;
@@ -141,6 +159,8 @@ type FormData = {
   ohsForwardLean: string;
   ohsLowBackArch: string;
   ohsArmsFallForward: string;
+  ohsHeelsRise: string;
+  ohsAsymmetricShift: string;
   note: string;
 
   // Tarih
@@ -169,6 +189,16 @@ export default function NewRecordScreen() {
     t("recordNew.steps.strength"),
   ];
   const isLastStep = step === STEPS.length - 1;
+  const { notifyPositiveMoment } = useRating();
+  const openedAt = useRef(Date.now());
+
+  useEffect(() => {
+    track("record_form_opened");
+  }, []);
+
+  useEffect(() => {
+    if (step > 0) track("record_step_viewed", { step: step + 1 });
+  }, [step]);
 
   const [formData, setFormData] = useState<FormData>({
     weight: "",
@@ -181,6 +211,9 @@ export default function NewRecordScreen() {
     bodyWaterMass: "",
     impedance: "",
     metabolicAge: "",
+    visceralFat: "",
+    systolicBP: "",
+    diastolicBP: "",
 
     boyun: "",
     omuz: "",
@@ -254,6 +287,8 @@ export default function NewRecordScreen() {
     ohsForwardLean: "",
     ohsLowBackArch: "",
     ohsArmsFallForward: "",
+    ohsHeelsRise: "",
+    ohsAsymmetricShift: "",
     note: "",
 
     assessmentDate: new Date().toISOString().split("T")[0],
@@ -307,6 +342,9 @@ export default function NewRecordScreen() {
             boy: data.boy,
             gender: data.gender,
             dateOfBirth: data.dateOfBirth,
+            parqYes: parqYesCount(data),
+            medicalClearance: data.medicalClearance ?? null,
+            isFirstRecord: !data.lastRecordedAt,
           });
         } else {
           setStudent(null);
@@ -840,6 +878,10 @@ export default function NewRecordScreen() {
           : "",
         impedance,
         impedanceStatus: impedance ? getImpedanceStatus(impedance, gender) : "",
+        visceralFat: Number(formData.visceralFat || 0),
+        visceralFatStatus: visceralFatStatus(Number(formData.visceralFat || 0)) ?? "",
+        bloodPressureCategory:
+          bloodPressureCategory(Number(formData.systolicBP || 0), Number(formData.diastolicBP || 0)) ?? "",
         metabolicAge,
         metabolicAgeStatus:
           metabolicAge && age ? getMetabolicAgeStatus(metabolicAge, age) : "",
@@ -890,6 +932,20 @@ export default function NewRecordScreen() {
       await updateDoc(studentDocRef(auth.currentUser?.uid!, id!), {
         lastRecordedAt: serverTimestamp(),
       });
+
+      // Hangi bölümler dolduruldu — değerler değil, sadece var/yok.
+      track("record_created", {
+        hasBodyComp: !!(formData.weight || formData.bodyFat),
+        hasTape: !!(formData.bel || formData.kalca),
+        hasBloodPressure: !!(formData.systolicBP && formData.diastolicBP),
+        hasAerobic: !!(formData.dinlenikNabiz || formData.toparlanmaNabzi || formData.testSuresi),
+        hasStrength: !!(formData.pushup || formData.plank || formData.wallsit || formData.mekik),
+        durationSec: Math.round((Date.now() - openedAt.current) / 1000),
+        studentFirstRecord: !!student?.isFirstRecord,
+      });
+      if (student?.isFirstRecord) track("first_record_created");
+      requestWidgetRefresh();
+      notifyPositiveMoment("record_created");
 
       Alert.alert(t("recordNew.alert.okTitle"), t("recordNew.alert.saved"));
       router.back();
@@ -1198,6 +1254,14 @@ export default function NewRecordScreen() {
                   )}
                 </Text>
               ) : null}
+
+              {renderNumericInput("visceralFat", t("recordNew.field.visceralFat"))}
+              {formData.visceralFat ? (
+                <Text style={styles.infoText}>
+                  {t("recordNew.statusLabel")}{" "}
+                  {t(`recordNew.visceralFat.${visceralFatStatus(Number(formData.visceralFat || 0)) ?? "healthy"}`)}
+                </Text>
+              ) : null}
             </View>
 
             <View style={styles.card}>
@@ -1307,6 +1371,28 @@ export default function NewRecordScreen() {
                 "dinlenikNabiz",
                 t("recordNew.field.restingHr"),
               )}
+
+              <InfoNote>{t("recordNew.tip.bloodPressure")}</InfoNote>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  {renderNumericInput("systolicBP", t("recordNew.field.systolicBP"), "120")}
+                </View>
+                <View style={{ flex: 1 }}>
+                  {renderNumericInput("diastolicBP", t("recordNew.field.diastolicBP"), "80")}
+                </View>
+              </View>
+              {formData.systolicBP && formData.diastolicBP ? (
+                <Text style={styles.infoText}>
+                  {t("recordNew.statusLabel")}{" "}
+                  {t(`recordNew.bp.${bloodPressureCategory(Number(formData.systolicBP), Number(formData.diastolicBP)) ?? "normal"}`)}
+                </Text>
+              ) : null}
+              {bloodPressureNeedsReferral(Number(formData.systolicBP || 0), Number(formData.diastolicBP || 0)) ? (
+                <View style={styles.alertBox}>
+                  <AlertTriangle size={16} color={theme.colors.danger} />
+                  <Text style={styles.alertBoxText}>{t("recordNew.bp.referral")}</Text>
+                </View>
+              ) : null}
 
               <InfoNote>{t("recordNew.tip.carvonen")}</InfoNote>
               {renderRadioRow(
@@ -1686,6 +1772,16 @@ export default function NewRecordScreen() {
                 t("recordNew.field.ohsArmsFallForward"),
                 [t("recordNew.option.yes"), t("recordNew.option.no")],
               )}
+              {renderRadioRow(
+                "ohsHeelsRise",
+                t("recordNew.field.ohsHeelsRise"),
+                [t("recordNew.option.yes"), t("recordNew.option.no")],
+              )}
+              {renderRadioRow(
+                "ohsAsymmetricShift",
+                t("recordNew.field.ohsAsymmetricShift"),
+                [t("recordNew.option.yes"), t("recordNew.option.no")],
+              )}
             </View>
 
             <View style={styles.card}>
@@ -1838,6 +1934,16 @@ export default function NewRecordScreen() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <View style={styles.container}>
+          {/* PAR-Q'da "Evet" olup doktor onayı girilmemişse test öncesi hatırlat */}
+          {!!student.parqYes && student.medicalClearance !== true && (
+            <View style={[styles.alertBox, { marginHorizontal: 16, marginBottom: 8 }]}>
+              <AlertTriangle size={16} color={theme.colors.warning} />
+              <Text style={styles.alertBoxText}>
+                {t("recordNew.parqWarning", { count: student.parqYes })}
+              </Text>
+            </View>
+          )}
+
           {/* Stepper */}
           {renderStepIndicator()}
 
@@ -2303,6 +2409,18 @@ const makeStyles = (theme: ThemeUI) =>
       fontWeight: "800",
     },
 
+    alertBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      padding: 10,
+      marginTop: 6,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.warning,
+      backgroundColor: theme.colors.goldSoft,
+    },
+    alertBoxText: { flex: 1, color: theme.colors.text.primary, fontSize: theme.fontSize.sm, fontWeight: "600", lineHeight: 18 },
     infoText: {
       marginTop: 4,
       fontSize: 12,

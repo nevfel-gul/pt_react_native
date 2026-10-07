@@ -1,5 +1,8 @@
 import { Activity, BarChart2, CalendarClock, Target, TrendingUp, Users } from "lucide-react-native";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { normalizeGoals } from "@/constants/studentForm";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { track } from "@/services/analytics";
 import {
   Animated,
   Easing,
@@ -117,35 +120,39 @@ function normalizeBars(counts: number[]) {
   return counts.map((c) => c / max);
 }
 
-function looksBeginner(trainingGoals: any) {
-  if (!Array.isArray(trainingGoals)) return false;
-  return trainingGoals.some((x) => {
+// Yeni kayıtlarda deneyim seviyesi ayrı soruluyor; eski kayıtlar için
+// hedef metninde "başlangıç" geçiyor mu diye bakmaya devam ediyoruz.
+function looksBeginner(student: any) {
+  if (student?.experienceLevel) return student.experienceLevel === "beginner";
+  const goals = student?.trainingGoals;
+  if (!Array.isArray(goals)) return false;
+  return goals.some((x) => {
     const s = String(x || "").toLowerCase();
     return s.includes("başlang") || s.includes("begin");
   });
 }
 
 function goalBucket(trainingGoals: any) {
-  const arr = Array.isArray(trainingGoals) ? trainingGoals : [];
-  const s = arr.map((x) => String(x || "").toLowerCase()).join(" | ");
+  const ids = normalizeGoals(trainingGoals);
+  // Kimliğe çevrilemeyen (elle yazılmış eski) metinler için kelime araması.
+  const s = ids.map((x) => x.toLowerCase()).join(" | ");
 
   const fat =
+    ids.includes("fat_loss") ||
     s.includes("yağ") ||
     s.includes("kilo") ||
     s.includes("zayıf") ||
-    s.includes("fat") ||
     s.includes("lose") ||
     s.includes("weight");
   const muscle =
+    ids.includes("muscle_gain") ||
     s.includes("kas") ||
     s.includes("muscle") ||
-    s.includes("gain") ||
     s.includes("hypertrophy");
   const health =
+    ids.includes("general_health") ||
     s.includes("sağlık") ||
     s.includes("health") ||
-    s.includes("form") ||
-    s.includes("fitness") ||
     s.includes("genel");
 
   return { fat, muscle, health };
@@ -209,7 +216,7 @@ function useSummaryData(range: RangeKey): SummaryState {
         studentMap[doc.id] = s;
 
         if (s?.aktif === "Aktif") active++;
-        if (looksBeginner(s?.trainingGoals)) beginner++;
+        if (looksBeginner(s)) beginner++;
 
         const g = goalBucket(s?.trainingGoals);
         const any = g.fat || g.muscle || g.health;
@@ -802,6 +809,12 @@ export default function SummaryScreen() {
 
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [selectedRange, setSelectedRange] = useState<RangeKey>("7g");
+
+  useFocusEffect(
+    useCallback(() => {
+      track("analytics_viewed");
+    }, []),
+  );
 
   const summary = useSummaryData(selectedRange);
 

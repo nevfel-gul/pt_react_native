@@ -1,8 +1,21 @@
 import { usePremium } from "@/constants/PremiumContext";
+import { useRating } from "@/constants/RatingContext";
+import {
+    ACTIVITY_LEVELS,
+    EXPERIENCE_LEVELS,
+    PREGNANCY_STATUSES,
+    SLEEP_LEVELS,
+    STRESS_LEVELS,
+    TRAINING_GOALS,
+    normalizeGoals,
+    parqYesCount,
+} from "@/constants/studentForm";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 
+import { track } from "@/services/analytics";
 import { auth } from "@/services/firebase";
+import { requestWidgetRefresh } from "@/services/widgetData";
 import { studentsColRef } from "@/services/firestorePaths";
 
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
@@ -10,7 +23,7 @@ import { calendarLangOf, pickerLocaleOf } from "@/constants/calendarLocale";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { addDoc, doc, getCountFromServer, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { ArrowLeft, Calendar, Save, User as UserIcon } from "lucide-react-native";
+import { AlertTriangle, ArrowLeft, Calendar, Save, User as UserIcon } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -42,6 +55,9 @@ type FormState = {
     assessmentDate: string;
     aktif: Status;
 
+    emergencyContactName: string;
+    emergencyContactPhone: string;
+
     doctorSaidHeartOrHypertension: Bool;
     doctorSaidHeartOrHypertensionNote: string;
 
@@ -63,6 +79,10 @@ type FormState = {
     doctorSaidOnlyUnderMedicalSupervision: Bool;
     doctorSaidOnlyUnderMedicalSupervisionNote: string;
 
+    /** PAR-Q'da "Evet" varsa: doktor onayı alındı mı, ne zaman. */
+    medicalClearance: Bool;
+    medicalClearanceDate: string;
+
     hadPainOrInjury: Bool;
     hadPainOrInjuryNote: string;
 
@@ -81,6 +101,15 @@ type FormState = {
     hasSportsHistoryOrCurrentlyDoingSport: Bool;
     hasSportsHistoryOrCurrentlyDoingSportNote: string;
 
+    /** DSÖ önerisine göre haftalık aktivite (eski "30 dk veya az mı?" sorusunun yerine). */
+    weeklyActivityLevel: string | null;
+    experienceLevel: string | null;
+    pregnancyStatus: string | null;
+    smokes: Bool;
+    sleepHours: string | null;
+    stressLevel: number | null;
+    nutritionNotes: string;
+
     plannedDaysPerWeek: number | null;
     jobDescription: string;
 
@@ -97,6 +126,7 @@ type FormErrors = {
     name?: string;
     boy?: string;
     number?: string;
+    emergencyContactPhone?: string;
     email?: string;
     dateOfBirth?: string;
     gender?: string;
@@ -124,17 +154,11 @@ const YeniOgrenciScreen = () => {
     // ✅ DOB picker state
     const [showDobPicker, setShowDobPicker] = useState(false);
 
-    const trainingGoalOptions = useMemo(
-        () => [
-            t("newstudent.goal.option1"),
-            t("newstudent.goal.option2"),
-            t("newstudent.goal.option3"),
-            t("newstudent.goal.option4"),
-            t("newstudent.goal.option5"),
-            t("newstudent.goal.option6"),
-        ],
-        [t]
-    );
+    const { notifyPositiveMoment } = useRating();
+
+    useEffect(() => {
+        track("student_form_opened", { mode: isEdit ? "edit" : "new" });
+    }, [isEdit]);
 
     const [form, setForm] = useState<FormState>({
         name: "",
@@ -145,6 +169,9 @@ const YeniOgrenciScreen = () => {
         gender: "",
         assessmentDate: today,
         aktif: "Aktif",
+
+        emergencyContactName: "",
+        emergencyContactPhone: "",
 
         doctorSaidHeartOrHypertension: null,
         doctorSaidHeartOrHypertensionNote: "",
@@ -167,6 +194,9 @@ const YeniOgrenciScreen = () => {
         doctorSaidOnlyUnderMedicalSupervision: null,
         doctorSaidOnlyUnderMedicalSupervisionNote: "",
 
+        medicalClearance: null,
+        medicalClearanceDate: "",
+
         hadPainOrInjury: null,
         hadPainOrInjuryNote: "",
 
@@ -184,6 +214,14 @@ const YeniOgrenciScreen = () => {
 
         hasSportsHistoryOrCurrentlyDoingSport: null,
         hasSportsHistoryOrCurrentlyDoingSportNote: "",
+
+        weeklyActivityLevel: null,
+        experienceLevel: null,
+        pregnancyStatus: null,
+        smokes: null,
+        sleepHours: null,
+        stressLevel: null,
+        nutritionNotes: "",
 
         plannedDaysPerWeek: null,
         jobDescription: "",
@@ -208,6 +246,9 @@ const YeniOgrenciScreen = () => {
         if (p.startsWith("90") && p.length >= 12) p = "0" + p.slice(2);
         return p;
     };
+
+    // Türkiye numarası (05xx…) ya da ülke koduyla uluslararası numara (+49…).
+    const isValidPhone = (p: string) => /^05\d{9}$/.test(p) || /^\+\d{8,15}$/.test(p);
 
     const toISODate = (d: Date) => {
         const y = d.getFullYear();
@@ -263,7 +304,12 @@ const YeniOgrenciScreen = () => {
         }
 
         const phone = normalizeTRPhone(form.number);
-        if (phone && !/^05\d{9}$/.test(phone)) newErrors.number = t("newstudent.validation.phone_invalid");
+        if (phone && !isValidPhone(phone)) newErrors.number = t("newstudent.validation.phone_invalid");
+
+        const emergencyPhone = normalizeTRPhone(form.emergencyContactPhone);
+        if (emergencyPhone && !isValidPhone(emergencyPhone)) {
+            newErrors.emergencyContactPhone = t("newstudent.validation.phone_invalid");
+        }
 
         const email = form.email?.trim();
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = t("newstudent.validation.email_invalid");
@@ -306,7 +352,7 @@ const YeniOgrenciScreen = () => {
                 setForm((prev) => ({
                     ...prev,
                     ...d,
-                    trainingGoals: Array.isArray(d.trainingGoals) ? d.trainingGoals : [],
+                    trainingGoals: normalizeGoals(d.trainingGoals),
                     plannedDaysPerWeek: typeof d.plannedDaysPerWeek === "number" ? d.plannedDaysPerWeek : null,
                     assessmentDate: d.assessmentDate ?? prev.assessmentDate,
                     dateOfBirth: d.dateOfBirth ?? prev.dateOfBirth,
@@ -337,6 +383,7 @@ const YeniOgrenciScreen = () => {
 
                     if (currentCount >= limit) {
                         setSaving(false);
+                        track("student_limit_hit", { tier, limit });
                         const tierLabel =
                             tier === 'free' ? t('plan.tier.free')
                                 : tier === 'core' ? 'Core'
@@ -349,7 +396,7 @@ const YeniOgrenciScreen = () => {
                                 { text: t('common.cancel'), style: 'cancel' },
                                 {
                                     text: t('newstudent.limit.upgrade'),
-                                    onPress: () => router.push('/(tabs)/premium'),
+                                    onPress: () => router.push({ pathname: '/(tabs)/premium', params: { source: 'student_limit' } } as any),
                                 },
                             ]
                         );
@@ -358,23 +405,46 @@ const YeniOgrenciScreen = () => {
                 }
             }
 
+            // Hamilelik sorusu sadece kadın danışanlarda anlamlı.
+            const payload = {
+                ...form,
+                pregnancyStatus: form.gender === "F" ? form.pregnancyStatus : null,
+                // PAR-Q'da "Evet" kalmadıysa onay alanı da anlamını yitirir.
+                ...(parqYesCount(form) === 0 ? { medicalClearance: null, medicalClearanceDate: "" } : {}),
+            };
+
+            const analyticsProps = {
+                parqYesCount: parqYesCount(form),
+                goalsCount: form.trainingGoals.length,
+                plannedDaysPerWeek: form.plannedDaysPerWeek,
+                experienceLevel: form.experienceLevel,
+                hasEmergencyContact: !!form.emergencyContactPhone.trim(),
+            };
+
             if (isEdit) {
                 await updateDoc(doc(studentsColRef(auth.currentUser?.uid!), id!), {
-                    ...form,
+                    ...payload,
                     updatedAt: serverTimestamp(),
                 });
+                track("student_updated", analyticsProps);
             } else {
                 await addDoc(studentsColRef(auth.currentUser?.uid!), {
-                    ...form,
+                    ...payload,
                     ownerUid: auth.currentUser?.uid,
                     createdAt: serverTimestamp(),
                     followUpDays: 30,
                 });
+                track("student_created", analyticsProps);
+                notifyPositiveMoment("student_created");
             }
+            requestWidgetRefresh();
 
             Alert.alert(t("newstudent.alert.success.title"), t("newstudent.alert.success.message"), [
                 { text: t("newstudent.alert.success.ok"), onPress: () => router.replace("/(tabs)") },
             ]);
+        } catch (e) {
+            console.error("student save error:", e);
+            Alert.alert(t("newstudent.alert.error.title"), t("newstudent.alert.error.message"));
         } finally {
             setSaving(false);
         }
@@ -472,6 +542,31 @@ const YeniOgrenciScreen = () => {
                                 onChangeText={(tx) => updateField("email", tx)}
                                 error={errors.email}
                             />
+
+                            <View style={styles.row}>
+                                <View style={styles.rowItem}>
+                                    <FormInput
+                                        theme={theme}
+                                        styles={styles}
+                                        label={t("newstudent.label.emergency_name")}
+                                        placeholder={t("newstudent.placeholder.emergency_name")}
+                                        value={form.emergencyContactName}
+                                        onChangeText={(tx) => updateField("emergencyContactName", tx)}
+                                    />
+                                </View>
+                                <View style={styles.rowItem}>
+                                    <FormInput
+                                        theme={theme}
+                                        styles={styles}
+                                        label={t("newstudent.label.emergency_phone")}
+                                        placeholder={t("newstudent.placeholder.phone")}
+                                        keyboardType="phone-pad"
+                                        value={form.emergencyContactPhone}
+                                        onChangeText={(tx) => updateField("emergencyContactPhone", normalizeTRPhone(tx))}
+                                        error={errors.emergencyContactPhone}
+                                    />
+                                </View>
+                            </View>
 
                             {/* ✅ DOB PICKER (tek alan) */}
                             <View style={{ marginBottom: 14 }}>
@@ -657,6 +752,39 @@ const YeniOgrenciScreen = () => {
                                     onChangeText={(tx) => updateField("doctorSaidOnlyUnderMedicalSupervisionNote", tx)}
                                 />
                             )}
+
+                            {parqYesCount(form) > 0 && (
+                                <View style={styles.warningBox}>
+                                    <View style={styles.warningHeader}>
+                                        <AlertTriangle size={18} color={theme.colors.warning} />
+                                        <Text style={styles.warningTitle}>
+                                            {t("newstudent.parq.warning.title", { count: parqYesCount(form) })}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.warningText}>{t("newstudent.parq.warning.message")}</Text>
+
+                                    <QuestionBool
+                                        styles={styles}
+                                        theme={theme}
+                                        title={t("newstudent.parq.clearance.question")}
+                                        value={form.medicalClearance}
+                                        onChange={(v) => {
+                                            updateField("medicalClearance", v);
+                                            if (v === true && !form.medicalClearanceDate) updateField("medicalClearanceDate", today);
+                                        }}
+                                    />
+                                    {form.medicalClearance === true && (
+                                        <FormInput
+                                            theme={theme}
+                                            styles={styles}
+                                            label={t("newstudent.parq.clearance.date")}
+                                            placeholder={t("newstudent.placeholder.birth_date")}
+                                            value={form.medicalClearanceDate}
+                                            onChangeText={(tx) => updateField("medicalClearanceDate", tx)}
+                                        />
+                                    )}
+                                </View>
+                            )}
                         </View>
 
                         {/* BÖLÜM 3 - Kişisel Detaylar */}
@@ -673,25 +801,57 @@ const YeniOgrenciScreen = () => {
                                 <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.hadSurgeryNote} onChangeText={(tx) => updateField("hadSurgeryNote", tx)} />
                             )}
 
-                            <QuestionBool styles={styles} theme={theme} title={t("newstudent.details.q3")} value={form.diagnosedChronicDiseaseByDoctor} onChange={(v) => updateField("diagnosedChronicDiseaseByDoctor", v)} />
-                            {form.diagnosedChronicDiseaseByDoctor === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.diagnosedChronicDiseaseByDoctorNote} onChangeText={(tx) => updateField("diagnosedChronicDiseaseByDoctorNote", tx)} />
-                            )}
 
-                            <QuestionBool styles={styles} theme={theme} title={t("newstudent.details.q4")} value={form.currentlyUsesMedications} onChange={(v) => updateField("currentlyUsesMedications", v)} />
-                            {form.currentlyUsesMedications === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.currentlyUsesMedicationsNote} onChangeText={(tx) => updateField("currentlyUsesMedicationsNote", tx)} />
-                            )}
 
-                            <QuestionBool styles={styles} theme={theme} title={t("newstudent.details.q5")} value={form.weeklyPhysicalActivity30MinOrLess} onChange={(v) => updateField("weeklyPhysicalActivity30MinOrLess", v)} />
-                            {form.weeklyPhysicalActivity30MinOrLess === true && (
-                                <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.weeklyPhysicalActivity30MinOrLessNote} onChangeText={(tx) => updateField("weeklyPhysicalActivity30MinOrLessNote", tx)} />
-                            )}
 
                             <QuestionBool styles={styles} theme={theme} title={t("newstudent.details.q6")} value={form.hasSportsHistoryOrCurrentlyDoingSport} onChange={(v) => updateField("hasSportsHistoryOrCurrentlyDoingSport", v)} />
                             {form.hasSportsHistoryOrCurrentlyDoingSport === true && (
                                 <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.explanation")} placeholder={t("newstudent.placeholder.explanation")} value={form.hasSportsHistoryOrCurrentlyDoingSportNote} onChangeText={(tx) => updateField("hasSportsHistoryOrCurrentlyDoingSportNote", tx)} />
                             )}
+
+                            <Text style={styles.label}>{t("newstudent.label.weekly_activity")}</Text>
+                            <View style={[styles.chipRow, { flexWrap: "wrap", marginBottom: 14 }]}>
+                                {ACTIVITY_LEVELS.map((lvl) => (
+                                    <Chip key={lvl} theme={theme} styles={styles} label={t(`newstudent.activity.${lvl}`)} active={form.weeklyActivityLevel === lvl} onPress={() => updateField("weeklyActivityLevel", lvl)} />
+                                ))}
+                            </View>
+
+                            <Text style={styles.label}>{t("newstudent.label.experience")}</Text>
+                            <View style={[styles.chipRow, { flexWrap: "wrap", marginBottom: 14 }]}>
+                                {EXPERIENCE_LEVELS.map((lvl) => (
+                                    <Chip key={lvl} theme={theme} styles={styles} label={t(`newstudent.experience.${lvl}`)} active={form.experienceLevel === lvl} onPress={() => updateField("experienceLevel", lvl)} />
+                                ))}
+                            </View>
+
+                            {form.gender === "F" && (
+                                <>
+                                    <Text style={styles.label}>{t("newstudent.label.pregnancy")}</Text>
+                                    <View style={[styles.chipRow, { flexWrap: "wrap", marginBottom: 14 }]}>
+                                        {PREGNANCY_STATUSES.map((st) => (
+                                            <Chip key={st} theme={theme} styles={styles} label={t(`newstudent.pregnancy.${st}`)} active={form.pregnancyStatus === st} onPress={() => updateField("pregnancyStatus", st)} />
+                                        ))}
+                                    </View>
+                                </>
+                            )}
+
+                            <QuestionBool styles={styles} theme={theme} title={t("newstudent.details.smoking")} value={form.smokes} onChange={(v) => updateField("smokes", v)} />
+
+                            <Text style={styles.label}>{t("newstudent.label.sleep")}</Text>
+                            <View style={[styles.chipRow, { flexWrap: "wrap", marginBottom: 14 }]}>
+                                {SLEEP_LEVELS.map((lvl) => (
+                                    <Chip key={lvl} theme={theme} styles={styles} label={t(`newstudent.sleep.${lvl}`)} active={form.sleepHours === lvl} onPress={() => updateField("sleepHours", lvl)} />
+                                ))}
+                            </View>
+
+                            <Text style={styles.label}>{t("newstudent.label.stress")}</Text>
+                            <Text style={styles.helperText}>{t("newstudent.helper.stress_scale")}</Text>
+                            <View style={[styles.chipRow, { flexWrap: "wrap", marginTop: 8, marginBottom: 14 }]}>
+                                {STRESS_LEVELS.map((n) => (
+                                    <Chip key={n} theme={theme} styles={styles} label={String(n)} active={form.stressLevel === n} onPress={() => updateField("stressLevel", n)} />
+                                ))}
+                            </View>
+
+                            <FormTextArea theme={theme} styles={styles} label={t("newstudent.label.nutrition")} placeholder={t("newstudent.placeholder.nutrition")} value={form.nutritionNotes} onChangeText={(tx) => updateField("nutritionNotes", tx)} />
 
                             <Text style={styles.label}>{t("newstudent.label.planned_days")}</Text>
                             <View style={[styles.chipRow, { flexWrap: "wrap" }]}>
@@ -711,8 +871,8 @@ const YeniOgrenciScreen = () => {
                             <Text style={styles.helperText}>{t("newstudent.helper.multi_select")}</Text>
 
                             <View style={[styles.chipRow, { flexWrap: "wrap", marginTop: 8 }]}>
-                                {trainingGoalOptions.map((opt) => (
-                                    <Chip key={opt} theme={theme} styles={styles} label={opt} active={form.trainingGoals.includes(opt)} onPress={() => toggleMulti("trainingGoals", opt)} />
+                                {TRAINING_GOALS.map((g) => (
+                                    <Chip key={g.id} theme={theme} styles={styles} label={t(g.labelKey)} active={form.trainingGoals.includes(g.id)} onPress={() => toggleMulti("trainingGoals", g.id)} />
                                 ))}
                             </View>
 
@@ -966,6 +1126,17 @@ const createStyles = (themeui: ThemeUI) =>
         chipText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm },
         chipTextActive: { color: themeui.colors.primary, fontWeight: "600" },
 
+        warningBox: {
+            marginTop: 10,
+            padding: 12,
+            borderRadius: themeui.radius.lg,
+            borderWidth: 1,
+            borderColor: themeui.colors.warning,
+            backgroundColor: themeui.colors.goldSoft,
+        },
+        warningHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+        warningTitle: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.md, fontWeight: "800", flex: 1 },
+        warningText: { color: themeui.colors.text.secondary, fontSize: themeui.fontSize.sm, lineHeight: 18, marginTop: 6, marginBottom: 6 },
         questionTitle: { color: themeui.colors.text.primary, fontSize: themeui.fontSize.sm, fontWeight: "600", lineHeight: 18 },
 
         footer: {

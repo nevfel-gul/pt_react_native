@@ -1,4 +1,5 @@
 import { BlurView } from "expo-blur";
+import { track } from "@/services/analytics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ArrowRight } from "lucide-react-native";
@@ -140,13 +141,21 @@ export default function OnboardingScreen() {
         setIndex(Math.round(x / width));
     };
 
-    const handleSkip = () => router.replace("/login");
+    useEffect(() => {
+        track("landing_viewed");
+    }, []);
+
+    const handleSkip = () => {
+        track("landing_cta_tapped", { action: "skip", slide: index + 1 });
+        router.replace("/login");
+    };
     const handleContinue = () => {
         if (index < slides.length - 1) {
             listRef.current?.scrollToOffset({ offset: (index + 1) * width, animated: true });
             setIndex((v) => v + 1);
             return;
         }
+        track("landing_cta_tapped", { action: "continue", slide: index + 1 });
         router.replace("/login");
     };
 

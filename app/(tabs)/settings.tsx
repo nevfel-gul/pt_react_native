@@ -1,5 +1,8 @@
 import { setAppLanguage } from "@/services/i18n";
+import { track } from "@/services/analytics";
+import { openStoreReviewPage } from "@/services/rating";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { requestPasswordReset } from "@/services/passwordReset";
 import { deleteUser, signOut } from "firebase/auth";
@@ -117,6 +120,8 @@ const CustomSwitch = ({
 export default function SettingsScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
+  // Tab bar "position: absolute" olduğu için içerik onun altında kalıyordu.
+  const tabBarHeight = React.useContext(BottomTabBarHeightContext) ?? 0;
   const { theme, mode, setMode } = useTheme();
   const { hasPremium, tier, isUnlimited } = usePremium();
 
@@ -254,6 +259,7 @@ export default function SettingsScreen() {
   const handleThemeToggle = useCallback(
     (newValue: boolean) => {
       setIsDarkMode(newValue);
+      track("theme_changed", { theme: newValue ? "dark" : "light" });
       InteractionManager.runAfterInteractions(() => {
         setMode(newValue ? "dark" : "light");
       });
@@ -382,6 +388,7 @@ export default function SettingsScreen() {
       }
     }
 
+    track("logout");
     await signOut(auth);
     router.replace("/login");
   }, [router]);
@@ -401,6 +408,7 @@ export default function SettingsScreen() {
 
               await deleteDoc(doc(db, "users", user.uid));
               await deleteUser(user);
+              track("account_deleted");
 
             } catch (error: unknown) {
               const err = error as { code?: string; message?: string };
@@ -469,6 +477,7 @@ export default function SettingsScreen() {
 
   const handleLanguagePress = useCallback(() => {
     const next = i18n.language === "tr" ? "en" : "tr";
+    track("language_changed", { language: next });
     setAppLanguage(next);
   }, [i18n.language]);
 
@@ -670,6 +679,13 @@ export default function SettingsScreen() {
 
         <View style={styles.card}>
           <SettingRow
+            label={t("settings.rateApp")}
+            subtitle={t("settings.rateApp.sub")}
+            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
+            onPress={openStoreReviewPage}
+          />
+
+          <SettingRow
             label={t("settings.about.privacyPolicy")}
             right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
             onPress={() => handleOpenLink(legalLinks.privacy)}
@@ -835,7 +851,7 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <View style={styles.container}>
         {/* HEADER */}
         <View style={styles.header}>
@@ -858,7 +874,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}>
           {activeTab === "preferences" ? PreferencesTab : SecurityTab}
         </ScrollView>
       </View>
