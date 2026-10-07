@@ -771,6 +771,10 @@ export default function PaywallMonthlyScreen({
         description: t('paywall.features.ai_filter.description'),
       },
       {
+        title: t('paywall.features.packages.title'),
+        description: t('paywall.features.packages.description'),
+      },
+      {
         title: t('paywall.features.analytics.title'),
         description: t('paywall.features.analytics.description'),
       },

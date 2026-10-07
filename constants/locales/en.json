@@ -1043,5 +1043,10 @@
   "packages.calendar.finished": "Package used up",
   "packages.calendar.remaining": "{{count}} sessions left",
   "packages.calendar.markDone": "Done",
-  "packages.calendar.logged": "Logged"
+  "packages.calendar.logged": "Logged",
+  "packages.locked.message": "Tracking session packages, remaining sessions and payments is available on Premium plans.",
+  "packages.locked.remaining": "Current package: {{count}}/{{total}} sessions left.",
+  "packages.locked.cta": "Go Premium",
+  "paywall.features.packages.title": "Session & Package Tracking",
+  "paywall.features.packages.description": "Track remaining sessions, package payments and sessions done from the calendar."
 }

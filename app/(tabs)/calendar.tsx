@@ -5,6 +5,7 @@ import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
 import { appointmentDocRef, appointmentsColRef, recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import { addDays, daysDiff, isAppointmentOnDay, startOfDay, toDateSafe, ymd } from "@/services/schedule";
+import { usePremium } from "@/constants/PremiumContext";
 import { useRating } from "@/constants/RatingContext";
 import { track } from "@/services/analytics";
 import { requestWidgetRefresh } from "@/services/widgetData";
@@ -483,6 +484,8 @@ export default function CalendarFollowUpScreen() {
     useFocusEffect(useCallback(() => { setCalKey((k) => k + 1); }, []));
 
     const { notifyPositiveMoment } = useRating();
+    // Paket / seans takibi premium özellik.
+    const { hasPremium } = usePremium();
     const params = useLocalSearchParams<{ source?: string }>();
     useEffect(() => {
         track("calendar_viewed", { source: params.source ?? "tab" });
@@ -825,7 +828,7 @@ export default function CalendarFollowUpScreen() {
                                 {selectedAppointments.map((apt) => {
                                     const aptDate = toDateSafe(apt.date);
                                     const timeStr = aptDate ? `${String(aptDate.getHours()).padStart(2, "0")}:${String(aptDate.getMinutes()).padStart(2, "0")}` : "";
-                                    const pkg = students.find((s) => s.id === apt.studentId)?.activePackage;
+                                    const pkg = hasPremium ? students.find((s) => s.id === apt.studentId)?.activePackage : undefined;
                                     const done = loggedKeys.has(`${apt.id}_${selectedDay}`);
                                     // Gelecekteki bir dersi şimdiden düşmeye izin verme.
                                     const canLog = !!pkg && pkg.remaining > 0 && selectedDay <= ymd(new Date()) && !done;
@@ -836,9 +839,9 @@ export default function CalendarFollowUpScreen() {
                                                 <Text style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: "900" }}>{apt.studentName ?? "—"}</Text>
                                                 {timeStr ? <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "700", marginTop: 2 }}>🕐 {timeStr}</Text> : null}
                                                 {apt.note ? <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "600", marginTop: 2 }}>{apt.note}</Text> : null}
-                                                <Text style={{ color: !pkg ? theme.colors.text.muted : pkg.remaining <= 2 ? theme.colors.warning : theme.colors.text.secondary, fontSize: 12, fontWeight: "700", marginTop: 2 }}>
+                                                {hasPremium ? <Text style={{ color: !pkg ? theme.colors.text.muted : pkg.remaining <= 2 ? theme.colors.warning : theme.colors.text.secondary, fontSize: 12, fontWeight: "700", marginTop: 2 }}>
                                                     {!pkg ? t("packages.calendar.noPackage") : pkg.remaining === 0 ? t("packages.calendar.finished") : t("packages.calendar.remaining", { count: pkg.remaining })}
-                                                </Text>
+                                                </Text> : null}
                                             </View>
                                             {pkg && (done || canLog) ? (
                                                 <Pressable

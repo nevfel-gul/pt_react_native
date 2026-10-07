@@ -66,6 +66,7 @@ export type AnalyticsEvent =
   | "theme_changed"
   // Gelir
   | "paywall_viewed"
+  | "premium_feature_tapped"
   | "paywall_plan_selected"
   | "purchase_started"
   | "purchase_completed"

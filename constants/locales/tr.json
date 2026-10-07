@@ -1043,5 +1043,10 @@
   "packages.calendar.finished": "Paket bitti",
   "packages.calendar.remaining": "{{count}} ders kaldı",
   "packages.calendar.markDone": "Yapıldı",
-  "packages.calendar.logged": "Düşüldü"
+  "packages.calendar.logged": "Düşüldü",
+  "packages.locked.message": "Ders paketlerini, kalan seansları ve ödemeleri takip etmek Premium planlarda var.",
+  "packages.locked.remaining": "Mevcut paket: {{count}}/{{total}} ders kaldı.",
+  "packages.locked.cta": "Premium'a geç",
+  "paywall.features.packages.title": "Seans & Paket Takibi",
+  "paywall.features.packages.description": "Kalan dersleri, paket ödemelerini ve takvimden yapılan dersleri takip et."
 }

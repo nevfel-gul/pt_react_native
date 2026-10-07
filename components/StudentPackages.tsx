@@ -1,3 +1,4 @@
+import { usePremium } from '@/constants/PremiumContext';
 import type { ThemeUI } from '@/constants/types';
 import { useTheme } from '@/constants/usetheme';
 import { track } from '@/services/analytics';
@@ -21,7 +22,8 @@ import {
 } from '@/services/packages';
 import { requestWidgetRefresh } from '@/services/widgetData';
 import { onSnapshot, orderBy, query, where } from 'firebase/firestore';
-import { Minus, Package, Plus, RotateCcw, Trash2, Wallet } from 'lucide-react-native';
+import { Lock, Minus, Package, Plus, RotateCcw, Trash2, Wallet } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -40,8 +42,12 @@ import {
 } from 'react-native';
 
 // ─────────────────────────────────────────────────────────────
-// Öğrenci detayındaki "Paket & Seans" kartı.
+// Öğrenci detayındaki "Paket & Seans" kartı (premium özellik).
 // Veri katmanı: services/packages.ts
+//
+// Premium değilse kart kilitli görünür ve ödeme ekranına yönlendirir.
+// Aboneliği biten biri eski paketinin kalan dersini görmeye devam eder
+// ama ders düşemez / paket ekleyemez.
 // ─────────────────────────────────────────────────────────────
 
 const SESSION_PRESETS = [4, 8, 10, 12, 16, 20];
@@ -77,6 +83,8 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const uid = auth.currentUser?.uid;
   const locale = i18n.language === 'en' ? 'en-US' : 'tr-TR';
+  const { hasPremium, loading: premiumLoading } = usePremium();
+  const router = useRouter();
 
   const [packages, setPackages] = useState<SessionPackage[]>([]);
   const [sessions, setSessions] = useState<SessionLog[]>([]);
@@ -173,6 +181,36 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
     ]);
 
   if (!uid) return null;
+
+  if (!premiumLoading && !hasPremium) {
+    return (
+      <View style={styles.card}>
+        <View style={styles.titleRow}>
+          <Package size={18} color={theme.colors.premium} />
+          <Text style={styles.cardTitle}>{t('packages.title')}</Text>
+          <View style={styles.premiumBadge}>
+            <Lock size={11} color={theme.colors.premium} />
+            <Text style={styles.premiumBadgeText}>Premium</Text>
+          </View>
+        </View>
+        {active ? (
+          <Text style={styles.muted}>
+            {t('packages.locked.remaining', { count: remainingOf(active), total: active.totalSessions })}
+          </Text>
+        ) : null}
+        <Text style={styles.muted}>{t('packages.locked.message')}</Text>
+        <TouchableOpacity
+          style={[styles.primaryBtn, { backgroundColor: theme.colors.premium }]}
+          onPress={() => {
+            track('premium_feature_tapped', { feature: 'packages' });
+            router.push({ pathname: '/(tabs)/premium', params: { source: 'packages' } } as any);
+          }}
+        >
+          <Text style={[styles.primaryBtnText, { color: '#fff' }]}>{t('packages.locked.cta')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.card}>
@@ -652,6 +690,16 @@ function makeStyles(theme: ThemeUI) {
       ...(theme.shadow?.soft ?? {}),
     },
     titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    premiumBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.premiumSoft,
+    },
+    premiumBadgeText: { color: theme.colors.premium, fontSize: theme.fontSize.xs, fontWeight: '800' },
     cardTitle: { flex: 1, color: theme.colors.text.primary, fontSize: theme.fontSize.lg - 1, fontWeight: '700' },
     muted: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginTop: 4, lineHeight: 18 },
     miniLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, marginBottom: 4, fontWeight: '700' },
