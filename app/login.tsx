@@ -39,6 +39,32 @@ const STORAGE_EMAIL_KEY = "auth_remember_email";
 const STORAGE_REMEMBER_KEY = "auth_remember_enabled";
 const STORAGE_LANG_KEY = "app_lang";
 
+// Firebase'in ham İngilizce hata metinleri ("Firebase: Error (auth/invalid-credential).")
+// yerine kullanıcının dilinde anlaşılır bir mesaj.
+function authErrorKey(code?: string): string {
+  switch (code) {
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+    case "auth/invalid-login-credentials":
+      return "login.error.invalid_credentials";
+    case "auth/invalid-email":
+      return "login.error.invalid_email";
+    case "auth/email-already-in-use":
+      return "login.error.email_in_use";
+    case "auth/weak-password":
+      return "login.error.password_too_short";
+    case "auth/too-many-requests":
+      return "login.error.too_many_requests";
+    case "auth/network-request-failed":
+      return "login.error.network";
+    case "auth/user-disabled":
+      return "login.error.user_disabled";
+    default:
+      return "login.error.generic";
+  }
+}
+
 export default function LoginScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
@@ -223,7 +249,7 @@ export default function LoginScreen() {
       router.replace("/(tabs)");
     } catch (err: any) {
       track(isLoginMode ? "login_failed" : "signup_failed", { code: err?.code ?? "unknown" });
-      Alert.alert(t("login.error.prefix"), err?.message ?? t("common.error"));
+      Alert.alert(t("login.error.prefix"), t(authErrorKey(err?.code)));
     } finally {
       setLoading(false);
     }

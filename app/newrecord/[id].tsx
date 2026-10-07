@@ -4,6 +4,7 @@ import {
   visceralFatStatus,
 } from "@/constants/healthRanges";
 import { useRating } from "@/constants/RatingContext";
+import { statusLabel, yesNo } from "@/constants/statusLabels";
 import { parqYesCount } from "@/constants/studentForm";
 import { track } from "@/services/analytics";
 import { auth } from "@/services/firebase";
@@ -122,7 +123,7 @@ type FormData = {
   basboyunyandan: string;
   basboyunarkadan: string;
 
-  pronation: string; // "Evet"/"Hayır"
+  pronation: string; // "yes" | "no" (eski kayıtlarda "Evet"/"Hayır")
   lower: string;
   upper: string;
 
@@ -146,7 +147,7 @@ type FormData = {
 
   // Kuvvet testleri
   pushup: string;
-  modifiedpushup: string; // "Evet"/"Hayır"
+  modifiedpushup: string; // "yes" | "no" (eski kayıtlarda "Evet"/"Hayır")
   wallsit: string;
   plank: string;
   mekik: string;
@@ -816,7 +817,7 @@ export default function NewRecordScreen() {
 
   const handleSubmit = async () => {
     if (!id) {
-      Alert.alert("Hata", " " + t("recordNew.alert.noStudentId") + " ");
+      Alert.alert(t("common.error"), t("recordNew.alert.noStudentId"));
       return;
     }
 
@@ -913,7 +914,7 @@ export default function NewRecordScreen() {
               pushupReps,
               age,
               gender,
-              formData.modifiedpushup === "Evet",
+              yesNo(formData.modifiedpushup) === "yes",
             )
             : "",
         wallSitStatus:
@@ -951,7 +952,7 @@ export default function NewRecordScreen() {
       router.back();
     } catch (err) {
       console.error("Kayıt hata:", err);
-      Alert.alert("Hata", t("recordNew.alert.saveError"));
+      Alert.alert(t("common.error"), t("recordNew.alert.saveError"));
     } finally {
       setSubmitting(false);
     }
@@ -1123,6 +1124,35 @@ export default function NewRecordScreen() {
     </View>
   );
 
+  // Evet/Hayır soruları dil bağımsız "yes"/"no" olarak kaydedilir.
+  const renderYesNoRow = (field: keyof FormData, label: string) => (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.radioRow}>
+        {(["yes", "no"] as const).map((v) => {
+          const selected = yesNo(formData[field]) === v;
+          return (
+            <TouchableOpacity
+              key={v}
+              style={[
+                styles.radioPill,
+                selected && {
+                  backgroundColor: theme.colors.accent,
+                  borderColor: theme.colors.accent,
+                },
+              ]}
+              onPress={() => handleChange(field, v)}
+            >
+              <Text style={[styles.radioPillText, selected && { color: "#0f172a" }]}>
+                {t(`recordNew.option.${v}`)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+
   const renderCheckboxRow = (field: keyof FormData, label: string) => {
     const value = formData[field] as boolean;
     return (
@@ -1169,7 +1199,7 @@ export default function NewRecordScreen() {
               {formData.bodyMassIndex ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.statusLabel")}{" "}
-                  {getBMIStatus(Number(formData.bodyMassIndex || 0))}
+                  {statusLabel(t, getBMIStatus(Number(formData.bodyMassIndex || 0)), "bmi")}
                 </Text>
               ) : null}
 
@@ -1177,10 +1207,10 @@ export default function NewRecordScreen() {
               {formData.basalMetabolism ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.statusLabel")}{" "}
-                  {getBasalMetabolismStatus(
+                  {statusLabel(t, getBasalMetabolismStatus(
                     Number(formData.basalMetabolism || 0),
                     student?.gender,
-                  )}
+                  ))}
                 </Text>
               ) : null}
 
@@ -1188,11 +1218,11 @@ export default function NewRecordScreen() {
               {formData.bodyFat ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.statusLabel")}{" "}
-                  {getBodyFatStatus(
+                  {statusLabel(t, getBodyFatStatus(
                     Number(formData.bodyFat || 0),
                     getAge(),
                     student?.gender,
-                  )}
+                  ), "bodyFat")}
                 </Text>
               ) : null}
 
@@ -1208,11 +1238,11 @@ export default function NewRecordScreen() {
               {formData.leanBodyMass ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.statusLabel")}{" "}
-                  {getLeanBodyMassStatus(
+                  {statusLabel(t, getLeanBodyMassStatus(
                     Number(formData.leanBodyMass || 0),
                     Number(formData.weight || 0),
                     student?.gender,
-                  )}
+                  ))}
                 </Text>
               ) : null}
 
@@ -1223,10 +1253,10 @@ export default function NewRecordScreen() {
               {formData.bodyWaterMass ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.statusLabel")}{" "}
-                  {getBodyWaterMassStatus(
+                  {statusLabel(t, getBodyWaterMassStatus(
                     Number(formData.bodyWaterMass || 0),
                     student?.gender,
-                  )}
+                  ))}
                 </Text>
               ) : null}
 
@@ -1234,10 +1264,10 @@ export default function NewRecordScreen() {
               {formData.impedance ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.statusLabel")}{" "}
-                  {getImpedanceStatus(
+                  {statusLabel(t, getImpedanceStatus(
                     Number(formData.impedance || 0),
                     student?.gender,
-                  )}
+                  ))}
                 </Text>
               ) : null}
 
@@ -1248,10 +1278,10 @@ export default function NewRecordScreen() {
               {formData.metabolicAge ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.statusLabel")}{" "}
-                  {getMetabolicAgeStatus(
+                  {statusLabel(t, getMetabolicAgeStatus(
                     Number(formData.metabolicAge || 0),
                     getAge(),
-                  )}
+                  ))}
                 </Text>
               ) : null}
 
@@ -1318,11 +1348,11 @@ export default function NewRecordScreen() {
               {formData.bel && formData.kalca ? (
                 <Text style={styles.infoText}>
                   {t("recordNew.label.waistHip")}{" "}
-                  {getBellyHipRatio(
+                  {statusLabel(t, getBellyHipRatio(
                     Number(formData.bel || 0),
                     Number(formData.kalca || 0),
                     student?.gender,
-                  )}
+                  ))}
                 </Text>
               ) : null}
 
@@ -1450,11 +1480,11 @@ export default function NewRecordScreen() {
                   <InfoNote>{t("recordNew.tip.ymcaResult")}</InfoNote>
                   <Text style={styles.infoText}>
                     {t("recordNew.label.ymcaResult")}{" "}
-                    {getYMCAResult(
+                    {statusLabel(t, getYMCAResult(
                       Number(formData.toparlanmaNabzi || 0),
                       getAge(),
                       student?.gender,
-                    )}
+                    ))}
                   </Text>
                 </>
               ) : null}
@@ -1535,7 +1565,7 @@ export default function NewRecordScreen() {
                         student?.gender,
                       )}{" "}
                       {t("common.unit.vo2")} —{" "}
-                      {getVO2Status(
+                      {statusLabel(t, getVO2Status(
                         Number(
                           getBruceTestVO2(
                             Number(formData.testSuresi || 0),
@@ -1544,7 +1574,7 @@ export default function NewRecordScreen() {
                         ),
                         getAge(),
                         student?.gender,
-                      )}
+                      ))}
                     </Text>
                   </>
                 ) : null}
@@ -1660,10 +1690,7 @@ export default function NewRecordScreen() {
                   {t("recordNew.tip.posture.pronationDesc")}
                 </Text>
               </InfoNote>
-              {renderRadioRow("pronation", t("recordNew.field.pronation"), [
-                t("recordNew.option.yes"),
-                t("recordNew.option.no"),
-              ])}
+              {renderYesNoRow("pronation", t("recordNew.field.pronation"))}
 
               <InfoNote>
                 <Text>
@@ -1671,10 +1698,7 @@ export default function NewRecordScreen() {
                   {t("recordNew.tip.posture.lowerDesc")}
                 </Text>
               </InfoNote>
-              {renderRadioRow("lower", t("recordNew.field.lowerCrossed"), [
-                t("recordNew.option.yes"),
-                t("recordNew.option.no"),
-              ])}
+              {renderYesNoRow("lower", t("recordNew.field.lowerCrossed"))}
 
               <InfoNote>
                 <Text>
@@ -1682,10 +1706,7 @@ export default function NewRecordScreen() {
                   {t("recordNew.tip.posture.upperDesc")}
                 </Text>
               </InfoNote>
-              {renderRadioRow("upper", t("recordNew.field.upperCrossed"), [
-                t("recordNew.option.yes"),
-                t("recordNew.option.no"),
-              ])}
+              {renderYesNoRow("upper", t("recordNew.field.upperCrossed"))}
 
               {renderTextArea(
                 "posturNotes",
@@ -1748,40 +1769,13 @@ export default function NewRecordScreen() {
               </View>
 
               {renderTextArea("ohsNotes", t("recordNew.field.ohsNotes"), "")}
-              {renderRadioRow(
-                "ohsFeetTurnOut",
-                t("recordNew.field.ohsFeetTurnOut"),
-                [t("recordNew.option.yes"), t("recordNew.option.no")],
-              )}
-              {renderRadioRow("ohsKneesIn", t("recordNew.field.ohsKneesIn"), [
-                t("recordNew.option.yes"),
-                t("recordNew.option.no"),
-              ])}
-              {renderRadioRow(
-                "ohsForwardLean",
-                t("recordNew.field.ohsForwardLean"),
-                [t("recordNew.option.yes"), t("recordNew.option.no")],
-              )}
-              {renderRadioRow(
-                "ohsLowBackArch",
-                t("recordNew.field.ohsLowBackArch"),
-                [t("recordNew.option.yes"), t("recordNew.option.no")],
-              )}
-              {renderRadioRow(
-                "ohsArmsFallForward",
-                t("recordNew.field.ohsArmsFallForward"),
-                [t("recordNew.option.yes"), t("recordNew.option.no")],
-              )}
-              {renderRadioRow(
-                "ohsHeelsRise",
-                t("recordNew.field.ohsHeelsRise"),
-                [t("recordNew.option.yes"), t("recordNew.option.no")],
-              )}
-              {renderRadioRow(
-                "ohsAsymmetricShift",
-                t("recordNew.field.ohsAsymmetricShift"),
-                [t("recordNew.option.yes"), t("recordNew.option.no")],
-              )}
+              {renderYesNoRow("ohsFeetTurnOut", t("recordNew.field.ohsFeetTurnOut"))}
+              {renderYesNoRow("ohsKneesIn", t("recordNew.field.ohsKneesIn"))}
+              {renderYesNoRow("ohsForwardLean", t("recordNew.field.ohsForwardLean"))}
+              {renderYesNoRow("ohsLowBackArch", t("recordNew.field.ohsLowBackArch"))}
+              {renderYesNoRow("ohsArmsFallForward", t("recordNew.field.ohsArmsFallForward"))}
+              {renderYesNoRow("ohsHeelsRise", t("recordNew.field.ohsHeelsRise"))}
+              {renderYesNoRow("ohsAsymmetricShift", t("recordNew.field.ohsAsymmetricShift"))}
             </View>
 
             <View style={styles.card}>
@@ -1828,7 +1822,7 @@ export default function NewRecordScreen() {
                     formData.sitandreach2,
                     formData.sitandreach3,
                   ) != null && student?.gender
-                    ? getSitAndReachStatus(
+                    ? statusLabel(t, getSitAndReachStatus(
                       Number(
                         getMaxOfThree(
                           formData.sitandreach1,
@@ -1837,7 +1831,7 @@ export default function NewRecordScreen() {
                         ) || 0,
                       ),
                       student.gender,
-                    )
+                    ))
                     : ""}
                 </Text>
               ) : null}
@@ -1865,21 +1859,17 @@ export default function NewRecordScreen() {
               </View>
 
               {renderNumericInput("pushup", t("recordNew.field.pushup"))}
-              {renderRadioRow(
-                "modifiedpushup",
-                t("recordNew.field.modifiedPushup"),
-                [t("recordNew.option.yes"), t("recordNew.option.no")],
-              )}
+              {renderYesNoRow("modifiedpushup", t("recordNew.field.modifiedPushup"))}
 
               {formData.pushup && (
                 <Text style={styles.infoText}>
                   {t("recordNew.label.pushupScore")}{" "}
-                  {getPushUpScore(
+                  {statusLabel(t, getPushUpScore(
                     Number(formData.pushup || 0),
                     getAge(),
                     student?.gender,
-                    formData.modifiedpushup === t("recordNew.option.yes"),
-                  )}
+                    yesNo(formData.modifiedpushup) === "yes",
+                  ))}
                 </Text>
               )}
 
@@ -1887,10 +1877,10 @@ export default function NewRecordScreen() {
               {formData.wallsit && (
                 <Text style={styles.infoText}>
                   {t("recordNew.label.wallSitScore")}{" "}
-                  {getWallSitScore(
+                  {statusLabel(t, getWallSitScore(
                     Number(formData.wallsit || 0),
                     student?.gender,
-                  )}
+                  ))}
                 </Text>
               )}
 
@@ -1898,7 +1888,7 @@ export default function NewRecordScreen() {
               {formData.plank && (
                 <Text style={styles.infoText}>
                   {t("recordNew.label.plankScore")}{" "}
-                  {getPlankScore(Number(formData.plank || 0), student?.gender)}
+                  {statusLabel(t, getPlankScore(Number(formData.plank || 0), student?.gender))}
                 </Text>
               )}
 
@@ -1906,7 +1896,7 @@ export default function NewRecordScreen() {
               {formData.mekik && (
                 <Text style={styles.infoText}>
                   {t("recordNew.label.situpScore")}{" "}
-                  {getMekikScore(Number(formData.mekik || 0), student?.gender)}
+                  {statusLabel(t, getMekikScore(Number(formData.mekik || 0), student?.gender))}
                 </Text>
               )}
 

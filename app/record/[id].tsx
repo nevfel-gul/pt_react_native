@@ -15,6 +15,7 @@ import {
     VenusAndMars,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
@@ -26,6 +27,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { statusLabel, yesNo, yesNoLabel } from "@/constants/statusLabels";
 import { track } from "@/services/analytics";
 import { auth } from "@/services/firebase";
 import { recordDocRef, studentDocRef } from "@/services/firestorePaths";
@@ -265,7 +267,7 @@ export default function RecordDetailScreen() {
                             value={formatVal(record.bodyFat, t("common.unit.percent"))}
                         />
                         <Text style={styles.analysisText}>
-                            {t("recordDetail.analysis.status")} {record.analysis?.bodyFatStatus || "-"}
+                            {t("recordDetail.analysis.status")} {statusLabel(t, record.analysis?.bodyFatStatus, "bodyFat")}
                         </Text>
 
                         <InfoRow
@@ -274,7 +276,7 @@ export default function RecordDetailScreen() {
                             value={formatVal(record.bodyMassIndex)}
                         />
                         <Text style={styles.analysisText}>
-                            {t("recordDetail.analysis.status")} {record.analysis?.bmiStatus || "-"}
+                            {t("recordDetail.analysis.status")} {statusLabel(t, record.analysis?.bmiStatus, "bmi")}
                         </Text>
 
                         <InfoRow
@@ -284,7 +286,7 @@ export default function RecordDetailScreen() {
                         />
                         <Text style={styles.analysisText}>
                             {t("recordDetail.analysis.status")}{" "}
-                            {record.analysis?.basalMetabolismStatus || "-"}
+                            {statusLabel(t, record.analysis?.basalMetabolismStatus)}
                         </Text>
 
                         <InfoRow
@@ -300,7 +302,7 @@ export default function RecordDetailScreen() {
                         />
                         <Text style={styles.analysisText}>
                             {t("recordDetail.analysis.status")}{" "}
-                            {record.analysis?.leanBodyMassStatus || "-"}
+                            {statusLabel(t, record.analysis?.leanBodyMassStatus)}
                         </Text>
 
                         <InfoRow
@@ -310,7 +312,7 @@ export default function RecordDetailScreen() {
                         />
                         <Text style={styles.analysisText}>
                             {t("recordDetail.analysis.status")}{" "}
-                            {record.analysis?.bodyWaterMassStatus || "-"}
+                            {statusLabel(t, record.analysis?.bodyWaterMassStatus)}
                         </Text>
 
                         <InfoRow
@@ -320,7 +322,7 @@ export default function RecordDetailScreen() {
                         />
                         <Text style={styles.analysisText}>
                             {t("recordDetail.analysis.status")}{" "}
-                            {record.analysis?.metabolicAgeStatus || "-"}
+                            {statusLabel(t, record.analysis?.metabolicAgeStatus)}
                         </Text>
 
                         {record.visceralFat ? (
@@ -345,7 +347,7 @@ export default function RecordDetailScreen() {
                             value={record.impedance?.toString() ?? "-"}
                         />
                         <Text style={styles.analysisText}>
-                            {t("recordDetail.analysis.status")} {record.analysis?.impedanceStatus || "-"}
+                            {t("recordDetail.analysis.status")} {statusLabel(t, record.analysis?.impedanceStatus)}
                         </Text>
 
                         <InfoRow
@@ -359,7 +361,7 @@ export default function RecordDetailScreen() {
                         />
                         <Text style={styles.analysisText}>
                             {t("recordDetail.analysis.comment")}{" "}
-                            {record.analysis?.bellyHipRatioStatus || "-"}
+                            {statusLabel(t, record.analysis?.bellyHipRatioStatus)}
                         </Text>
                     </View>
 
@@ -479,7 +481,7 @@ export default function RecordDetailScreen() {
                             value={record.toparlanmaNabzi?.toString() ?? "-"}
                         />
                         <Text style={styles.analysisText}>
-                            {t("recordDetail.analysis.ymca")} {record.analysis?.ymcaStatus || "-"}
+                            {t("recordDetail.analysis.ymca")} {statusLabel(t, record.analysis?.ymcaStatus)}
                         </Text>
 
                         <InfoRow
@@ -492,7 +494,7 @@ export default function RecordDetailScreen() {
                             {record.analysis?.bruceVO2Max
                                 ? `${record.analysis.bruceVO2Max} ${t("common.unit.vo2")}`
                                 : "-"}{" "}
-                            — {record.analysis?.vo2Status || "-"}
+                            — {statusLabel(t, record.analysis?.vo2Status)}
                         </Text>
                     </View>
 
@@ -603,17 +605,17 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.posture.pronation")}
-                            value={record.pronation || "-"}
+                            value={yesNoLabel(t, record.pronation)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.posture.lower")}
-                            value={record.lower || "-"}
+                            value={yesNoLabel(t, record.lower)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.posture.upper")}
-                            value={record.upper || "-"}
+                            value={yesNoLabel(t, record.upper)}
                         />
                     </View>
 
@@ -679,7 +681,7 @@ export default function RecordDetailScreen() {
                                 ? `${record.analysis.sitAndReachBest} ${t("common.unit.cm")}`
                                 : "-"}
                             {"  "} | {t("recordDetail.analysis.status")}{" "}
-                            {record.analysis?.sitAndReachStatus || "-"}
+                            {statusLabel(t, record.analysis?.sitAndReachStatus)}
                         </Text>
                     </View>
 
@@ -698,21 +700,13 @@ export default function RecordDetailScreen() {
                             firstLine={true}
                         />
                         <Text style={styles.analysisText}>
-                            {t("recordDetail.analysis.pushupScore")} {record.analysis?.pushupStatus || "-"}
+                            {t("recordDetail.analysis.pushupScore")} {statusLabel(t, record.analysis?.pushupStatus)}
                         </Text>
 
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.strength.modifiedPushup")}
-                            value={
-                                typeof record.modifiedpushup === "string"
-                                    ? record.modifiedpushup
-                                    : record.modifiedpushup === true
-                                        ? "Evet"
-                                        : record.modifiedpushup === false
-                                            ? "Hayır"
-                                            : "-"
-                            }
+                            value={yesNoLabel(t, record.modifiedpushup)}
                         />
 
                         <InfoRow
@@ -722,7 +716,7 @@ export default function RecordDetailScreen() {
                         />
                         <Text style={styles.analysisText}>
                             {t("recordDetail.analysis.wallSitScore")}{" "}
-                            {record.analysis?.wallSitStatus || "-"}
+                            {statusLabel(t, record.analysis?.wallSitStatus)}
                         </Text>
 
                         <InfoRow
@@ -731,7 +725,7 @@ export default function RecordDetailScreen() {
                             value={record.plank?.toString() ?? "-"}
                         />
                         <Text style={styles.analysisText}>
-                            {t("recordDetail.analysis.plankScore")} {record.analysis?.plankStatus || "-"}
+                            {t("recordDetail.analysis.plankScore")} {statusLabel(t, record.analysis?.plankStatus)}
                         </Text>
 
                         <InfoRow
@@ -740,7 +734,7 @@ export default function RecordDetailScreen() {
                             value={record.mekik?.toString() ?? "-"}
                         />
                         <Text style={styles.analysisText}>
-                            {t("recordDetail.analysis.situpScore")} {record.analysis?.mekikStatus || "-"}
+                            {t("recordDetail.analysis.situpScore")} {statusLabel(t, record.analysis?.mekikStatus)}
                         </Text>
 
                         <InfoRow
@@ -755,7 +749,7 @@ export default function RecordDetailScreen() {
                         />
                         <Text style={styles.analysisText}>
                             {t("recordDetail.analysis.rmSquatScore")}{" "}
-                            {record.analysis?.rmSquatStatus || "-"}
+                            {statusLabel(t, record.analysis?.rmSquatStatus)}
                         </Text>
 
                         <InfoRow
@@ -827,16 +821,10 @@ const OHS_ROWS = [
     { key: "ohsAsymmetricShift", legacyKey: "", labelKey: "recordNew.field.ohsAsymmetricShift" },
 ] as const;
 
-const YES_VALUES = new Set(["evet", "yes"]);
-const NO_VALUES = new Set(["hayır", "hayir", "no"]);
-
-/** OHS cevabı formda o anki dilde "Evet"/"Yes" olarak kaydediliyor; iki dili de tanı. */
-function ohsAnswer(t: (k: string) => string, value: any, legacy: any): string {
-    const v = String(value ?? "").trim().toLowerCase();
-    if (YES_VALUES.has(v) || value === true) return t("recordNew.option.yes");
-    if (NO_VALUES.has(v) || value === false) return t("recordNew.option.no");
-    if (legacy === true) return t("recordNew.option.yes");
-    return "-";
+/** Yeni kayıtlarda "yes"/"no", eskilerde "Evet"/"Yes"; en eski şemada boolean alan. */
+function ohsAnswer(t: TFunction, value: any, legacy: any): string {
+    if (yesNo(value)) return yesNoLabel(t, value);
+    return legacy === true ? t("recordNew.option.yes") : "-";
 }
 
 function makeStyles(theme: ThemeUI) {

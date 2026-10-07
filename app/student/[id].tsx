@@ -1,3 +1,4 @@
+import { STATUS_SCORE, statusId, statusLabel } from "@/constants/statusLabels";
 import { goalLabel, normalizeGoals, parqYesCount } from "@/constants/studentForm";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
@@ -1494,20 +1495,17 @@ function TestsCard({
     const bmiNum = num(a?.bmi);
     const vo2Num = num(a?.bruceVO2Max);
 
-    const statusToNum = (
-      raw: string | undefined,
-      map: Record<string, number>,
-    ): number | null => {
-      if (!raw || raw === "-") return null;
-      return map[raw] ?? null;
+    // Kayıtlı sonuçlar Türkçe metin ("Ortalama Altı"); eski eşleme tablosu
+    // "Ortanın Altı", "Kötü" gibi değerleri tanımadığı için gösterge boş kalıyordu.
+    const scoreOf = (raw: string | undefined): number | null => {
+      const id = statusId(raw);
+      return id ? STATUS_SCORE[id] ?? null : null;
     };
-
-    const qualMap = {
-      "Çok Zayıf": 10, "Zayıf": 25, "Orta Altı": 35,
-      "Orta": 50, "İyi": 70, "Mükemmel": 90,
-      "Very Poor": 10, "Poor": 25, "Below Average": 35,
-      "Average": 50, "Good": 70, "Excellent": 90,
-      "Fair": 45,
+    // "Geçersiz veri" ya da boş sonuç göstergede değer sayılmaz.
+    const shown = (raw: string | undefined): string | null => {
+      const id = statusId(raw);
+      if (!raw || raw === "-" || id === "invalid") return null;
+      return statusLabel(t, raw);
     };
 
     const srNum = num(a?.sitAndReachBest);
@@ -1518,7 +1516,7 @@ function TestsCard({
         value: bmiNum != null ? bmiNum.toFixed(1) : null,
         numericValue: bmiNum,
         min: 10, max: 45,
-        statusLabel: a?.bmiStatus ?? null,
+        statusLabel: a?.bmiStatus ? statusLabel(t, a.bmiStatus, "bmi") : null,
         thresholds: [
           { upto: 18.5, color: theme.colors.primary, label: t("recordNew.status.weak") },
           { upto: 24.9, color: theme.colors.status.good, label: t("recordNew.status.normal") },
@@ -1531,7 +1529,7 @@ function TestsCard({
         value: vo2Num != null ? `${vo2Num.toFixed(1)}` : null,
         numericValue: vo2Num,
         min: 20, max: 75,
-        statusLabel: a?.vo2Status ?? null,
+        statusLabel: shown(a?.vo2Status),
         unit: "ml/kg/dk",
         thresholds: [
           { upto: 35, color: theme.colors.status.poor, label: t("recordNew.status.weak") },
@@ -1542,10 +1540,10 @@ function TestsCard({
       },
       {
         label: "YMCA",
-        value: a?.ymcaStatus && a.ymcaStatus !== "-" ? a.ymcaStatus : null,
-        numericValue: statusToNum(a?.ymcaStatus, qualMap),
+        value: shown(a?.ymcaStatus),
+        numericValue: scoreOf(a?.ymcaStatus),
         min: 0, max: 100,
-        statusLabel: a?.ymcaStatus ?? null,
+        statusLabel: shown(a?.ymcaStatus),
         thresholds: [
           { upto: 20, color: theme.colors.status.poor, label: t("recordNew.status.veryWeak") },
           { upto: 40, color: theme.colors.status.bad, label: t("recordNew.status.weak") },
@@ -1569,10 +1567,10 @@ function TestsCard({
       },
       {
         label: "Push-up",
-        value: a?.pushupStatus && a.pushupStatus !== "-" ? a.pushupStatus : null,
-        numericValue: statusToNum(a?.pushupStatus, qualMap),
+        value: shown(a?.pushupStatus),
+        numericValue: scoreOf(a?.pushupStatus),
         min: 0, max: 100,
-        statusLabel: a?.pushupStatus ?? null,
+        statusLabel: shown(a?.pushupStatus),
         thresholds: [
           { upto: 20, color: theme.colors.status.poor, label: t("recordNew.status.weak") },
           { upto: 40, color: theme.colors.status.bad, label: t("recordNew.status.belowMiddle") },
@@ -1583,10 +1581,10 @@ function TestsCard({
       },
       {
         label: "Plank",
-        value: a?.plankStatus && a.plankStatus !== "-" ? a.plankStatus : null,
-        numericValue: statusToNum(a?.plankStatus, qualMap),
+        value: shown(a?.plankStatus),
+        numericValue: scoreOf(a?.plankStatus),
         min: 0, max: 100,
-        statusLabel: a?.plankStatus ?? null,
+        statusLabel: shown(a?.plankStatus),
         thresholds: [
           { upto: 25, color: theme.colors.status.poor, label: t("recordNew.status.weak") },
           { upto: 50, color: theme.colors.status.warning, label: t("recordNew.status.medium") },
