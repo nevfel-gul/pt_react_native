@@ -1,3 +1,4 @@
+import StudentPackages from "@/components/StudentPackages";
 import { STATUS_SCORE, statusId, statusLabel } from "@/constants/statusLabels";
 import { goalLabel, normalizeGoals, parqYesCount } from "@/constants/studentForm";
 import type { ThemeUI } from "@/constants/types";
@@ -2157,6 +2158,9 @@ export default function StudentDetailScreen() {
                   </View>
                 </View>
               </View>
+
+              {/* PAKET & SEANS */}
+              <StudentPackages studentId={student.id} />
 
               {/* KİŞİSEL BİLGİLER */}
               <View style={styles.card}>

@@ -8,9 +8,10 @@ import { addDays, daysDiff, isAppointmentOnDay, startOfDay, toDateSafe, ymd } fr
 import { useRating } from "@/constants/RatingContext";
 import { track } from "@/services/analytics";
 import { requestWidgetRefresh } from "@/services/widgetData";
+import { AlreadyLoggedError, logSession, PackageFullError, type ActivePackageSummary } from "@/services/packages";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { addDoc, deleteDoc, onSnapshot, orderBy, query, serverTimestamp, Timestamp } from "firebase/firestore";
-import { Trash2, X } from "lucide-react-native";
+import { Check, Trash2, X } from "lucide-react-native";
 import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -34,7 +35,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 /* ------------------------------------------------------------------ */
 /*  TYPES                                                               */
 /* ------------------------------------------------------------------ */
-type Student = { id: string; name?: string; fullName?: string; followUpDays?: number };
+type Student = { id: string; name?: string; fullName?: string; followUpDays?: number; activePackage?: ActivePackageSummary };
 
 type RecordDoc = {
     id: string;
@@ -547,6 +548,32 @@ export default function CalendarFollowUpScreen() {
         );
     }, [uid, t]);
 
+    // Randevudan ders düş: aynı randevu aynı gün ikinci kez düşülemez (services/packages.ts).
+    const [loggedKeys, setLoggedKeys] = useState<Set<string>>(new Set());
+    const handleSessionDone = useCallback(async (apt: Appointment, pkgId: string, dayKey: string) => {
+        if (!uid) return;
+        const key = `${apt.id}_${dayKey}`;
+        const base = toDateSafe(apt.date) ?? new Date();
+        const when = new Date(dayKey + "T00:00:00");
+        when.setHours(base.getHours(), base.getMinutes(), 0, 0);
+        try {
+            await logSession(uid, apt.studentId, pkgId, { date: when, appointmentId: apt.id, dayKey });
+            setLoggedKeys((prev) => new Set(prev).add(key));
+            track("session_used", { source: "appointment" });
+            requestWidgetRefresh();
+        } catch (e) {
+            if (e instanceof AlreadyLoggedError) {
+                setLoggedKeys((prev) => new Set(prev).add(key));
+                Alert.alert(t("packages.alreadyLogged.title"), t("packages.alreadyLogged.message"));
+            } else if (e instanceof PackageFullError) {
+                Alert.alert(t("packages.full.title"), t("packages.full.message"));
+            } else {
+                console.error(e);
+                Alert.alert(t("common.error"), t("packages.error"));
+            }
+        }
+    }, [uid, t]);
+
     /* computed */
     const dueItems = useMemo<DueItem[]>(() => {
         const today = startOfDay(new Date());
@@ -798,6 +825,10 @@ export default function CalendarFollowUpScreen() {
                                 {selectedAppointments.map((apt) => {
                                     const aptDate = toDateSafe(apt.date);
                                     const timeStr = aptDate ? `${String(aptDate.getHours()).padStart(2, "0")}:${String(aptDate.getMinutes()).padStart(2, "0")}` : "";
+                                    const pkg = students.find((s) => s.id === apt.studentId)?.activePackage;
+                                    const done = loggedKeys.has(`${apt.id}_${selectedDay}`);
+                                    // Gelecekteki bir dersi şimdiden düşmeye izin verme.
+                                    const canLog = !!pkg && pkg.remaining > 0 && selectedDay <= ymd(new Date()) && !done;
                                     return (
                                         <View key={apt.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 14, padding: 14 }}>
                                             <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: theme.colors.premium }} />
@@ -805,7 +836,23 @@ export default function CalendarFollowUpScreen() {
                                                 <Text style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: "900" }}>{apt.studentName ?? "—"}</Text>
                                                 {timeStr ? <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "700", marginTop: 2 }}>🕐 {timeStr}</Text> : null}
                                                 {apt.note ? <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "600", marginTop: 2 }}>{apt.note}</Text> : null}
+                                                <Text style={{ color: !pkg ? theme.colors.text.muted : pkg.remaining <= 2 ? theme.colors.warning : theme.colors.text.secondary, fontSize: 12, fontWeight: "700", marginTop: 2 }}>
+                                                    {!pkg ? t("packages.calendar.noPackage") : pkg.remaining === 0 ? t("packages.calendar.finished") : t("packages.calendar.remaining", { count: pkg.remaining })}
+                                                </Text>
                                             </View>
+                                            {pkg && (done || canLog) ? (
+                                                <Pressable
+                                                    disabled={done}
+                                                    onPress={() => handleSessionDone(apt, pkg.id, selectedDay)}
+                                                    hitSlop={8}
+                                                    style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: done ? theme.colors.success : theme.colors.accent, backgroundColor: done ? theme.colors.successSoft : "transparent", opacity: pressed ? 0.6 : 1 })}
+                                                >
+                                                    <Check size={14} color={done ? theme.colors.success : theme.colors.accent} />
+                                                    <Text style={{ color: done ? theme.colors.success : theme.colors.accent, fontSize: 12, fontWeight: "800" }}>
+                                                        {done ? t("packages.calendar.logged") : t("packages.calendar.markDone")}
+                                                    </Text>
+                                                </Pressable>
+                                            ) : null}
                                             <Pressable onPress={() => handleDeleteAppointment(apt.id)} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 4 })}>
                                                 <Trash2 size={16} color={theme.colors.danger} />
                                             </Pressable>

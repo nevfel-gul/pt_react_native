@@ -49,6 +49,12 @@ export type AnalyticsEvent =
   | "record_viewed"
   | "student_note_added"
   | "follow_up_period_changed"
+  // Paket / seans
+  | "package_created"
+  | "package_deleted"
+  | "package_payment_recorded"
+  | "session_used"
+  | "session_undone"
   // Kullanım
   | "ai_search_used"
   | "ai_search_failed"
