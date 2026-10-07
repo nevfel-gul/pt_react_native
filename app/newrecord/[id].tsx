@@ -1790,6 +1790,7 @@ export default function NewRecordScreen() {
                 </Text>
               </View>
 
+              <InfoNote>{t("recordNew.tip.pushup")}</InfoNote>
               {renderNumericInput("pushup", t("recordNew.field.pushup"))}
               {renderYesNoRow("modifiedpushup", t("recordNew.field.modifiedPushup"))}
 

@@ -281,7 +281,7 @@
   "recordDetail.strength.modifiedPushup": "Modified push-up (on knees)?",
   "recordDetail.strength.notes": "Strength notes",
   "recordDetail.strength.plank": "Plank (sec)",
-  "recordDetail.strength.pushup": "Push-ups (1 min)",
+  "recordDetail.strength.pushup": "Push-ups (max reps)",
   "recordDetail.strength.rmSquatRep": "1RM Squat — Reps",
   "recordDetail.strength.rmSquatWeight": "1RM Squat — Weight",
   "recordDetail.strength.situp": "Sit-ups (1 min)",
@@ -355,7 +355,7 @@
   "recordNew.field.plank": "Plank — Max seconds",
   "recordNew.field.postureNotes": "General notes / observations",
   "recordNew.field.pronation": "Pronation Distortion Syndrome",
-  "recordNew.field.pushup": "Push-ups completed in 1 minute",
+  "recordNew.field.pushup": "Max push-ups (continuous, to fatigue)",
   "recordNew.field.recordNotes": "Record notes",
   "recordNew.field.restingHr": "Resting heart rate",
   "recordNew.field.rightArm": "Right arm",
@@ -990,5 +990,6 @@
   "login.error.too_many_requests": "Too many attempts. Please wait a moment and try again.",
   "login.error.network": "You seem to be offline. Check your connection.",
   "login.error.user_disabled": "This account has been disabled.",
-  "login.error.generic": "Something went wrong, please try again."
+  "login.error.generic": "Something went wrong, please try again.",
+  "recordNew.tip.pushup": "The client performs as many push-ups as possible without resting, until proper form breaks; there is no time limit. Norms are for full push-ups in men and knee push-ups in women."
 }
