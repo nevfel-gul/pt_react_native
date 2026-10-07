@@ -4,6 +4,7 @@ import {
   visceralFatStatus,
 } from "@/constants/healthRanges";
 import { useRating } from "@/constants/RatingContext";
+import { pushUpRating, vo2maxRating, ymcaStepTestRating } from "@/constants/fitnessNorms";
 import { statusLabel, yesNo } from "@/constants/statusLabels";
 import { parqYesCount } from "@/constants/studentForm";
 import { track } from "@/services/analytics";
@@ -629,31 +630,9 @@ export default function NewRecordScreen() {
     return target.toFixed(0);
   };
 
-  const getYMCAResult = (pulse: number, age: number, gender?: string) => {
-    if (!pulse || !age || !gender) return "";
-    if (gender === "M") {
-      if (age <= 25) {
-        if (pulse <= 79) return "Mükemmel";
-        if (pulse <= 89) return "İyi";
-        if (pulse <= 100) return "Ortanın Üstü";
-        if (pulse <= 105) return "Orta";
-        if (pulse <= 112) return "Ortanın Altı";
-        if (pulse <= 120) return "Kötü";
-        return "Çok Kötü";
-      }
-    } else if (gender === "F") {
-      if (age <= 25) {
-        if (pulse <= 81) return "Mükemmel";
-        if (pulse <= 93) return "İyi";
-        if (pulse <= 102) return "Ortanın Üstü";
-        if (pulse <= 110) return "Orta";
-        if (pulse <= 120) return "Ortanın Altı";
-        if (pulse <= 131) return "Kötü";
-        return "Çok Kötü";
-      }
-    }
-    return "Geçersiz veri";
-  };
+  // Norm tabloları ve kaynakları: constants/fitnessNorms.ts
+  const getYMCAResult = (pulse: number, age: number, gender?: string) =>
+    ymcaStepTestRating(pulse, age, gender);
 
   const getBruceTestVO2 = (time: number, gender?: string) => {
     if (!time || time < 0 || !gender) return "";
@@ -669,27 +648,8 @@ export default function NewRecordScreen() {
     return "";
   };
 
-  const getVO2Status = (vo2: number, age: number, gender?: string) => {
-    if (!vo2 || !age || !gender) return "";
-    if (gender === "M") {
-      if (age >= 20 && age <= 29) {
-        if (vo2 < 42) return "Zayıf";
-        if (vo2 < 45) return "Ortalama Altı";
-        if (vo2 < 51) return "Ortalama";
-        if (vo2 < 55) return "Ortalama Üstü";
-        return "Mükemmel";
-      }
-    } else if (gender === "F") {
-      if (age >= 20 && age <= 29) {
-        if (vo2 < 35) return "Zayıf";
-        if (vo2 < 39) return "Ortalama Altı";
-        if (vo2 < 43) return "Ortalama";
-        if (vo2 < 49) return "Ortalama Üstü";
-        return "Mükemmel";
-      }
-    }
-    return "Geçersiz veri";
-  };
+  const getVO2Status = (vo2: number, age: number, gender?: string) =>
+    vo2maxRating(vo2, age, gender);
 
   const getSitAndReachStatus = (value: number, gender?: string) => {
     if (!gender) return "";
@@ -727,35 +687,7 @@ export default function NewRecordScreen() {
     age: number,
     gender?: string,
     isModified = false,
-  ) => {
-    if (!reps || reps < 0 || !gender || !age) return "";
-
-    if (gender === "M") {
-      if (!isModified) {
-        if (age >= 20 && age <= 29) {
-          if (reps > 54) return "Mükemmel";
-          if (reps >= 45) return "Ortalama Üstü";
-          if (reps >= 35) return "Ortalama";
-          if (reps >= 20) return "Ortalama Altı";
-          return "Kötü";
-        }
-      }
-    }
-
-    if (gender === "F") {
-      if (isModified) {
-        if (age >= 20 && age <= 29) {
-          if (reps > 48) return "Mükemmel";
-          if (reps >= 34) return "Ortalama Üstü";
-          if (reps >= 17) return "Ortalama";
-          if (reps >= 6) return "Ortalama Altı";
-          return "Kötü";
-        }
-      }
-    }
-
-    return "Geçersiz veri";
-  };
+  ) => pushUpRating(reps, age, gender, isModified);
 
   const getWallSitScore = (seconds: number, gender?: string) => {
     if (!seconds || seconds < 0 || !gender) return "";
