@@ -1,5 +1,5 @@
 import { usePremium } from '@/constants/PremiumContext';
-import { appLocale } from "@/constants/languages";
+import { appLocale, normalizeLanguage } from "@/constants/languages";
 import type { ThemeUI } from '@/constants/types';
 import { useTheme } from '@/constants/usetheme';
 import { track } from '@/services/analytics';
@@ -85,7 +85,7 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
   const { t, i18n } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const uid = auth.currentUser?.uid;
-  const locale = appLocale();
+  const locale = appLocale(normalizeLanguage(i18n.language));
   const { hasPremium, loading: premiumLoading } = usePremium();
   const router = useRouter();
 
@@ -470,7 +470,8 @@ function NewPackageModal({
   theme: ThemeUI;
   previous: SessionPackage | null;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = appLocale(normalizeLanguage(i18n.language));
   const [total, setTotal] = useState('10');
   const [price, setPrice] = useState('');
   const [paid, setPaid] = useState('');
@@ -553,7 +554,7 @@ function NewPackageModal({
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>{`${t('packages.form.price')} (${currencySymbol(defaultCurrency(), appLocale())})`}</Text>
+                  <Text style={styles.label}>{`${t('packages.form.price')} (${currencySymbol(defaultCurrency(), locale)})`}</Text>
                   <TextInput
                     style={styles.input}
                     keyboardType="decimal-pad"

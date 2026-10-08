@@ -1,4 +1,4 @@
-import { LANGUAGE_META, SUPPORTED_LANGUAGES, currentLanguage, type AppLanguage } from '@/constants/languages';
+import { LANGUAGE_META, SUPPORTED_LANGUAGES, normalizeLanguage, type AppLanguage } from '@/constants/languages';
 import type { ThemeUI } from '@/constants/types';
 import { useTheme } from '@/constants/usetheme';
 import { track } from '@/services/analytics';
@@ -15,9 +15,11 @@ import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'reac
 
 export default function LanguagePicker({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { theme } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const current = currentLanguage();
+  // currentLanguage() kullanma: React Compiler bağımlılığı olmayan bu çağrıyı ilk
+  // render'da önbelleğe alıyor ve menü dil değişse de hep ilk dili seçili sanıyordu.
+  const current = normalizeLanguage(i18n.language);
 
   const pick = async (lang: AppLanguage) => {
     onClose();

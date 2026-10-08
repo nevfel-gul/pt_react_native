@@ -1,5 +1,5 @@
 import type { ThemeUI } from '@/constants/types';
-import { appLocale, formatPercent } from "@/constants/languages";
+import { appLocale, formatPercent, normalizeLanguage } from "@/constants/languages";
 import { useTheme } from '@/constants/usetheme';
 import { normalizeGoals } from '@/constants/studentForm';
 import { toDisplay, type Quantity, type UnitSystem } from '@/constants/units';
@@ -130,7 +130,7 @@ export default function TransformationCard({
   const { t, i18n } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { width: screenW } = useWindowDimensions();
-  const locale = appLocale();
+  const locale = appLocale(normalizeLanguage(i18n.language));
   const cardRef = useRef<View>(null);
 
   const goals = useMemo(() => normalizeGoals(student.trainingGoals), [student.trainingGoals]);
