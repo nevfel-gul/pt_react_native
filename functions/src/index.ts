@@ -567,6 +567,9 @@ export { noStudentReminderJob } from "./jobs/noStudentReminderJob";
 
 export { weeklyAnalyticsReminderJob } from "./jobs/weeklyAnalyticsReminderJob";
 
+// Seans / paket hatırlatması (premium)
+export { packageReminderJob } from "./jobs/packageReminderJob";
+
 // Şifre sıfırlama akışı (Resend + athletrackai.com üzerindeki kendi sayfamız).
 export { requestPasswordReset } from "./passwordReset";
 
