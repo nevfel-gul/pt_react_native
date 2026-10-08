@@ -49,7 +49,7 @@ export default function WidgetSync() {
           });
         }
       } catch (e) {
-        console.warn('[Widget] snapshot güncellenemedi:', e);
+        console.warn('[Widget] snapshot güncellenemedi:', e instanceof Error ? e.message : e);
       }
     };
 

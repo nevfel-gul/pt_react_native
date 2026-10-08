@@ -277,7 +277,18 @@ export async function publishWidgetSnapshot(snapshot: WidgetSnapshot) {
     if (Platform.OS === "ios") {
         // Native modül yalnızca iOS build'inde var; require ile tembel yükle.
         const { ExtensionStorage } = require("@bacons/apple-targets") as typeof import("@bacons/apple-targets");
-        new ExtensionStorage(APP_GROUP).set(WIDGET_SNAPSHOT_KEY, json);
+        // Native modül build'e girmediyse ExtensionStorage sessizce hiçbir şey yapmaz.
+        if (!(globalThis as any).expo?.modules?.ExtensionStorage) {
+            console.warn("[Widget] ExtensionStorage native modülü yok — widget verisi yazılamıyor (prebuild --clean gerekli).");
+            return;
+        }
+        const storage = new ExtensionStorage(APP_GROUP);
+        storage.set(WIDGET_SNAPSHOT_KEY, json);
+        if (__DEV__) {
+            // Geri okuyabiliyorsak uygulama tarafı tamam; widget yine boşsa App Group widget'ta yok demektir.
+            const back = storage.get(WIDGET_SNAPSHOT_KEY);
+            console.log(`[Widget] App Group'a yazıldı (${APP_GROUP}), geri okuma: ${back ? `${back.length} karakter` : "BOŞ"}`);
+        }
         ExtensionStorage.reloadWidget(IOS_WIDGET_KIND);
         return;
     }
