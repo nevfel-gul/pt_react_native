@@ -40,6 +40,14 @@ export default function WidgetSync() {
       try {
         const snapshot = uid ? await buildWidgetSnapshot(uid, { premium: hasPremium }) : signedOutSnapshot();
         await publishWidgetSnapshot(snapshot);
+        if (__DEV__) {
+          console.log('[Widget] snapshot yazıldı:', {
+            signedIn: snapshot.signedIn,
+            appointments: snapshot.appointments.length,
+            overdue: snapshot.overdue,
+            premium: snapshot.premium,
+          });
+        }
       } catch (e) {
         console.warn('[Widget] snapshot güncellenemedi:', e);
       }

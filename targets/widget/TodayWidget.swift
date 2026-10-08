@@ -123,6 +123,17 @@ enum WidgetText {
         "it": "Gli appuntamenti di oggi e i clienti con misurazione in arrivo.",
     ][lang]!
 
+    /// Uygulama henüz hiç veri yazmadıysa (yeni kurulum / App Group okunamıyor).
+    static let noData: String = [
+        "tr": "Günü görmek için AthleTrack'i bir kez aç.",
+        "en": "Open AthleTrack once to load your day.",
+        "de": "Öffne AthleTrack einmal, um deinen Tag zu laden.",
+        "es": "Abre AthleTrack una vez para cargar tu día.",
+        "pt": "Abra o AthleTrack uma vez para carregar seu dia.",
+        "fr": "Ouvrez AthleTrack une fois pour charger votre journée.",
+        "it": "Apri AthleTrack una volta per caricare la tua giornata.",
+    ][lang]!
+
     static let placeholderLabels: WidgetLabels = {
         // title, today, noSessions, overdue, dueSoon, activeStudents, signedOut, more
         let t: [String: [String]] = [
@@ -319,7 +330,8 @@ struct TodayWidgetView: View {
             if let s = entry.snapshot, s.signedIn {
                 content(s)
             } else {
-                SignedOutView(message: entry.snapshot?.labels.signedOut ?? WidgetSnapshot.placeholder.labels.signedOut)
+                // Snapshot yoksa: uygulama henüz yazmadı. Varsa ama signedIn false: çıkış yapılmış.
+                SignedOutView(message: entry.snapshot?.labels.signedOut ?? WidgetText.noData)
             }
         }
         .containerBackground(for: .widget) { Color("$widgetBackground") }
