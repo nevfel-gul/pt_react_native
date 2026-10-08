@@ -1,6 +1,8 @@
 {
   "ios": {
-    "CFBundleDisplayName": "AthleTrack AI"
+    "CFBundleDisplayName": "AthleTrack AI",
+    "NSCalendarsUsageDescription": "AthleTrack, öğrenci randevularınızı telefonunuzun takvimine ekler; böylece hatırlatma alır ve onları diğer planlarınızla birlikte görürsünüz.",
+    "NSCalendarsFullAccessUsageDescription": "AthleTrack, öğrenci randevularınızı telefonunuzun takvimine ekler; böylece hatırlatma alır ve onları diğer planlarınızla birlikte görürsünüz."
   },
   "android": {
     "app_name": "AthleTrack AI"

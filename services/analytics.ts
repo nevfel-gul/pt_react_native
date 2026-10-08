@@ -61,6 +61,13 @@ export type AnalyticsEvent =
   | "onboarding_step_completed"
   | "onboarding_completed"
   | "onboarding_dismissed"
+  // İletişim / entegrasyon / AI
+  | "whatsapp_message_opened"
+  | "device_calendar_toggled"
+  | "device_calendar_synced"
+  | "ai_comment_generated"
+  | "ai_comment_failed"
+  | "ai_comment_regenerated"
   // Kullanım
   | "ai_search_used"
   | "ai_search_failed"

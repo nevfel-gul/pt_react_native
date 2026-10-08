@@ -1,4 +1,6 @@
 import StudentPackages from "@/components/StudentPackages";
+import WhatsAppSheet from "@/components/WhatsAppSheet";
+import { formatMoney } from "@/services/packages";
 import { STATUS_SCORE, statusId, statusLabel } from "@/constants/statusLabels";
 import { goalLabel, normalizeGoals, parqYesCount } from "@/constants/studentForm";
 import type { ThemeUI } from "@/constants/types";
@@ -29,6 +31,7 @@ import {
   Edit,
   Eye,
   Mail,
+  MessageCircle,
   Phone,
   ShieldCheck,
   User,
@@ -1776,7 +1779,7 @@ function TestsCard({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function StudentDetailScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -1795,6 +1798,7 @@ export default function StudentDetailScreen() {
   const [loadingNotes, setLoadingNotes] = useState(true);
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [waOpen, setWaOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [ptNote, setPtNote] = useState("");
@@ -2169,6 +2173,12 @@ export default function StudentDetailScreen() {
                 </Text>
                 <InfoRow styles={styles} label={t("studentDetail.label.email")} value={student.email || "-"} icon={<Mail size={16} color={theme.colors.primary} />} />
                 <InfoRow styles={styles} label={t("studentDetail.label.phone")} value={student.number || "-"} icon={<Phone size={16} color={theme.colors.primary} />} />
+                {!!student.number && (
+                  <TouchableOpacity style={styles.waButton} onPress={() => setWaOpen(true)}>
+                    <MessageCircle size={16} color="#25D366" />
+                    <Text style={styles.waButtonText}>{t("whatsapp.button")}</Text>
+                  </TouchableOpacity>
+                )}
                 <InfoRow styles={styles} label={t("studentDetail.label.gender")} value={student.gender === "F" ? t("newstudent.gender.female") : student.gender === "M" ? t("newstudent.gender.male") : "-"} icon={<User size={16} color={theme.colors.primary} />} />
                 <InfoRow styles={styles} label={t("studentDetail.label.birthDate")} value={formatDateTR(student.dateOfBirth)} icon={<Calendar size={16} color={theme.colors.primary} />} />
                 <InfoRow styles={styles} label={t("studentDetail.label.height")} value={student.boy || "-"} icon={<User size={16} color={theme.colors.primary} />} lastRow={!(student as any).emergencyContactPhone} />
@@ -2394,6 +2404,30 @@ export default function StudentDetailScreen() {
           }
           ListFooterComponent={<View style={{ height: 40 }} />}
         />
+
+        {student && (
+          <WhatsAppSheet
+            visible={waOpen}
+            onClose={() => setWaOpen(false)}
+            phone={student.number}
+            source="student"
+            vars={{
+              name: student.name,
+              remaining: (student as any).activePackage?.remaining,
+              amount: (student as any).activePackage?.unpaid
+                ? formatMoney((student as any).activePackage.unpaid, "TRY", i18n.language === "en" ? "en-US" : "tr-TR")
+                : undefined,
+            }}
+            templates={[
+              ...((student as any).activePackage?.unpaid > 0 ? (["paymentReminder"] as const) : []),
+              ...((student as any).activePackage
+                ? ((student as any).activePackage.remaining <= 1 ? (["packageRenew"] as const) : (["packageLow"] as const))
+                : []),
+              "measurementDay",
+              "missedYou",
+            ]}
+          />
+        )}
 
         {/* NOT MODAL */}
         {noteModalOpen && (
@@ -2736,6 +2770,18 @@ function makeStyles(theme: ThemeUI) {
     infoLabelRow: { flexDirection: "row", alignItems: "center" },
     infoLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
     infoValue: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, maxWidth: "55%", textAlign: "right" },
+    waButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginTop: 10,
+      paddingVertical: 10,
+      borderRadius: theme.radius.pill,
+      borderWidth: 1,
+      borderColor: "#25D366",
+    },
+    waButtonText: { color: "#25D366", fontWeight: "800", fontSize: theme.fontSize.sm },
     parqBanner: {
       flexDirection: "row",
       alignItems: "center",

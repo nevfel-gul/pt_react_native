@@ -9,10 +9,18 @@ import { usePremium } from "@/constants/PremiumContext";
 import { useRating } from "@/constants/RatingContext";
 import { track } from "@/services/analytics";
 import { requestWidgetRefresh } from "@/services/widgetData";
+import WhatsAppSheet from "@/components/WhatsAppSheet";
+import {
+    addAppointmentToDeviceCalendar,
+    disableDeviceCalendar,
+    enableDeviceCalendar,
+    isDeviceCalendarEnabled,
+    removeAppointmentFromDeviceCalendar,
+} from "@/services/deviceCalendar";
 import { AlreadyLoggedError, logSession, PackageFullError, type ActivePackageSummary } from "@/services/packages";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { addDoc, deleteDoc, onSnapshot, orderBy, query, serverTimestamp, Timestamp } from "firebase/firestore";
-import { Check, Trash2, X } from "lucide-react-native";
+import { CalendarPlus, Check, MessageCircle, Trash2, X } from "lucide-react-native";
 import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -21,6 +29,8 @@ import {
     Alert,
     FlatList,
     KeyboardAvoidingView,
+    Switch,
+    Linking,
     Modal,
     Platform,
     Pressable,
@@ -36,7 +46,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 /* ------------------------------------------------------------------ */
 /*  TYPES                                                               */
 /* ------------------------------------------------------------------ */
-type Student = { id: string; name?: string; fullName?: string; followUpDays?: number; activePackage?: ActivePackageSummary };
+type Student = { id: string; name?: string; fullName?: string; number?: string; followUpDays?: number; activePackage?: ActivePackageSummary };
 
 type RecordDoc = {
     id: string;
@@ -486,6 +496,15 @@ export default function CalendarFollowUpScreen() {
     const { notifyPositiveMoment } = useRating();
     // Paket / seans takibi premium özellik.
     const { hasPremium } = usePremium();
+
+    // Telefon takvimiyle eşitleme (services/deviceCalendar.ts)
+    const [deviceCalOn, setDeviceCalOn] = useState(false);
+    const [deviceCalBusy, setDeviceCalBusy] = useState(false);
+    const eventTitle = useCallback((name: string) => t("calendar.device.eventTitle", { name: name || "—" }), [t]);
+    useEffect(() => { isDeviceCalendarEnabled().then(setDeviceCalOn); }, []);
+
+    // WhatsApp hatırlatması için seçili randevu
+    const [waApt, setWaApt] = useState<Appointment | null>(null);
     const params = useLocalSearchParams<{ source?: string }>();
     useEffect(() => {
         track("calendar_viewed", { source: params.source ?? "tab" });
@@ -524,7 +543,7 @@ export default function CalendarFollowUpScreen() {
     const handleSaveAppointment = useCallback(async (studentId: string, studentName: string, date: Date, note: string, repeatDays: number) => {
         if (!uid) return;
         try {
-            await addDoc(appointmentsColRef(uid), {
+            const ref = await addDoc(appointmentsColRef(uid), {
                 studentId,
                 studentName,
                 date: Timestamp.fromDate(date),
@@ -533,11 +552,44 @@ export default function CalendarFollowUpScreen() {
                 createdAt: serverTimestamp(),
             });
             setShowAddModal(false);
+            addAppointmentToDeviceCalendar(
+                { id: ref.id, studentName, date: Timestamp.fromDate(date), note: note.trim() || null, repeatDays },
+                eventTitle,
+            ).catch((e) => console.warn("[DeviceCalendar] eklenemedi:", e));
             track("appointment_created", { repeatDays: repeatDays > 0 ? repeatDays : 0, hasNote: !!note.trim() });
             notifyPositiveMoment("appointment_created");
             requestWidgetRefresh();
         } catch (e) { console.error(e); }
-    }, [uid, notifyPositiveMoment]);
+    }, [uid, notifyPositiveMoment, eventTitle]);
+
+    const toggleDeviceCalendar = useCallback(async (next: boolean) => {
+        if (deviceCalBusy) return;
+        setDeviceCalBusy(true);
+        try {
+            if (next) {
+                const added = await enableDeviceCalendar(appointments, eventTitle);
+                if (added === false) {
+                    Alert.alert(t("calendar.device.deniedTitle"), t("calendar.device.deniedMessage"), [
+                        { text: t("common.cancel"), style: "cancel" },
+                        { text: t("calendar.device.openSettings"), onPress: () => Linking.openSettings() },
+                    ]);
+                    return;
+                }
+                setDeviceCalOn(true);
+                track("device_calendar_toggled", { enabled: true, synced: added });
+                Alert.alert(t("calendar.device.enabledTitle"), t("calendar.device.enabledMessage", { count: added }));
+            } else {
+                await disableDeviceCalendar();
+                setDeviceCalOn(false);
+                track("device_calendar_toggled", { enabled: false });
+            }
+        } catch (e) {
+            console.warn("[DeviceCalendar]", e);
+            Alert.alert(t("common.error"), t("calendar.device.error"));
+        } finally {
+            setDeviceCalBusy(false);
+        }
+    }, [appointments, deviceCalBusy, eventTitle, t]);
 
     const handleDeleteAppointment = useCallback((aptId: string) => {
         if (!uid) return;
@@ -546,7 +598,7 @@ export default function CalendarFollowUpScreen() {
             t("calendar.appointment.deleteConfirm"),
             [
                 { text: t("calendar.appointment.cancel"), style: "cancel" },
-                { text: t("calendar.appointment.delete"), style: "destructive", onPress: async () => { try { await deleteDoc(appointmentDocRef(uid, aptId)); track("appointment_deleted"); requestWidgetRefresh(); } catch (e) { console.error(e); } } },
+                { text: t("calendar.appointment.delete"), style: "destructive", onPress: async () => { try { await deleteDoc(appointmentDocRef(uid, aptId)); track("appointment_deleted"); removeAppointmentFromDeviceCalendar(aptId).catch(() => { }); requestWidgetRefresh(); } catch (e) { console.error(e); } } },
             ]
         );
     }, [uid, t]);
@@ -819,6 +871,36 @@ export default function CalendarFollowUpScreen() {
                             </Pressable>
                         </View>
 
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 10 }}>
+                            <CalendarPlus size={18} color={theme.colors.accent} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ color: theme.colors.text.primary, fontSize: 14, fontWeight: "800" }}>{t("calendar.device.title")}</Text>
+                                <Text style={{ color: theme.colors.text.secondary, fontSize: 12, marginTop: 2 }}>{t("calendar.device.subtitle")}</Text>
+                            </View>
+                            <Switch
+                                value={deviceCalOn}
+                                disabled={deviceCalBusy}
+                                onValueChange={toggleDeviceCalendar}
+                                trackColor={{ false: theme.colors.surfaceSoft, true: theme.colors.accent }}
+                            />
+                        </View>
+
+                        <WhatsAppSheet
+                            visible={!!waApt}
+                            onClose={() => setWaApt(null)}
+                            phone={students.find((st) => st.id === waApt?.studentId)?.number}
+                            source="calendar"
+                            vars={{
+                                name: waApt?.studentName ?? "",
+                                time: (() => {
+                                    const d = toDateSafe(waApt?.date);
+                                    return d ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : "";
+                                })(),
+                                date: new Date(selectedDay + "T00:00:00").toLocaleDateString(i18n.language === "en" ? "en-US" : "tr-TR", { day: "numeric", month: "long", weekday: "long" }),
+                            }}
+                            templates={["appointmentReminder", "missedYou"]}
+                        />
+
                         {selectedAppointments.length === 0 ? (
                             <View style={{ backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 16, padding: 16 }}>
                                 <Text style={{ color: theme.colors.text.secondary }}>{t("calendar.appointment.empty")}</Text>
@@ -856,6 +938,9 @@ export default function CalendarFollowUpScreen() {
                                                     </Text>
                                                 </Pressable>
                                             ) : null}
+                                            <Pressable onPress={() => setWaApt(apt)} hitSlop={10} accessibilityLabel={t("whatsapp.button")} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 4 })}>
+                                                <MessageCircle size={17} color="#25D366" />
+                                            </Pressable>
                                             <Pressable onPress={() => handleDeleteAppointment(apt.id)} hitSlop={12} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 4 })}>
                                                 <Trash2 size={16} color={theme.colors.danger} />
                                             </Pressable>

@@ -84,6 +84,12 @@
             }
           ]
         }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "AthleTrack adds your client appointments to your phone's calendar so you get reminders and see them alongside your other plans."
+        }
       ]
     ],
     "experiments": {
