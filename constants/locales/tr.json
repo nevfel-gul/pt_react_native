@@ -1049,5 +1049,20 @@
   "packages.locked.cta": "Premium'a geç",
   "paywall.features.packages.title": "Seans & Paket Takibi",
   "paywall.features.packages.description": "Kalan dersleri, paket ödemelerini ve takvimden yapılan dersleri takip et.",
-  "paywall.error.linked_other_account": "Bu App Store aboneliği başka bir AthleTrack hesabına bağlı. O hesapla giriş yapın ya da destekle iletişime geçin."
+  "paywall.error.linked_other_account": "Bu App Store aboneliği başka bir AthleTrack hesabına bağlı. O hesapla giriş yapın ya da destekle iletişime geçin.",
+  "onboarding.checklist.title": "Başlarken",
+  "onboarding.checklist.progress": "{{total}} adımdan {{done}} tanesi tamam",
+  "onboarding.checklist.dismiss": "Rehberi kapat",
+  "onboarding.checklist.student.title": "İlk öğrencini ekle",
+  "onboarding.checklist.student.desc": "PAR-Q ve kişisel bilgilerle öğrenci kartını oluştur.",
+  "onboarding.checklist.record.title": "İlk ölçümü gir",
+  "onboarding.checklist.record.desc": "Tanita, mezura ve testleri gir; gelişim grafikleri buradan başlar.",
+  "onboarding.checklist.appointment.title": "Takvime randevu ekle",
+  "onboarding.checklist.appointment.desc": "Seanslarını planla; bugünkü dersler widget'ta ve takvimde görünsün.",
+  "onboarding.checklist.widget.title": "Ana ekrana widget ekle",
+  "onboarding.checklist.widget.desc": "Günün seanslarını uygulamayı açmadan gör.",
+  "onboarding.checklist.widget.howIos": "Ana ekranda boş bir yere basılı tutun → sol üstteki “+” → listeden AthleTrack'i seçin → boyutu seçip “Widget Ekle”ye dokunun.",
+  "onboarding.checklist.widget.howAndroid": "Ana ekranda boş bir yere basılı tutun → “Widget'lar” → AthleTrack'i bulun → widget'ı ana ekrana sürükleyin.",
+  "onboarding.checklist.widget.later": "Sonra",
+  "onboarding.checklist.widget.added": "Ekledim"
 }

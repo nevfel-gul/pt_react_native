@@ -36,6 +36,7 @@ import { useTheme } from "@/constants/usetheme";
 
 // ✅ AI UI COMPONENT
 import AiStudentSearchUI from "@/components/AiStudentSearchUI";
+import OnboardingChecklist from "@/components/OnboardingChecklist";
 
 /* -------------------- TYPES -------------------- */
 type Student = {
@@ -503,6 +504,13 @@ export default function KayitlarScreen() {
         )}
 
         <View style={styles.listWrapper}>
+          {/* Başlarken rehberi — yeni hesaplarda ilk adımlara yönlendirir */}
+          <OnboardingChecklist
+            studentCount={students.length}
+            recordCount={records.length}
+            firstStudentId={students[0]?.id ?? null}
+          />
+
           <View style={styles.filterBoxRow}>
             <TouchableOpacity
               onPress={() => setFilterDurum("")}

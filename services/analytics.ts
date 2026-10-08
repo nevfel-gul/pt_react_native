@@ -55,6 +55,12 @@ export type AnalyticsEvent =
   | "package_payment_recorded"
   | "session_used"
   | "session_undone"
+  // İlk kullanım rehberi
+  | "onboarding_viewed"
+  | "onboarding_step_tapped"
+  | "onboarding_step_completed"
+  | "onboarding_completed"
+  | "onboarding_dismissed"
   // Kullanım
   | "ai_search_used"
   | "ai_search_failed"

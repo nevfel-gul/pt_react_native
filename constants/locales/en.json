@@ -1049,5 +1049,20 @@
   "packages.locked.cta": "Go Premium",
   "paywall.features.packages.title": "Session & Package Tracking",
   "paywall.features.packages.description": "Track remaining sessions, package payments and sessions done from the calendar.",
-  "paywall.error.linked_other_account": "This App Store subscription is linked to another AthleTrack account. Sign in with that account or contact support."
+  "paywall.error.linked_other_account": "This App Store subscription is linked to another AthleTrack account. Sign in with that account or contact support.",
+  "onboarding.checklist.title": "Getting started",
+  "onboarding.checklist.progress": "{{done}} of {{total}} steps done",
+  "onboarding.checklist.dismiss": "Dismiss guide",
+  "onboarding.checklist.student.title": "Add your first client",
+  "onboarding.checklist.student.desc": "Create a client card with PAR-Q and personal details.",
+  "onboarding.checklist.record.title": "Log your first assessment",
+  "onboarding.checklist.record.desc": "Enter body composition, tape and test results — progress charts start here.",
+  "onboarding.checklist.appointment.title": "Add an appointment",
+  "onboarding.checklist.appointment.desc": "Plan your sessions so today's classes show up in the calendar and widget.",
+  "onboarding.checklist.widget.title": "Add the home screen widget",
+  "onboarding.checklist.widget.desc": "See today's sessions without opening the app.",
+  "onboarding.checklist.widget.howIos": "Long-press an empty area of your home screen → tap “+” at the top left → choose AthleTrack → pick a size and tap “Add Widget”.",
+  "onboarding.checklist.widget.howAndroid": "Long-press an empty area of your home screen → “Widgets” → find AthleTrack → drag the widget onto your home screen.",
+  "onboarding.checklist.widget.later": "Later",
+  "onboarding.checklist.widget.added": "Done"
 }
