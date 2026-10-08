@@ -1048,5 +1048,6 @@
   "packages.locked.remaining": "Current package: {{count}}/{{total}} sessions left.",
   "packages.locked.cta": "Go Premium",
   "paywall.features.packages.title": "Session & Package Tracking",
-  "paywall.features.packages.description": "Track remaining sessions, package payments and sessions done from the calendar."
+  "paywall.features.packages.description": "Track remaining sessions, package payments and sessions done from the calendar.",
+  "paywall.error.linked_other_account": "This App Store subscription is linked to another AthleTrack account. Sign in with that account or contact support."
 }

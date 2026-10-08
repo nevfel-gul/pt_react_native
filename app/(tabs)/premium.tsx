@@ -6,6 +6,7 @@ import { Cpu } from "lucide-react-native";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Alert,
   AppState,
   type AppStateStatus,
@@ -38,6 +39,7 @@ import { formatRemaining, promoErrorKey, redeemPromoCoupon } from "@/services/pr
 
 import i18n from "@/services/i18n";
 import { track } from '@/services/analytics';
+import { isOwnershipConflict, verifyApplePurchase, type VerifiedSubscription } from '@/services/billing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Purchase } from 'react-native-iap';
 import { useIAP } from 'react-native-iap';
@@ -137,6 +139,29 @@ export default function PaywallMonthlyScreen({
   const finishTransactionRef = useRef<((args: { purchase: Purchase; isConsumable: boolean }) => Promise<void>) | null>(null);
   const getActiveSubscriptionsRef = useRef<(() => Promise<any>) | null>(null);
 
+  // Apple imzalı işlemi (JWS) sunucuda doğrulat. Dönüş:
+  //   sonuç → sunucu aboneliği yazdı; 'conflict' → abonelik başka hesaba bağlı;
+  //   null → doğrulanamadı (fonksiyon yok / ağ hatası): çağıran eski yönteme düşer.
+  const verifyOnServer = useCallback(
+    async (jws?: string | null): Promise<VerifiedSubscription | 'conflict' | null> => {
+      if (!jws || Platform.OS !== 'ios') return null;
+      try {
+        const res = await verifyApplePurchase(jws);
+        track('purchase_verified', { tier: res.tier, isActive: res.isActive, environment: res.environment });
+        return res;
+      } catch (e: any) {
+        if (isOwnershipConflict(e)) {
+          track('purchase_verify_failed', { reason: 'linked_other_account' });
+          return 'conflict';
+        }
+        console.warn('[IAP] sunucu doğrulaması başarısız:', e?.code, e?.message);
+        track('purchase_verify_failed', { reason: e?.code ?? 'unknown' });
+        return null;
+      }
+    },
+    [],
+  );
+
   const {
     connected,
     subscriptions,
@@ -183,7 +208,20 @@ export default function PaywallMonthlyScreen({
           : productId.includes('studio')
             ? 'studio'
             : 'pro';
-        {
+        // Önce Apple imzasını sunucuda doğrulat; abonelik orada yazılır.
+        const verified = await verifyOnServer(purchase.purchaseToken);
+        if (verified === 'conflict') {
+          setBusyState(null);
+          Alert.alert(t('paywall.error.title'), t('paywall.error.linked_other_account'));
+          return;
+        }
+        if (verified) {
+          premiumActivated = verified.isActive;
+          activatedTier = verified.tier;
+          activatedIsUnlimited = verified.tier === 'studio';
+        } else {
+          // Geçiş dönemi yedeği: doğrulama fonksiyonuna ulaşılamazsa eski
+          // yöntemle istemciden yaz (firestore.rules → clientMaySetSubscription).
           const tier = (plan?.tier ?? fallbackTier) as PremiumTier;
           const isUnlimited = tier === 'studio';
           const studentLimit = TIER_STUDENT_LIMITS[tier];
@@ -243,7 +281,7 @@ export default function PaywallMonthlyScreen({
           });
         }
       }
-    }, [onPurchase, router, t, updateSubscription]),
+    }, [onPurchase, router, t, updateSubscription, verifyOnServer]),
 
     onPurchaseError: useCallback((err: any) => {
       setBusyState(null);
@@ -544,7 +582,10 @@ export default function PaywallMonthlyScreen({
     if (subscription?.isActive && subscription.productId === pid) return;
 
     const tier = (pid.includes('core') ? 'core' : pid.includes('studio') ? 'studio' : 'pro') as PremiumTier;
-    updateSubscription({
+    const token = active?.purchaseToken;
+    verifyOnServer(token).then((verified) => {
+      if (verified) return; // sunucu yazdı (ya da başka hesaba bağlı: dokunma)
+      return updateSubscription({
       productId: pid,
       tier,
       billing: pid.includes('annually') ? 'annual' : 'monthly',
@@ -552,8 +593,9 @@ export default function PaywallMonthlyScreen({
       studentLimit: TIER_STUDENT_LIMITS[tier] ?? null,
       isUnlimited: tier === 'studio',
       purchasedAt: new Date().toISOString(),
+    });
     }).catch((e) => console.warn('[IAP] abonelik eşitlenemedi:', e));
-  }, [activeSubscriptions, subscription, updateSubscription]);
+  }, [activeSubscriptions, subscription, updateSubscription, verifyOnServer]);
 
   // Seçilen plan ile mevcut abonelik arasındaki ilişki
   const purchaseAction = useMemo((): 'new' | 'upgrade' | 'downgrade' | 'same' => {
@@ -656,7 +698,14 @@ export default function PaywallMonthlyScreen({
       track('restore_completed', { found: !!restoredSub });
       if (restoredSub) {
         const restoredProductId = restoredSub.currentPlanId ?? restoredSub.productId ?? '';
-        if (restoredProductId) {
+        const verified = await verifyOnServer(restoredSub.purchaseToken);
+        if (verified === 'conflict') {
+          Alert.alert(t('paywall.error.title'), t('paywall.error.linked_other_account'));
+          return;
+        }
+        if (verified) {
+          setPurchasedProductId(verified.productId || restoredProductId);
+        } else if (restoredProductId) {
           const tier = (restoredProductId.includes('core')
             ? 'core'
             : restoredProductId.includes('studio')

@@ -72,6 +72,8 @@ export type AnalyticsEvent =
   | "purchase_completed"
   | "purchase_failed"
   | "purchase_cancelled"
+  | "purchase_verified"
+  | "purchase_verify_failed"
   | "restore_tapped"
   | "restore_completed"
   | "promo_popup_shown"

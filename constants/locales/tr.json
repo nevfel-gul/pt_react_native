@@ -1048,5 +1048,6 @@
   "packages.locked.remaining": "Mevcut paket: {{count}}/{{total}} ders kaldı.",
   "packages.locked.cta": "Premium'a geç",
   "paywall.features.packages.title": "Seans & Paket Takibi",
-  "paywall.features.packages.description": "Kalan dersleri, paket ödemelerini ve takvimden yapılan dersleri takip et."
+  "paywall.features.packages.description": "Kalan dersleri, paket ödemelerini ve takvimden yapılan dersleri takip et.",
+  "paywall.error.linked_other_account": "Bu App Store aboneliği başka bir AthleTrack hesabına bağlı. O hesapla giriş yapın ya da destekle iletişime geçin."
 }

@@ -570,6 +570,9 @@ export { weeklyAnalyticsReminderJob } from "./jobs/weeklyAnalyticsReminderJob";
 // Seans / paket hatırlatması (premium)
 export { packageReminderJob } from "./jobs/packageReminderJob";
 
+// Apple abonelik doğrulaması + App Store Server Notifications V2
+export { appleNotifications, verifyApplePurchase } from "./billing/appleBilling";
+
 // Şifre sıfırlama akışı (Resend + athletrackai.com üzerindeki kendi sayfamız).
 export { requestPasswordReset } from "./passwordReset";
 
