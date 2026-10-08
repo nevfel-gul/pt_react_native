@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "AthleTrack AI",
+    "NSCalendarsUsageDescription": "AthleTrack aggiunge gli appuntamenti dei tuoi clienti al calendario del telefono, così ricevi promemoria e li vedi insieme agli altri impegni.",
+    "NSCalendarsFullAccessUsageDescription": "AthleTrack aggiunge gli appuntamenti dei tuoi clienti al calendario del telefono, così ricevi promemoria e li vedi insieme agli altri impegni."
+  },
+  "android": {
+    "app_name": "AthleTrack AI"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "AthleTrack AI",
+    "NSCalendarsUsageDescription": "O AthleTrack adiciona os agendamentos dos seus alunos à agenda do celular para que você receba lembretes e os veja junto com seus outros compromissos.",
+    "NSCalendarsFullAccessUsageDescription": "O AthleTrack adiciona os agendamentos dos seus alunos à agenda do celular para que você receba lembretes e os veja junto com seus outros compromissos."
+  },
+  "android": {
+    "app_name": "AthleTrack AI"
+  }
+}

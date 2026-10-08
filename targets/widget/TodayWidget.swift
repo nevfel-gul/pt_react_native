@@ -62,18 +62,49 @@ struct WidgetSnapshot: Codable {
         overdue: 2,
         dueSoon: 3,
         activeStudents: 12,
-        labels: WidgetLabels(
-            title: "AthleTrack",
-            today: "Bugün",
-            noSessions: "Bugün seans yok",
-            overdue: "gecikmiş",
-            dueSoon: "yaklaşan",
-            activeStudents: "aktif öğrenci",
-            signedOut: "Görmek için uygulamada giriş yapın",
-            more: "daha"
-        ),
-        locale: "tr-TR"
+        labels: WidgetText.placeholderLabels,
+        locale: WidgetText.lang
     )
+}
+
+// MARK: - Yerel metinler
+// Uygulama snapshot'ı kendi dilinde yazar (services/widgetData.ts). Buradakiler
+// yalnızca widget galerisi ve önizleme için: uygulama henüz veri yazmadan önce.
+// Dil cihazın tercih ettiği ilk dilden seçilir; desteklenmeyen dilde İngilizce.
+
+enum WidgetText {
+    static let lang: String = {
+        let code = String((Locale.preferredLanguages.first ?? "en").prefix(2))
+        return ["tr", "en", "de", "es", "pt", "fr", "it"].contains(code) ? code : "en"
+    }()
+
+    static let description: String = [
+        "tr": "Bugünkü seanslar ve takibi yaklaşan öğrenciler.",
+        "en": "Today's sessions and clients due for a check-in.",
+        "de": "Heutige Termine und Kunden, bei denen eine Messung ansteht.",
+        "es": "Las citas de hoy y los clientes con medición pendiente.",
+        "pt": "Os agendamentos de hoje e os alunos com avaliação pendente.",
+        "fr": "Les séances du jour et les clients à mesurer bientôt.",
+        "it": "Gli appuntamenti di oggi e i clienti con misurazione in arrivo.",
+    ][lang]!
+
+    static let placeholderLabels: WidgetLabels = {
+        // title, today, noSessions, overdue, dueSoon, activeStudents, signedOut, more
+        let t: [String: [String]] = [
+            "tr": ["Takip", "Bugün", "Bugün seans yok", "gecikmiş", "yaklaşan", "aktif öğrenci", "Görmek için uygulamada giriş yapın", "daha"],
+            "en": ["Follow-up", "Today", "No sessions today", "overdue", "due soon", "active clients", "Sign in to the app to see your day", "more"],
+            "de": ["Messungen", "Heute", "Heute keine Termine", "überfällig", "bald fällig", "aktive Kunden", "Melde dich in der App an, um deinen Tag zu sehen", "weitere"],
+            "es": ["Mediciones", "Hoy", "Hoy no hay citas", "atrasadas", "próximas", "clientes activos", "Inicia sesión en la app para ver tu día", "más"],
+            "pt": ["Avaliações", "Hoje", "Nenhum agendamento hoje", "atrasadas", "em breve", "alunos ativos", "Entre no app para ver seu dia", "a mais"],
+            "fr": ["Mesures", "Aujourd'hui", "Aucun rendez-vous aujourd'hui", "en retard", "bientôt", "clients actifs", "Connectez-vous à l'app pour voir votre journée", "de plus"],
+            "it": ["Misurazioni", "Oggi", "Nessun appuntamento oggi", "in ritardo", "a breve", "clienti attivi", "Accedi all'app per vedere la tua giornata", "altri"],
+        ]
+        let v = t[lang]!
+        return WidgetLabels(
+            title: v[0], today: v[1], noSessions: v[2], overdue: v[3],
+            dueSoon: v[4], activeStudents: v[5], signedOut: v[6], more: v[7]
+        )
+    }()
 }
 
 // MARK: - Timeline
@@ -289,7 +320,7 @@ struct TodayWidget: Widget {
             TodayWidgetView(entry: entry)
         }
         .configurationDisplayName("AthleTrack")
-        .description("Bugünkü seanslar ve takibi yaklaşan öğrenciler.")
+        .description(WidgetText.description)
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
     }
 }

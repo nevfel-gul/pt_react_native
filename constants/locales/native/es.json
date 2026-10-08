@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "AthleTrack AI",
+    "NSCalendarsUsageDescription": "AthleTrack añade las citas de tus clientes al calendario del teléfono para que recibas recordatorios y las veas junto a tus otros planes.",
+    "NSCalendarsFullAccessUsageDescription": "AthleTrack añade las citas de tus clientes al calendario del teléfono para que recibas recordatorios y las veas junto a tus otros planes."
+  },
+  "android": {
+    "app_name": "AthleTrack AI"
+  }
+}

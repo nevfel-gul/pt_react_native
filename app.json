@@ -43,7 +43,12 @@
     },
     "locales": {
       "en": "./constants/locales/native/en.json",
-      "tr": "./constants/locales/native/tr.json"
+      "tr": "./constants/locales/native/tr.json",
+      "de": "./constants/locales/native/de.json",
+      "es": "./constants/locales/native/es.json",
+      "pt": "./constants/locales/native/pt.json",
+      "fr": "./constants/locales/native/fr.json",
+      "it": "./constants/locales/native/it.json"
     },
     "plugins": [
       "expo-router",

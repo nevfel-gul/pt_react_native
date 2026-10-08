@@ -1155,5 +1155,9 @@
   "settings.units.metric": "Metrik (kg, cm)",
   "settings.units.imperial": "İmperial (lb, in)",
   "settings.units.note": "Kayıtlarınız değişmez; sadece gösterim ve giriş birimi değişir.",
-  "newstudent.label.height_imperial": "Boy (ft / in)"
+  "newstudent.label.height_imperial": "Boy (ft / in)",
+  "newstudent.label.planned_days_per_week": "Haftada kaç gün antrenmana gelmeyi planlıyorsun?",
+  "recordNew.status.poor": "Zayıf",
+  "recordNew.next": "İleri",
+  "recordNew.prev": "Geri"
 }
