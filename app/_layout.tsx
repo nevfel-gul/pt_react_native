@@ -6,7 +6,8 @@ import "react-native-reanimated";
 import { auth } from "@/services/firebase";
 import { initI18n } from "@/services/i18n";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CONTENT_MAX_WIDTH, useIsTablet } from "@/constants/layout";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Platform, Text, View } from "react-native";
 
@@ -58,7 +59,14 @@ export const unstable_settings = {
 };
 
 function AppNav() {
-  const { mode } = useTheme(); // ✅ artık cihaz değil, app theme
+  const { mode, theme } = useTheme(); // ✅ artık cihaz değil, app theme
+  const isTablet = useIsTablet();
+  // Navigasyon arka planı uygulamanınkiyle aynı olsun: iPad'de ortalanan
+  // içeriğin iki yanında beyaz/siyah şerit kalmasın.
+  const navTheme = useMemo(() => {
+    const base = mode === "dark" ? DarkTheme : DefaultTheme;
+    return { ...base, colors: { ...base.colors, background: theme.colors.background } };
+  }, [mode, theme.colors.background]);
   const router = useRouter();
   const { t, i18n } = useTranslation();
 
@@ -196,8 +204,14 @@ function AppNav() {
   if (!i18nReady) return null;
 
   return (
-    <ThemeProvider value={mode === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
+    <ThemeProvider value={navTheme}>
+      <Stack
+        screenOptions={
+          isTablet
+            ? { contentStyle: { width: "100%", maxWidth: CONTENT_MAX_WIDTH, alignSelf: "center", backgroundColor: theme.colors.background } }
+            : undefined
+        }
+      >
         <Stack.Screen name="login" options={{ title: "Login", headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />

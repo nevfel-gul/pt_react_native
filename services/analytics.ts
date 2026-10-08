@@ -63,6 +63,9 @@ export type AnalyticsEvent =
   | "onboarding_dismissed"
   // İletişim / entegrasyon / AI
   | "whatsapp_message_opened"
+  | "transformation_card_opened"
+  | "transformation_card_shared"
+  | "session_note_added"
   | "device_calendar_toggled"
   | "device_calendar_synced"
   | "ai_comment_generated"

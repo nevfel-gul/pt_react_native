@@ -1,5 +1,6 @@
 import StudentPackages from "@/components/StudentPackages";
 import WhatsAppSheet from "@/components/WhatsAppSheet";
+import TransformationCard from "@/components/TransformationCard";
 import { formatMoney } from "@/services/packages";
 import { STATUS_SCORE, statusId, statusLabel } from "@/constants/statusLabels";
 import { goalLabel, normalizeGoals, parqYesCount } from "@/constants/studentForm";
@@ -33,6 +34,7 @@ import {
   Mail,
   MessageCircle,
   Phone,
+  Share2,
   ShieldCheck,
   Sparkles,
   User,
@@ -1800,6 +1802,7 @@ export default function StudentDetailScreen() {
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [waOpen, setWaOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [ptNote, setPtNote] = useState("");
@@ -2167,6 +2170,17 @@ export default function StudentDetailScreen() {
               {/* PAKET & SEANS */}
               <StudentPackages studentId={student.id} />
 
+              {/* DÖNÜŞÜM KARTI — Instagram / WhatsApp hikâye görseli */}
+              {records.length >= 2 ? (
+                <TouchableOpacity style={[styles.card, styles.transformBtn]} activeOpacity={0.85} onPress={() => setCardOpen(true)}>
+                  <Share2 size={18} color={theme.colors.accent} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardTitle, { marginBottom: 0 }]}>{t("transformation.entryTitle")}</Text>
+                    <Text style={styles.mutedText}>{t("transformation.entrySubtitle")}</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : null}
+
               {/* SON ÖLÇÜMÜN AI YORUMU (özet) — tamamı kayıt detayında */}
               {(records[0] as any)?.aiComment?.summary ? (
                 <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={() => viewRecord(records[0].id)}>
@@ -2439,6 +2453,15 @@ export default function StudentDetailScreen() {
               "measurementDay",
               "missedYou",
             ]}
+          />
+        )}
+
+        {student && (
+          <TransformationCard
+            visible={cardOpen}
+            onClose={() => setCardOpen(false)}
+            student={{ name: student.name, trainingGoals: student.trainingGoals }}
+            records={records}
           />
         )}
 
@@ -2783,6 +2806,7 @@ function makeStyles(theme: ThemeUI) {
     infoLabelRow: { flexDirection: "row", alignItems: "center" },
     infoLabel: { color: theme.colors.text.secondary, fontSize: theme.fontSize.sm, marginLeft: theme.spacing.xs },
     infoValue: { color: theme.colors.text.primary, fontSize: theme.fontSize.md - 1, maxWidth: "55%", textAlign: "right" },
+    transformBtn: { flexDirection: "row", alignItems: "center", gap: 12 },
     waButton: {
       flexDirection: "row",
       alignItems: "center",

@@ -51,6 +51,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // ✅ NEW
+import { useIsTablet } from "@/constants/layout";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 
@@ -178,7 +179,9 @@ export default function NewRecordScreen() {
   const scrollRef = useRef<ScrollView>(null);
   // ✅ theme
   const { theme } = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  // iPad'de kartlar iki sütun (constants/layout.ts).
+  const isWide = useIsTablet();
+  const styles = useMemo(() => makeStyles(theme, isWide), [theme, isWide]);
 
   const [student, setStudent] = useState<Student | null>(null);
   const [showTips, setShowTips] = useState(true);
@@ -1978,7 +1981,7 @@ export default function NewRecordScreen() {
                 </View>
               </View>
             </View>
-            {renderStepContent()}
+            <View style={isWide ? styles.wideGrid : undefined}>{renderStepContent()}</View>
           </ScrollView>
 
           {/* ALT BUTONLAR */}
@@ -2030,7 +2033,7 @@ export default function NewRecordScreen() {
 
 /* ------------------- STYLES ------------------- */
 // ✅ put this near bottom (instead of const styles = StyleSheet.create)
-const makeStyles = (theme: ThemeUI) =>
+const makeStyles = (theme: ThemeUI, isWide = false) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
@@ -2135,9 +2138,11 @@ const makeStyles = (theme: ThemeUI) =>
 
     formWrapper: { flex: 1 },
 
+    wideGrid: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", paddingHorizontal: theme.spacing.sm },
     card: {
-      marginHorizontal: theme.spacing.md,
+      marginHorizontal: isWide ? theme.spacing.xs : theme.spacing.md,
       marginBottom: theme.spacing.sm,
+      ...(isWide ? { width: "47.5%" as const, flexGrow: 1 } : {}),
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.lg,
       borderWidth: 1,

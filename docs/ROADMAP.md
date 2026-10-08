@@ -7,6 +7,10 @@ Ekiple konuşulacak / sıradaki işler. Bitenler en alttaki listeye taşınır.
 - [ ] **Gelir ve bekleyen ödemeler paneli** — Paket verisinden: bu ay tahsil edilen,
       bekleyen ödemeler (kimden, ne kadar), paketi bitmek üzere olanlar. Analiz
       sekmesinde ya da ayrı bir "Kasa" görünümünde. Premium'u en iyi satacak ekran.
+- [ ] **Aday öğrenci takibi** — İlk görüşme / deneme dersi yapanlar için basit liste:
+      Aday → Deneme dersi → Paket aldı / Almadı. Paket alınca tek dokunuşla öğrenciye
+      dönüşür; "kaç adaydan kaçını kazandım" oranı görünür. WhatsApp şablonlarıyla
+      (deneme dersi hatırlatma) birleşebilir.
 - [ ] **Davet programı (hoca → hoca)** — Ödül, davet edilen *ödeme yapınca* verilmeli
       (aşağıdaki "Davet ödülü" notuna bakın).
 

@@ -48,6 +48,8 @@ export type SessionLog = {
     date: Timestamp;
     source: "manual" | "appointment";
     appointmentId?: string | null;
+    /** Derste ne yapıldı — isteğe bağlı kısa not ("Bacak + kardiyo"). */
+    note?: string | null;
 };
 
 /** Öğrenci dokümanındaki özet. */
@@ -149,7 +151,7 @@ export async function logSession(
     uid: string,
     sid: string,
     packageId: string,
-    opts: { date?: Date; appointmentId?: string; dayKey?: string } = {},
+    opts: { date?: Date; appointmentId?: string; dayKey?: string; note?: string | null } = {},
 ) {
     const pkgRef = doc(packagesColRef(uid, sid), packageId);
     const sessionRef = opts.appointmentId && opts.dayKey
@@ -173,6 +175,7 @@ export async function logSession(
             date: Timestamp.fromDate(opts.date ?? new Date()),
             source: opts.appointmentId ? "appointment" : "manual",
             appointmentId: opts.appointmentId ?? null,
+            note: opts.note?.trim() ? opts.note.trim().slice(0, 300) : null,
             createdAt: serverTimestamp(),
         });
         tx.update(studentDocRef(uid, sid), { activePackage: summaryOf(packageId, next) });

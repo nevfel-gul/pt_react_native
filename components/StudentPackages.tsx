@@ -145,11 +145,16 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
     }
   };
 
-  const onUseSession = () =>
+  // "Ders düş" önce isteğe bağlı ders notu sorar (SessionNoteModal).
+  const [noteOpen, setNoteOpen] = useState(false);
+  const onUseSession = () => active && setNoteOpen(true);
+  const logWithNote = (note: string | null) =>
     active &&
     run(async () => {
-      await logSession(uid!, studentId, active.id);
-      track('session_used', { source: 'manual', remaining: remainingOf(active) - 1 });
+      await logSession(uid!, studentId, active.id, { note });
+      setNoteOpen(false);
+      track('session_used', { source: 'manual', remaining: remainingOf(active) - 1, hasNote: !!note });
+      if (note) track('session_note_added', { length: note.length });
     });
 
   const onUndo = () =>
@@ -294,6 +299,15 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
         }
       />
 
+      <SessionNoteModal
+        visible={noteOpen}
+        busy={busy}
+        onClose={() => setNoteOpen(false)}
+        onSave={logWithNote}
+        styles={styles}
+        theme={theme}
+      />
+
       {active && (
         <PaymentModal
           visible={payOpen}
@@ -424,10 +438,13 @@ function ActivePackage({
         <View style={{ marginTop: 10 }}>
           <Text style={styles.miniLabel}>{t('packages.recentSessions')}</Text>
           {sessions.slice(0, 5).map((s) => (
-            <Text key={s.id} style={styles.sessionLine}>
-              • {s.date?.toDate?.().toLocaleDateString(locale, { day: 'numeric', month: 'short', weekday: 'short' }) ?? '-'}
-              {s.source === 'appointment' ? `  (${t('packages.fromAppointment')})` : ''}
-            </Text>
+            <View key={s.id} style={{ marginTop: 4 }}>
+              <Text style={styles.sessionLine}>
+                • {s.date?.toDate?.().toLocaleDateString(locale, { day: 'numeric', month: 'short', weekday: 'short' }) ?? '-'}
+                {s.source === 'appointment' ? `  (${t('packages.fromAppointment')})` : ''}
+              </Text>
+              {s.note ? <Text style={styles.sessionNote}>{s.note}</Text> : null}
+            </View>
           ))}
         </View>
       )}
@@ -611,6 +628,86 @@ function NewPackageModal({
   );
 }
 
+const NOTE_CHIPS = ['upper', 'lower', 'fullBody', 'cardio', 'core', 'mobility', 'assessment'] as const;
+
+function SessionNoteModal({
+  visible,
+  busy,
+  onClose,
+  onSave,
+  styles,
+  theme,
+}: {
+  visible: boolean;
+  busy: boolean;
+  onClose: () => void;
+  onSave: (note: string | null) => void;
+  styles: Styles;
+  theme: ThemeUI;
+}) {
+  const { t } = useTranslation();
+  const [chips, setChips] = useState<string[]>([]);
+  const [text, setText] = useState('');
+
+  useEffect(() => {
+    if (!visible) return;
+    setChips([]);
+    setText('');
+  }, [visible]);
+
+  const compose = () => {
+    const parts = chips.map((c) => t(`packages.note.chip.${c}`));
+    if (text.trim()) parts.push(text.trim());
+    return parts.length ? parts.join(' · ') : null;
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <Pressable style={styles.sheet} onPress={() => { }}>
+            <Text style={styles.sheetTitle}>{t('packages.note.title')}</Text>
+            <Text style={styles.muted}>{t('packages.note.subtitle')}</Text>
+
+            <View style={[styles.chipRow, { marginTop: 12 }]}>
+              {NOTE_CHIPS.map((c) => {
+                const on = chips.includes(c);
+                return (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.chip, on && styles.chipActive]}
+                    onPress={() => setChips((prev) => (on ? prev.filter((x) => x !== c) : [...prev, c]))}
+                  >
+                    <Text style={[styles.chipText, on && styles.chipTextActive]}>{t(`packages.note.chip.${c}`)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TextInput
+              style={[styles.input, { minHeight: 70, textAlignVertical: 'top' }]}
+              value={text}
+              onChangeText={setText}
+              multiline
+              maxLength={200}
+              placeholder={t('packages.note.placeholder')}
+              placeholderTextColor={theme.colors.text.muted}
+            />
+
+            <TouchableOpacity style={[styles.primaryBtn, busy && { opacity: 0.6 }]} disabled={busy} onPress={() => onSave(compose())}>
+              <Minus size={16} color={theme.colors.text.onAccent} />
+              <Text style={styles.primaryBtnText}>{t('packages.note.save')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity disabled={busy} onPress={() => onSave(null)} style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <Text style={styles.link}>{t('packages.note.skip')}</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 function PaymentModal({
   visible,
   onClose,
@@ -757,7 +854,8 @@ function makeStyles(theme: ThemeUI) {
       backgroundColor: theme.colors.surfaceSoft,
     },
     footerRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-    sessionLine: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm, marginTop: 2 },
+    sessionLine: { color: theme.colors.text.primary, fontSize: theme.fontSize.sm },
+    sessionNote: { color: theme.colors.text.secondary, fontSize: theme.fontSize.xs, marginLeft: 12, marginTop: 1, lineHeight: 16 },
     historyRow: {
       flexDirection: 'row',
       alignItems: 'center',
