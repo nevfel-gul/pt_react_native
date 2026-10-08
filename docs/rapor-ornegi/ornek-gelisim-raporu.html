@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8">
+<title>Gelişim Raporu — Örnek</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, Helvetica, Arial, sans-serif; color: #0f172a; background: #fff; font-size: 11px; line-height: 1.45; }
+  .page { width: 210mm; min-height: 297mm; padding: 14mm 14mm 12mm; position: relative; page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0284c7; padding-bottom: 10px; }
+  .brand { font-weight: 800; letter-spacing: .5px; color: #0284c7; font-size: 12px; }
+  h1 { font-size: 24px; margin: 4px 0 2px; }
+  .meta { color: #475569; font-size: 11px; }
+  .coach { text-align: right; color: #475569; font-size: 11px; }
+  .coach b { color: #0f172a; font-size: 12px; }
+  h2 { font-size: 13px; margin: 18px 0 8px; text-transform: uppercase; letter-spacing: .6px; color: #475569; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+  .tile { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
+  .tile .label { color: #475569; font-size: 10px; font-weight: 600; }
+  .tile .value { font-size: 22px; font-weight: 800; margin-top: 2px; }
+  .tile .sub { color: #94a3b8; font-size: 10px; }
+  .summary { background: #f0f9ff; border-left: 3px solid #0284c7; border-radius: 8px; padding: 10px 12px; margin-top: 12px; color: #0f172a; }
+  .summary .tag { font-size: 9px; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: .5px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .chart { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 10px 4px; }
+  .chart .ct { font-weight: 700; font-size: 11px; }
+  .chart .cs { color: #94a3b8; font-size: 9.5px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 9.5px; color: #94a3b8; font-weight: 600; padding: 4px 6px; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 5px 6px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: #475569; }
+  .delta { font-weight: 700; white-space: nowrap; }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 999px; font-weight: 700; font-size: 9.5px; white-space: nowrap; }
+  .arrow { color: #94a3b8; text-align: center; }
+  .status { font-weight: 700; white-space: nowrap; }
+  .goal { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+  .goal .name { width: 150px; font-weight: 600; }
+  .goal .bar { flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+  .goal .bar i { display: block; height: 8px; background: #0284c7; border-radius: 4px; }
+  .goal .pct { width: 110px; white-space: nowrap; text-align: right; color: #475569; }
+  .note { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; color: #0f172a; }
+  .next li { margin: 3px 0; }
+  .foot { position: absolute; left: 14mm; right: 14mm; bottom: 10mm; display: flex; justify-content: space-between; color: #94a3b8; font-size: 9px; border-top: 1px solid #e2e8f0; padding-top: 6px; }
+  .foot b { color: #0284c7; }
+  .demo { position: absolute; top: 5mm; right: 14mm; font-size: 8.5px; color: #b45309; font-weight: 700; letter-spacing: .4px; }
+</style></head><body>
+
+<section class="page">
+  <div class="demo">ÖRNEK RAPOR · KURGUSAL VERİ</div>
+  <div class="top">
+    <div>
+      <div class="brand">GELİŞİM RAPORU</div>
+      <h1>Ayşe Kaya</h1>
+      <div class="meta">34 yaş · Kadın · Hedef: Yağ yakmak, duruşu düzeltmek</div>
+      <div class="meta">12 Mart – 8 Ekim 2026 · 5 ölçüm · 30 hafta</div>
+    </div>
+    <div class="coach">Hazırlayan<br><b>Coach Deniz Arslan</b><br>Personal Trainer</div>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="label">Kilo</div><div class="value">−4,2 kg</div><div class="sub">74,6 → 70,4 kg</div></div>
+    <div class="tile"><div class="label">Yağ oranı</div><div class="value">−4,2 puan</div><div class="sub">%31,8 → %27,6</div></div>
+    <div class="tile"><div class="label">Bel çevresi</div><div class="value">−9 cm</div><div class="sub">88 → 79 cm</div></div>
+    <div class="tile"><div class="label">Kas kütlesi</div><div class="value">+1,0 kg</div><div class="sub">47,9 → 48,9 kg</div></div>
+  </div>
+
+  <div class="summary">
+    <div class="tag">Dönem özeti</div>
+    30 haftada yağ kaybı istikrarlı ilerledi ve kas kütlesi korunarak artırıldı: verilen kilonun tamamı yağdan.
+    Bel/kalça oranı "orta risk"ten "düşük risk"e indi. Kondisyon belirgin şekilde gelişti (YMCA ve plank iki kategori yükseldi).
+    Duruşta dizler ve topuklar düzeldi; sıradaki odak gövdenin öne düşmesi ve üst vücut kuvveti.
+  </div>
+
+  <h2>Vücut kompozisyonu</h2>
+  <div class="two">
+    <div class="chart"><div class="ct">Kilo (kg)</div><div class="cs">5 ölçüm</div><svg viewBox="0 0 330 150" width="100%" role="img" aria-label="Kilo"><line x1="34" x2="296" y1="124.0" y2="124.0" stroke="#e2e8f0" stroke-width="1"/><text x="28" y="127.0" text-anchor="end" font-size="9" fill="#94a3b8">69</text><line x1="34" x2="296" y1="73.0" y2="73.0" stroke="#e2e8f0" stroke-width="1"/><text x="28" y="76.0" text-anchor="end" font-size="9" fill="#94a3b8">72</text><line x1="34" x2="296" y1="22.0" y2="22.0" stroke="#e2e8f0" stroke-width="1"/><text x="28" y="25.0" text-anchor="end" font-size="9" fill="#94a3b8">76</text><path d="M34.0,39.0 L99.5,63.3 L165.0,84.3 L230.5,97.3 L296.0,107.0" fill="none" stroke="#0284c7" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="34.0" cy="39.0" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><circle cx="99.5" cy="63.3" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><circle cx="165.0" cy="84.3" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><circle cx="230.5" cy="97.3" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><circle cx="296.0" cy="107.0" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><text x="34.0" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">12 Mar</text><text x="99.5" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">15 Nis</text><text x="165.0" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">20 May</text><text x="230.5" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">2 Tem</text><text x="296.0" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">8 Eki</text><text x="42.0" y="32.0" text-anchor="start" font-size="10" font-weight="700" fill="#0f172a">74,6</text><text x="288.0" y="100.0" text-anchor="end" font-size="10" font-weight="700" fill="#0f172a">70,4</text></svg></div>
+    <div class="chart"><div class="ct">Vücut yağ oranı (%)</div><div class="cs">5 ölçüm</div><svg viewBox="0 0 330 150" width="100%" role="img" aria-label="Yağ oranı"><line x1="34" x2="296" y1="124.0" y2="124.0" stroke="#e2e8f0" stroke-width="1"/><text x="28" y="127.0" text-anchor="end" font-size="9" fill="#94a3b8">27</text><line x1="34" x2="296" y1="73.0" y2="73.0" stroke="#e2e8f0" stroke-width="1"/><text x="28" y="76.0" text-anchor="end" font-size="9" fill="#94a3b8">30</text><line x1="34" x2="296" y1="22.0" y2="22.0" stroke="#e2e8f0" stroke-width="1"/><text x="28" y="25.0" text-anchor="end" font-size="9" fill="#94a3b8">33</text><path d="M34.0,39.0 L99.5,58.4 L165.0,77.9 L230.5,92.4 L296.0,107.0" fill="none" stroke="#0284c7" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="34.0" cy="39.0" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><circle cx="99.5" cy="58.4" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><circle cx="165.0" cy="77.9" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><circle cx="230.5" cy="92.4" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><circle cx="296.0" cy="107.0" r="4" fill="#0284c7" stroke="#fff" stroke-width="2"/><text x="34.0" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">12 Mar</text><text x="99.5" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">15 Nis</text><text x="165.0" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">20 May</text><text x="230.5" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">2 Tem</text><text x="296.0" y="142" text-anchor="middle" font-size="9" fill="#94a3b8">8 Eki</text><text x="42.0" y="32.0" text-anchor="start" font-size="10" font-weight="700" fill="#0f172a">31,8</text><text x="288.0" y="100.0" text-anchor="end" font-size="10" font-weight="700" fill="#0f172a">27,6</text></svg></div>
+  </div>
+  <div style="margin-top:10px"><table><thead><tr><th></th><th class='num'>İlk ölçüm</th><th class='num'>Son ölçüm</th><th class='num'>Değişim</th></tr></thead><tbody><tr><td>Kilo</td><td class='num muted'>74,6 kg</td><td class='num'>70,4 kg</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −4,2 kg</span></td></tr><tr><td>Vücut yağ oranı</td><td class='num muted'>%31,8</td><td class='num'>%27,6</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −4,2 puan</span></td></tr><tr><td>Kas kütlesi</td><td class='num muted'>47,9 kg</td><td class='num'>48,9 kg</td><td class='num'><span class="delta" style="color:#0ca30c">▲ +1,0 kg</span></td></tr><tr><td>Yağsız kütle</td><td class='num muted'>50,9 kg</td><td class='num'>51,0 kg</td><td class='num'><span class="delta" style="color:#0ca30c">▲ +0,1 kg</span></td></tr><tr><td>İç yağ derecesi</td><td class='num muted'>8</td><td class='num'>6</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −2</span></td></tr><tr><td>Metabolik yaş</td><td class='num muted'>41</td><td class='num'>35</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −6 yaş</span></td></tr><tr><td>VKİ (BMI)</td><td class='num muted'>27,1</td><td class='num'>25,5</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −1,6</span></td></tr></tbody></table></div>
+
+  <h2>Çevre ölçümleri</h2>
+  <table><thead><tr><th></th><th class='num'>İlk ölçüm</th><th class='num'>Son ölçüm</th><th class='num'>Değişim</th></tr></thead><tbody><tr><td>Bel</td><td class='num muted'>88 cm</td><td class='num'>79 cm</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −9 cm</span></td></tr><tr><td>Kalça</td><td class='num muted'>108 cm</td><td class='num'>104 cm</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −4 cm</span></td></tr><tr><td>Sağ kol</td><td class='num muted'>31 cm</td><td class='num'>29,5 cm</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −1,5 cm</span></td></tr><tr><td>Sağ bacak</td><td class='num muted'>61 cm</td><td class='num'>58 cm</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −3 cm</span></td></tr><tr><td>Bel / kalça oranı</td><td class='num muted'>0,81 · Orta risk</td><td class='num'>0,76 · Düşük risk</td><td class='num'><span class="delta" style="color:#0ca30c">▼ −0,05</span></td></tr></tbody></table>
+
+  <div class="foot"><span><b>AthleTrack</b> ile hazırlandı · athletrackai.com</span><span>Sayfa 1 / 2</span></div>
+</section>
+
+<section class="page">
+  <div class="demo">ÖRNEK RAPOR · KURGUSAL VERİ</div>
+  <div class="top">
+    <div><div class="brand">GELİŞİM RAPORU</div><div class="meta" style="margin-top:4px">Ayşe Kaya · 12 Mart – 8 Ekim 2026</div></div>
+    <div class="coach"><b>Coach Deniz Arslan</b></div>
+  </div>
+
+  <h2>Fitness testleri</h2>
+  <table>
+    <thead><tr><th>Test</th><th class='num'>İlk</th><th></th><th></th><th class='num'>Son</th><th></th></tr></thead>
+    <tbody><tr><td>YMCA 3 dk basamak</td><td class='num muted'>116 nabız</td><td><span class="badge" style="background:#fef3c7;color:#92400e">Ortanın Altı</span></td><td class='arrow'>→</td><td class='num'>99 nabız</td><td><span class="badge" style="background:#e0f2fe;color:#075985">Ortanın Üstü</span></td></tr><tr><td>VO₂max (Bruce)</td><td class='num muted'>29,0</td><td><span class="badge" style="background:#fee2e2;color:#991b1b">Zayıf</span></td><td class='arrow'>→</td><td class='num'>36,4</td><td><span class="badge" style="background:#e0f2fe;color:#075985">Ortalama</span></td></tr><tr><td>Şınav (diz üstü)</td><td class='num muted'>10 tekrar</td><td><span class="badge" style="background:#fef3c7;color:#92400e">Ortalama Altı</span></td><td class='arrow'>→</td><td class='num'>19 tekrar</td><td><span class="badge" style="background:#e0f2fe;color:#075985">Ortalama</span></td></tr><tr><td>Plank</td><td class='num muted'>35 sn</td><td><span class="badge" style="background:#fef3c7;color:#92400e">Ortalama Altı</span></td><td class='arrow'>→</td><td class='num'>74 sn</td><td><span class="badge" style="background:#dcfce7;color:#166534">Ortalama Üstü</span></td></tr><tr><td>Sit & Reach</td><td class='num muted'>9 cm</td><td><span class="badge" style="background:#e0f2fe;color:#075985">Orta</span></td><td class='arrow'>→</td><td class='num'>16 cm</td><td><span class="badge" style="background:#dcfce7;color:#166534">Ortanın Üstü</span></td></tr></tbody>
+  </table>
+  <div class="meta" style="margin-top:6px">Kategoriler yaşa ve cinsiyete göre: YMCA (Y's Way to Physical Fitness, 1989), VO₂max (Cooper Institute), şınav (McArdle ve ark., 2000).</div>
+
+  <h2>Postür ve hareket (Overhead Squat)</h2>
+  <table>
+    <thead><tr><th>Bulgu</th><th>İlk</th><th>Son</th><th>Durum</th></tr></thead>
+    <tbody><tr><td>Dizler içe kaçma (valgus)</td><td class='muted'>Var</td><td>Yok</td><td><span class="status" style="color:#0ca30c">✓ Düzeldi</span></td></tr><tr><td>Topukların yerden kalkması</td><td class='muted'>Var</td><td>Yok</td><td><span class="status" style="color:#0ca30c">✓ Düzeldi</span></td></tr><tr><td>Gövdenin öne düşmesi</td><td class='muted'>Var</td><td>Var</td><td><span class="status" style="color:#b45309">● Odak alanı</span></td></tr><tr><td>Kolların öne düşmesi</td><td class='muted'>Yok</td><td>Yok</td><td><span class="status" style="color:#94a3b8">– Sorun yok</span></td></tr></tbody>
+  </table>
+
+  <h2>Devamlılık</h2>
+  <div class="tiles" style="margin-top:0">
+    <div class="tile"><div class="label">Yapılan ders</div><div class="value">46</div><div class="sub">52 planlı dersten</div></div>
+    <div class="tile"><div class="label">Katılım</div><div class="value">%88</div><div class="sub">haftada ort. 1,5 ders</div></div>
+    <div class="tile"><div class="label">Tamamlanan paket</div><div class="value">3</div><div class="sub">12'şer derslik</div></div>
+    <div class="tile"><div class="label">Aktif pakette</div><div class="value">3 ders</div><div class="sub">kaldı</div></div>
+  </div>
+
+  <h2>Hedefler</h2>
+  <div class="goal"><div class="name">Yağ oranı %26'ya</div><div class="bar"><i style="width:72%"></i></div><div class="pct">%72 · 27,6</div></div>
+  <div class="goal"><div class="name">Bel 76 cm'ye</div><div class="bar"><i style="width:75%"></i></div><div class="pct">%75 · 79 cm</div></div>
+  <div class="goal"><div class="name">Duruş bulguları</div><div class="bar"><i style="width:67%"></i></div><div class="pct">3 bulgudan 2'si</div></div>
+
+  <h2>Antrenörün notu</h2>
+  <div class="note">
+    Ayşe, bu dönemdeki istikrarın harika. Özellikle yazın tatil dönemine rağmen haftada bir dersi kaçırmaman sonuçlara
+    doğrudan yansıdı. Önümüzdeki 12 haftada hedefimiz üst vücut kuvvetini artırmak ve squat'ta gövdeni dik tutmak.
+    <ul class="next">
+      <li>Haftada 2 kuvvet seansı, 1'i üst vücut odaklı</li>
+      <li>Kalça mobilitesi için her derse 10 dk ısınma rutini</li>
+      <li>Bir sonraki ölçüm: 7 Ocak 2027</li>
+    </ul>
+  </div>
+
+  <div class="foot"><span><b>AthleTrack</b> ile hazırlandı · athletrackai.com · Bu rapor sağlık tavsiyesi değildir.</span><span>Sayfa 2 / 2</span></div>
+</section>
+</body></html>
