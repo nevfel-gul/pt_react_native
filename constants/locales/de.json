@@ -1155,5 +1155,14 @@
   "settings.units.metric": "Metrisch (kg, cm)",
   "settings.units.imperial": "Imperial (lb, in)",
   "settings.units.note": "Deine Messungen bleiben unverändert – nur Anzeige und Eingabe ändern sich.",
-  "newstudent.label.height_imperial": "Größe (ft / in)"
+  "newstudent.label.height_imperial": "Größe (ft / in)",
+  "widget.next": "Als Nächstes",
+  "widget.packagesEnding": "Pakete enden",
+  "widget.unpaid": "offen",
+  "widget.thisWeek": "Diese Woche",
+  "widget.weekSummary": "{{sessions}} Einheiten · {{records}} Messungen",
+  "widget.sessionsLeft": "noch {{count}}",
+  "widget.overdueTitle": "Überfällige Messungen",
+  "widget.endingTitle": "Pakete enden",
+  "widget.allClear": "Keine überfälligen Messungen"
 }

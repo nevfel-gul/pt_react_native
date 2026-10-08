@@ -1159,5 +1159,14 @@
   "newstudent.label.planned_days_per_week": "Haftada kaç gün antrenmana gelmeyi planlıyorsun?",
   "recordNew.status.poor": "Zayıf",
   "recordNew.next": "İleri",
-  "recordNew.prev": "Geri"
+  "recordNew.prev": "Geri",
+  "widget.next": "Sıradaki",
+  "widget.packagesEnding": "paket bitiyor",
+  "widget.unpaid": "tahsil edilecek",
+  "widget.thisWeek": "Bu hafta",
+  "widget.weekSummary": "{{sessions}} seans · {{records}} ölçüm",
+  "widget.sessionsLeft": "{{count}} ders kaldı",
+  "widget.overdueTitle": "Ölçümü gecikenler",
+  "widget.endingTitle": "Paketi bitenler",
+  "widget.allClear": "Geciken ölçüm yok"
 }

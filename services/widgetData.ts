@@ -1,5 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { appLocale } from "@/constants/languages";
+import { calendarFirstDay } from "@/constants/calendarLocale";
+import { appLocale, currentLanguage } from "@/constants/languages";
+import type { ActivePackageSummary } from "./packages";
+import { formatMoney } from "./packages";
 import { getDocs } from "firebase/firestore";
 import i18n from "i18next";
 import { Platform } from "react-native";
@@ -38,7 +41,14 @@ export type WidgetAppointment = {
     ts: number;
     /** Öğrencinin kısaltılmış adı ("Ayşe K.") */
     name: string;
+    /** Öğrenci kimliği: widget'tan dokununca öğrencinin sayfası açılır. */
+    sid?: string;
+    /** "3 ders kaldı" — yalnızca premium ve aktif paket varsa. */
+    left?: string;
 };
+
+/** Büyük widget listeleri için öğrenci satırı. */
+export type WidgetStudentRow = { sid: string; name: string; detail?: string };
 
 export type WidgetSnapshot = {
     v: 1;
@@ -46,9 +56,22 @@ export type WidgetSnapshot = {
     updatedAt: number;
     /** Önümüzdeki 7 günün randevuları, zamana göre sıralı (en fazla 40). */
     appointments: WidgetAppointment[];
+    /** Ölçümü gecikmiş / yaklaşan aktif öğrenciler. */
     overdue: number;
     dueSoon: number;
     activeStudents: number;
+    /** Paket ve ödeme bilgisi premium özelliği: ücretsiz kullanıcıda false. */
+    premium: boolean;
+    /** Paketi bitmek üzere olan (≤2 ders ya da 7 gün içinde süresi dolan) öğrenci sayısı. */
+    packagesEnding: number;
+    /** Ödenmemiş paket tutarlarının toplamı, biçimlenmiş ("₺4.500"); yoksa null. */
+    unpaidText: string | null;
+    /** "12 seans · 4 ölçüm" — bu haftanın özeti. */
+    weekText: string;
+    /** Büyük widget: ölçümü en çok geciken öğrenciler (en fazla 6). */
+    overdueList: WidgetStudentRow[];
+    /** Büyük widget: paketi bitmek üzere olanlar (en fazla 4, premium). */
+    endingList: WidgetStudentRow[];
     /** Widget'ın kullandığı metinler (native tarafta i18n yok). */
     labels: {
         title: string;
@@ -59,6 +82,13 @@ export type WidgetSnapshot = {
         activeStudents: string;
         signedOut: string;
         more: string;
+        next: string;
+        packagesEnding: string;
+        unpaid: string;
+        thisWeek: string;
+        overdueTitle: string;
+        endingTitle: string;
+        allClear: string;
     };
     locale: string;
 };
@@ -81,10 +111,38 @@ function labels(): WidgetSnapshot["labels"] {
         activeStudents: t("widget.activeStudents"),
         signedOut: t("widget.signedOut"),
         more: t("widget.more"),
+        next: t("widget.next"),
+        packagesEnding: t("widget.packagesEnding"),
+        unpaid: t("widget.unpaid"),
+        thisWeek: t("widget.thisWeek"),
+        overdueTitle: t("widget.overdueTitle"),
+        endingTitle: t("widget.endingTitle"),
+        allClear: t("widget.allClear"),
     };
 }
 
-export async function buildWidgetSnapshot(uid: string): Promise<WidgetSnapshot> {
+const PACKAGE_LOW_SESSIONS = 2;
+const PACKAGE_EXPIRY_DAYS = 7;
+
+/** Paket yenileme konuşması gereken mi? (≤2 ders kaldı ya da süresi 7 gün içinde doluyor/doldu) */
+function packageEnding(p: ActivePackageSummary | undefined, today: Date): boolean {
+    if (!p) return false;
+    if (p.remaining <= PACKAGE_LOW_SESSIONS) return true;
+    if (!p.endDate) return false;
+    const end = toDateSafe(p.endDate);
+    return !!end && end.getTime() <= addDays(today, PACKAGE_EXPIRY_DAYS).getTime();
+}
+
+function startOfWeek(today: Date): Date {
+    const first = calendarFirstDay(currentLanguage());
+    const diff = (today.getDay() - first + 7) % 7;
+    return addDays(today, -diff);
+}
+
+export async function buildWidgetSnapshot(uid: string, opts: { premium: boolean }): Promise<WidgetSnapshot> {
+    const { premium } = opts;
+    const t = i18n.t.bind(i18n);
+    const locale = appLocale();
     const [studentsSnap, recordsSnap, aptSnap] = await Promise.all([
         getDocs(studentsColRef(uid)),
         getDocs(recordsColRef(uid)),
@@ -94,35 +152,85 @@ export async function buildWidgetSnapshot(uid: string): Promise<WidgetSnapshot> 
     const students = studentsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
     const records = recordsSnap.docs.map((d) => d.data() as any);
     const appointments = aptSnap.docs.map((d) => d.data() as any);
+    const isActive = (s: any) => (s.aktif ?? "Aktif") === "Aktif";
+    const byId = new Map(students.map((s) => [s.id, s]));
 
-    // Takip durumu — takvim ekranıyla aynı kural.
+    // Takip durumu — takvim ekranıyla aynı kural. Pasif öğrenciler sayılmaz.
     const lastByStudent = lastRecordByStudent(records);
     const today = startOfDay(new Date());
     let overdue = 0;
     let dueSoon = 0;
     let activeStudents = 0;
+    const overdueRows: { row: WidgetStudentRow; days: number }[] = [];
+    const endingRows: WidgetStudentRow[] = [];
+    const unpaidByCurrency = new Map<string, number>();
     for (const s of students) {
-        if ((s.aktif ?? "Aktif") === "Aktif") activeStudents++;
-        const { status } = followUpStatus(lastByStudent.get(s.id) ?? null, s.followUpDays, today);
-        if (status === "overdue") overdue++;
-        else if (status === "dueSoon") dueSoon++;
-    }
+        if (!isActive(s)) continue;
+        activeStudents++;
+        const { status, daysToDue } = followUpStatus(lastByStudent.get(s.id) ?? null, s.followUpDays, today);
+        if (status === "overdue" || status === "never") {
+            if (status === "overdue") overdue++;
+            overdueRows.push({
+                row: {
+                    sid: s.id,
+                    name: shortName(s.name ?? s.fullName),
+                    detail: status === "never" ? t("calendar.diff.never") : t("calendar.diff.overdueDays", { days: daysToDue }),
+                },
+                days: status === "never" ? Number.MAX_SAFE_INTEGER : daysToDue,
+            });
+        } else if (status === "dueSoon") dueSoon++;
 
-    // Önümüzdeki 7 günün randevuları (tekrarlar açılarak).
+        const pkg = s.activePackage as ActivePackageSummary | undefined;
+        if (premium && pkg) {
+            if (packageEnding(pkg, today)) {
+                endingRows.push({ sid: s.id, name: shortName(s.name ?? s.fullName), detail: t("widget.sessionsLeft", { count: pkg.remaining }) });
+            }
+            if (pkg.unpaid > 0) {
+                const cur = pkg.currency ?? "TRY";
+                unpaidByCurrency.set(cur, (unpaidByCurrency.get(cur) ?? 0) + pkg.unpaid);
+            }
+        }
+    }
+    // "never" (hiç ölçülmemiş) listede görünür ama sayaçta değil — takvimle aynı.
+    overdueRows.sort((a, b) => b.days - a.days);
+
+    // Önümüzdeki 7 günün randevuları (tekrarlar açılarak) + bu haftanın seans sayısı.
+    const weekStart = startOfWeek(today);
+    const weekEnd = addDays(weekStart, 7);
     const upcoming: WidgetAppointment[] = [];
-    for (let i = 0; i < 7; i++) {
+    let weekSessions = 0;
+    for (let i = -7; i < 7; i++) {
         const day = addDays(today, i);
+        const inWeek = day >= weekStart && day < weekEnd;
+        if (i < 0 && !inWeek) continue;
         const key = ymd(day);
         for (const apt of appointments) {
             if (!isAppointmentOnDay(apt, key)) continue;
             const base = toDateSafe(apt.date);
             if (!base) continue;
+            if (inWeek) weekSessions++;
+            if (i < 0) continue;
             const at = new Date(day);
             at.setHours(base.getHours(), base.getMinutes(), 0, 0);
-            upcoming.push({ ts: at.getTime(), name: shortName(apt.studentName) });
+            const pkg = premium ? (byId.get(apt.studentId)?.activePackage as ActivePackageSummary | undefined) : undefined;
+            upcoming.push({
+                ts: at.getTime(),
+                name: shortName(apt.studentName),
+                sid: apt.studentId || undefined,
+                left: pkg ? t("widget.sessionsLeft", { count: pkg.remaining }) : undefined,
+            });
         }
     }
     upcoming.sort((a, b) => a.ts - b.ts);
+
+    const weekRecords = records.filter((r) => {
+        const d = toDateSafe(r.createdAt) ?? toDateSafe(r.date);
+        return !!d && d >= weekStart && d < weekEnd;
+    }).length;
+
+    const unpaidText = unpaidByCurrency.size
+        ? [...unpaidByCurrency.entries()].map(([cur, amt]) => formatMoney(amt, cur, locale)).join(" + ")
+        : null;
 
     return {
         v: 1,
@@ -132,8 +240,14 @@ export async function buildWidgetSnapshot(uid: string): Promise<WidgetSnapshot> 
         overdue,
         dueSoon,
         activeStudents,
+        premium,
+        packagesEnding: endingRows.length,
+        unpaidText,
+        weekText: t("widget.weekSummary", { sessions: weekSessions, records: weekRecords }),
+        overdueList: overdueRows.slice(0, 6).map((x) => x.row),
+        endingList: endingRows.slice(0, 4),
         labels: labels(),
-        locale: appLocale(),
+        locale,
     };
 }
 
@@ -146,6 +260,12 @@ export function signedOutSnapshot(): WidgetSnapshot {
         overdue: 0,
         dueSoon: 0,
         activeStudents: 0,
+        premium: false,
+        packagesEnding: 0,
+        unpaidText: null,
+        weekText: "",
+        overdueList: [],
+        endingList: [],
         labels: labels(),
         locale: appLocale(),
     };

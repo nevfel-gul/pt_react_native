@@ -1155,5 +1155,14 @@
   "settings.units.imperial": "Imperiale (lb, in)",
   "settings.units.note": "Le tue misurazioni non cambiano; cambiano solo visualizzazione e inserimento.",
   "newstudent.label.height_imperial": "Altezza (ft / in)",
-  "recordNew.field.weight": "Peso"
+  "recordNew.field.weight": "Peso",
+  "widget.next": "Prossimo",
+  "widget.packagesEnding": "pacchetti in scadenza",
+  "widget.unpaid": "da incassare",
+  "widget.thisWeek": "Questa settimana",
+  "widget.weekSummary": "{{sessions}} sedute · {{records}} misurazioni",
+  "widget.sessionsLeft": "ne restano {{count}}",
+  "widget.overdueTitle": "Misurazioni in ritardo",
+  "widget.endingTitle": "Pacchetti in scadenza",
+  "widget.allClear": "Nessuna misurazione in ritardo"
 }

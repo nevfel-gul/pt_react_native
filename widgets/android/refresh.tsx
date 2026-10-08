@@ -7,6 +7,6 @@ import { TodayWidget } from './TodayWidget';
 export async function refreshAndroidWidgets(snapshot: WidgetSnapshot) {
   await requestWidgetUpdate({
     widgetName: ANDROID_WIDGET_NAME,
-    renderWidget: (info) => TodayWidget({ snapshot, width: info.width }),
+    renderWidget: (info) => TodayWidget({ snapshot, width: info.width, height: info.height }),
   });
 }

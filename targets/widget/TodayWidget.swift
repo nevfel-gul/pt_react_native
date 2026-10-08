@@ -19,7 +19,17 @@ private let snapshotKey = "snapshot"
 struct WidgetAppointment: Codable, Hashable {
     let ts: Double
     let name: String
+    /// Öğrenci kimliği — dokununca öğrencinin sayfası açılır.
+    let sid: String?
+    /// "3 ders kaldı" (yalnızca premium + aktif paket).
+    let left: String?
     var date: Date { Date(timeIntervalSince1970: ts / 1000) }
+}
+
+struct WidgetStudentRow: Codable, Hashable {
+    let sid: String
+    let name: String
+    let detail: String?
 }
 
 struct WidgetLabels: Codable {
@@ -31,6 +41,14 @@ struct WidgetLabels: Codable {
     let activeStudents: String
     let signedOut: String
     let more: String
+    // Sonradan eklenenler: eski snapshot'ta yok, bu yüzden opsiyonel.
+    let next: String?
+    let packagesEnding: String?
+    let unpaid: String?
+    let thisWeek: String?
+    let overdueTitle: String?
+    let endingTitle: String?
+    let allClear: String?
 }
 
 struct WidgetSnapshot: Codable {
@@ -40,6 +58,13 @@ struct WidgetSnapshot: Codable {
     let overdue: Int
     let dueSoon: Int
     let activeStudents: Int
+    // Sonradan eklenenler (eski uygulama sürümünün yazdığı snapshot'ta yok).
+    let premium: Bool?
+    let packagesEnding: Int?
+    let unpaidText: String?
+    let weekText: String?
+    let overdueList: [WidgetStudentRow]?
+    let endingList: [WidgetStudentRow]?
     let labels: WidgetLabels
     let locale: String
 
@@ -56,12 +81,22 @@ struct WidgetSnapshot: Codable {
         signedIn: true,
         updatedAt: Date().timeIntervalSince1970 * 1000,
         appointments: [
-            WidgetAppointment(ts: Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000, name: "Ayşe K."),
-            WidgetAppointment(ts: Date().addingTimeInterval(7200).timeIntervalSince1970 * 1000, name: "Mehmet Y."),
+            WidgetAppointment(ts: Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000, name: "Ayşe K.", sid: nil, left: nil),
+            WidgetAppointment(ts: Date().addingTimeInterval(7200).timeIntervalSince1970 * 1000, name: "Mehmet Y.", sid: nil, left: nil),
+            WidgetAppointment(ts: Date().addingTimeInterval(10800).timeIntervalSince1970 * 1000, name: "Zeynep D.", sid: nil, left: nil),
         ],
         overdue: 2,
         dueSoon: 3,
         activeStudents: 12,
+        premium: false,
+        packagesEnding: nil,
+        unpaidText: nil,
+        weekText: nil,
+        overdueList: [
+            WidgetStudentRow(sid: "", name: "Can Ö.", detail: nil),
+            WidgetStudentRow(sid: "", name: "Elif S.", detail: nil),
+        ],
+        endingList: nil,
         labels: WidgetText.placeholderLabels,
         locale: WidgetText.lang
     )
@@ -102,7 +137,9 @@ enum WidgetText {
         let v = t[lang]!
         return WidgetLabels(
             title: v[0], today: v[1], noSessions: v[2], overdue: v[3],
-            dueSoon: v[4], activeStudents: v[5], signedOut: v[6], more: v[7]
+            dueSoon: v[4], activeStudents: v[5], signedOut: v[6], more: v[7],
+            next: nil, packagesEnding: nil, unpaid: nil, thisWeek: nil,
+            overdueTitle: nil, endingTitle: nil, allClear: nil
         )
     }()
 }
@@ -157,7 +194,18 @@ struct TodayProvider: TimelineProvider {
 // MARK: - Views
 
 private let calendarURL = URL(string: "ptreactnative://calendar?source=widget")!
+private let overdueURL = URL(string: "ptreactnative://calendar?source=widget&filter=overdue")!
+private let dueSoonURL = URL(string: "ptreactnative://calendar?source=widget&filter=dueSoon")!
 private let homeURL = URL(string: "ptreactnative://?source=widget")!
+
+/// Öğrencinin sayfası; kimlik yoksa takvim.
+private func studentURL(_ sid: String?) -> URL {
+    guard let sid, !sid.isEmpty,
+          let encoded = sid.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+          let url = URL(string: "ptreactnative://student/\(encoded)?source=widget")
+    else { return calendarURL }
+    return url
+}
 
 private func timeString(_ date: Date, locale: String) -> String {
     let f = DateFormatter()
@@ -186,6 +234,7 @@ struct CountChip: View {
 struct AppointmentRow: View {
     let apt: WidgetAppointment
     let locale: String
+    var showLeft = false
 
     var body: some View {
         HStack(spacing: 6) {
@@ -196,6 +245,54 @@ struct AppointmentRow: View {
                 .font(.caption)
                 .foregroundStyle(Color("textPrimary"))
                 .lineLimit(1)
+            if showLeft, let left = apt.left {
+                Spacer(minLength: 2)
+                Text(left).font(.caption2).foregroundStyle(Color("textMuted")).lineLimit(1)
+            }
+        }
+    }
+}
+
+/// Sıradaki seans: büyük saat + isim (+ kalan ders).
+struct NextCard: View {
+    let apt: WidgetAppointment
+    let label: String
+    let locale: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label.uppercased()).font(.system(size: 9, weight: .heavy)).foregroundStyle(Color("textMuted"))
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(timeString(apt.date, locale: locale))
+                    .font(.title3.weight(.heavy).monospacedDigit())
+                    .foregroundStyle(Color.accentColor)
+                Text(apt.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color("textPrimary"))
+                    .lineLimit(1)
+            }
+            if let left = apt.left {
+                Text(left).font(.caption2.weight(.semibold)).foregroundStyle(Color("warning")).lineLimit(1)
+            }
+        }
+    }
+}
+
+/// Büyük widget'taki öğrenci listesi satırı.
+struct StudentRow: View {
+    let row: WidgetStudentRow
+    let color: Color
+
+    var body: some View {
+        Link(destination: studentURL(row.sid)) {
+            HStack(spacing: 6) {
+                Circle().fill(color).frame(width: 6, height: 6)
+                Text(row.name).font(.caption).foregroundStyle(Color("textPrimary")).lineLimit(1)
+                Spacer(minLength: 2)
+                if let d = row.detail {
+                    Text(d).font(.caption2).foregroundStyle(Color("textMuted")).lineLimit(1)
+                }
+            }
         }
     }
 }
@@ -226,7 +323,20 @@ struct TodayWidgetView: View {
             }
         }
         .containerBackground(for: .widget) { Color("$widgetBackground") }
-        .widgetURL(entry.snapshot?.signedIn == true ? calendarURL : homeURL)
+        .widgetURL(tapURL)
+    }
+
+    /// Widget'ın genel dokunma adresi (tek bir widgetURL olmalı). Orta ve büyük
+    /// boyutta satırlar ayrıca kendi Link'leriyle öğrenciye / listeye gider.
+    private var tapURL: URL {
+        guard entry.snapshot?.signedIn == true else { return homeURL }
+        switch family {
+        case .systemSmall, .accessoryRectangular, .accessoryCircular:
+            // Tek dokunma alanı: sıradaki seansın öğrencisi, yoksa takvim.
+            return upcoming.first.map { studentURL($0.sid) } ?? calendarURL
+        default:
+            return calendarURL
+        }
     }
 
     @ViewBuilder
@@ -234,12 +344,18 @@ struct TodayWidgetView: View {
         switch family {
         case .accessoryRectangular:
             lockScreen(s)
+        case .accessoryCircular:
+            lockCircle(s)
+        case .systemLarge:
+            large(s)
         case .systemMedium:
             medium(s)
         default:
             small(s)
         }
     }
+
+    private var upcoming: [WidgetAppointment] { entry.upcomingToday }
 
     private func header(_ s: WidgetSnapshot) -> some View {
         HStack {
@@ -251,44 +367,132 @@ struct TodayWidgetView: View {
         }
     }
 
-    private func list(_ s: WidgetSnapshot, limit: Int) -> some View {
-        let items = entry.upcomingToday
-        return VStack(alignment: .leading, spacing: 4) {
-            if items.isEmpty {
-                Text(s.labels.noSessions).font(.caption).foregroundStyle(Color("textMuted"))
-            } else {
-                ForEach(items.prefix(limit), id: \.self) { AppointmentRow(apt: $0, locale: s.locale) }
-                if items.count > limit {
-                    Text("+\(items.count - limit) \(s.labels.more)").font(.caption2).foregroundStyle(Color("textMuted"))
+    /// Sıradaki seans kartı + ardından gelenlerin listesi. `rows`: kart dışında kaç satır.
+    /// `tappable`: küçük widget'ta satır bazlı link desteklenmez.
+    private func agenda(_ s: WidgetSnapshot, rows: Int, tappable: Bool) -> some View {
+        let items = upcoming
+        return VStack(alignment: .leading, spacing: 5) {
+            if let first = items.first {
+                if tappable {
+                    Link(destination: studentURL(first.sid)) {
+                        NextCard(apt: first, label: s.labels.next ?? "", locale: s.locale)
+                    }
+                } else {
+                    NextCard(apt: first, label: s.labels.next ?? "", locale: s.locale)
                 }
+                let rest = Array(items.dropFirst())
+                ForEach(rest.prefix(rows), id: \.self) { apt in
+                    if tappable {
+                        Link(destination: studentURL(apt.sid)) { AppointmentRow(apt: apt, locale: s.locale, showLeft: true) }
+                    } else {
+                        AppointmentRow(apt: apt, locale: s.locale)
+                    }
+                }
+                if rest.count > rows {
+                    Text("+\(rest.count - rows) \(s.labels.more)").font(.caption2).foregroundStyle(Color("textMuted"))
+                }
+            } else {
+                Text(s.labels.noSessions).font(.caption).foregroundStyle(Color("textMuted"))
             }
         }
     }
 
-    private func small(_ s: WidgetSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            header(s)
-            list(s, limit: 3)
-            Spacer(minLength: 0)
+    private func overdueChip(_ s: WidgetSnapshot) -> some View {
+        Link(destination: overdueURL) {
             CountChip(value: s.overdue, label: s.labels.overdue, color: Color("danger"))
+        }
+    }
+
+    private func endingChip(_ s: WidgetSnapshot) -> some View {
+        CountChip(value: s.packagesEnding ?? 0, label: s.labels.packagesEnding ?? "", color: Color("warning"))
+    }
+
+    private func unpaidLine(_ s: WidgetSnapshot) -> some View {
+        HStack(spacing: 3) {
+            Text(s.unpaidText ?? "").font(.caption.weight(.heavy)).foregroundStyle(Color("textPrimary"))
+            Text(s.labels.unpaid ?? "").font(.caption2).foregroundStyle(Color("textMuted"))
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+    }
+
+    private func isPremium(_ s: WidgetSnapshot) -> Bool { s.premium == true }
+
+    private func small(_ s: WidgetSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            header(s)
+            agenda(s, rows: 1, tappable: false)
+            Spacer(minLength: 0)
+            if isPremium(s), (s.packagesEnding ?? 0) > 0 {
+                endingChip(s)
+            } else {
+                CountChip(value: s.overdue, label: s.labels.overdue, color: Color("danger"))
+            }
         }
     }
 
     private func medium(_ s: WidgetSnapshot) -> some View {
         HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 header(s)
-                list(s, limit: 4)
+                agenda(s, rows: 2, tappable: true)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(s.labels.title).font(.caption.weight(.bold)).foregroundStyle(Color("textMuted"))
-                CountChip(value: s.overdue, label: s.labels.overdue, color: Color("danger"))
-                CountChip(value: s.dueSoon, label: s.labels.dueSoon, color: Color("warning"))
-                CountChip(value: s.activeStudents, label: s.labels.activeStudents, color: Color.accentColor)
+                overdueChip(s)
+                Link(destination: dueSoonURL) {
+                    CountChip(value: s.dueSoon, label: s.labels.dueSoon, color: Color("warning"))
+                }
+                if isPremium(s) {
+                    endingChip(s)
+                    if s.unpaidText != nil { unpaidLine(s) }
+                } else {
+                    CountChip(value: s.activeStudents, label: s.labels.activeStudents, color: Color.accentColor)
+                }
                 Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private func large(_ s: WidgetSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            header(s)
+            agenda(s, rows: 4, tappable: true)
+            Divider()
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Link(destination: overdueURL) {
+                        Text(s.labels.overdueTitle ?? s.labels.overdue)
+                            .font(.caption.weight(.bold)).foregroundStyle(Color("textMuted"))
+                    }
+                    let list = s.overdueList ?? []
+                    if list.isEmpty {
+                        Text(s.labels.allClear ?? "").font(.caption2).foregroundStyle(Color("textMuted"))
+                    } else {
+                        ForEach(list.prefix(isPremium(s) ? 4 : 6), id: \.self) { StudentRow(row: $0, color: Color("danger")) }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if isPremium(s) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(s.labels.endingTitle ?? "").font(.caption.weight(.bold)).foregroundStyle(Color("textMuted"))
+                        ForEach((s.endingList ?? []).prefix(4), id: \.self) { StudentRow(row: $0, color: Color("warning")) }
+                        if s.unpaidText != nil { unpaidLine(s).padding(.top, 2) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            Spacer(minLength: 0)
+            if let week = s.weekText, !week.isEmpty {
+                HStack(spacing: 4) {
+                    Text(s.labels.thisWeek ?? "").font(.caption2.weight(.bold)).foregroundStyle(Color("textMuted"))
+                    Text(week).font(.caption2).foregroundStyle(Color("textPrimary"))
+                }
+                .lineLimit(1)
             }
         }
     }
@@ -296,7 +500,7 @@ struct TodayWidgetView: View {
     private func lockScreen(_ s: WidgetSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text("\(s.labels.today) · \(entry.todaysAppointments.count)").font(.headline)
-            if let next = entry.upcomingToday.first {
+            if let next = upcoming.first {
                 Text("\(timeString(next.date, locale: s.locale)) \(next.name)").font(.caption).lineLimit(1)
             } else {
                 Text(s.labels.noSessions).font(.caption).lineLimit(1)
@@ -306,6 +510,16 @@ struct TodayWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func lockCircle(_ s: WidgetSnapshot) -> some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 0) {
+                Text("\(upcoming.count)").font(.title2.weight(.heavy))
+                Text(s.labels.today).font(.system(size: 9, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
+            }
+        }
     }
 }
 
@@ -321,7 +535,7 @@ struct TodayWidget: Widget {
         }
         .configurationDisplayName("AthleTrack")
         .description(WidgetText.description)
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryCircular])
     }
 }
 

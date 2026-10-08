@@ -83,7 +83,7 @@
               "targetCellWidth": 3,
               "targetCellHeight": 2,
               "maxResizeWidth": "420dp",
-              "maxResizeHeight": "260dp",
+              "maxResizeHeight": "420dp",
               "resizeMode": "horizontal|vertical",
               "updatePeriodMillis": 1800000
             }

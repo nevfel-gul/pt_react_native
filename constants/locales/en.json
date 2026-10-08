@@ -1155,5 +1155,14 @@
   "settings.units.metric": "Metric (kg, cm)",
   "settings.units.imperial": "Imperial (lb, in)",
   "settings.units.note": "Your records don't change — only how values are shown and entered.",
-  "newstudent.label.height_imperial": "Height (ft / in)"
+  "newstudent.label.height_imperial": "Height (ft / in)",
+  "widget.next": "Next",
+  "widget.packagesEnding": "packages ending",
+  "widget.unpaid": "to collect",
+  "widget.thisWeek": "This week",
+  "widget.weekSummary": "{{sessions}} sessions · {{records}} check-ins",
+  "widget.sessionsLeft": "{{count}} left",
+  "widget.overdueTitle": "Overdue check-ins",
+  "widget.endingTitle": "Packages ending",
+  "widget.allClear": "No overdue check-ins"
 }

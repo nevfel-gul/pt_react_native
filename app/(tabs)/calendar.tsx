@@ -506,11 +506,15 @@ export default function CalendarFollowUpScreen() {
 
     // WhatsApp hatırlatması için seçili randevu
     const [waApt, setWaApt] = useState<Appointment | null>(null);
-    const params = useLocalSearchParams<{ source?: string }>();
+    const params = useLocalSearchParams<{ source?: string; filter?: string }>();
     useEffect(() => {
         track("calendar_viewed", { source: params.source ?? "tab" });
-        if (params.source === "widget") track("widget_opened", { platform: Platform.OS });
-    }, [params.source]);
+        if (params.source === "widget") track("widget_opened", { platform: Platform.OS, target: params.filter ?? "calendar" });
+    }, [params.source, params.filter]);
+    // Widget'taki "gecikmiş / yaklaşan" sayısına dokununca o liste açılsın.
+    useEffect(() => {
+        if (params.filter === "overdue" || params.filter === "dueSoon") setFilter(params.filter);
+    }, [params.filter]);
 
     useEffect(() => {
         if (!uid) return;

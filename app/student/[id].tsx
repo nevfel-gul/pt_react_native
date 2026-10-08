@@ -1813,7 +1813,10 @@ function TestsCard({
 export default function StudentDetailScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, source } = useLocalSearchParams<{ id: string; source?: string }>();
+  useEffect(() => {
+    if (source === "widget") track("widget_opened", { platform: Platform.OS, target: "student" });
+  }, [source]);
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const listRef = useRef<FlatList<RecordItem>>(null);

@@ -1155,5 +1155,14 @@
   "settings.units.imperial": "Impérial (lb, in)",
   "settings.units.note": "Vos mesures ne changent pas ; seuls l'affichage et la saisie changent.",
   "newstudent.label.height_imperial": "Taille (ft / in)",
-  "recordNew.field.weight": "Poids"
+  "recordNew.field.weight": "Poids",
+  "widget.next": "Ensuite",
+  "widget.packagesEnding": "forfaits à renouveler",
+  "widget.unpaid": "à encaisser",
+  "widget.thisWeek": "Cette semaine",
+  "widget.weekSummary": "{{sessions}} séances · {{records}} bilans",
+  "widget.sessionsLeft": "encore {{count}}",
+  "widget.overdueTitle": "Bilans en retard",
+  "widget.endingTitle": "Forfaits à renouveler",
+  "widget.allClear": "Aucun bilan en retard"
 }

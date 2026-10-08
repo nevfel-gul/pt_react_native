@@ -1,3 +1,4 @@
+import { usePremium } from '@/constants/PremiumContext';
 import { auth } from '@/services/firebase';
 import {
   buildWidgetSnapshot,
@@ -24,17 +25,20 @@ const FOREGROUND_MIN_INTERVAL_MS = 15 * 60 * 1000;
 
 export default function WidgetSync() {
   const { i18n } = useTranslation();
+  // Paket/ödeme bilgisi premium: plan değişince widget da güncellensin.
+  const { hasPremium, loading: premiumLoading } = usePremium();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRunAt = useRef(0);
 
   useEffect(() => {
     if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
+    if (premiumLoading) return;
 
     const run = async () => {
       const uid = auth.currentUser?.uid;
       lastRunAt.current = Date.now();
       try {
-        const snapshot = uid ? await buildWidgetSnapshot(uid) : signedOutSnapshot();
+        const snapshot = uid ? await buildWidgetSnapshot(uid, { premium: hasPremium }) : signedOutSnapshot();
         await publishWidgetSnapshot(snapshot);
       } catch (e) {
         console.warn('[Widget] snapshot güncellenemedi:', e);
@@ -61,8 +65,8 @@ export default function WidgetSync() {
       appState.remove();
       if (timer.current) clearTimeout(timer.current);
     };
-    // Dil değişince etiketler değiştiği için yeniden kur.
-  }, [i18n.language]);
+    // Dil ya da plan değişince etiketler / paket bilgisi değiştiği için yeniden kur.
+  }, [i18n.language, hasPremium, premiumLoading]);
 
   return null;
 }

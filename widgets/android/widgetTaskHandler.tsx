@@ -14,7 +14,7 @@ export async function widgetTaskHandler({ widgetInfo, widgetAction, renderWidget
     case 'WIDGET_UPDATE':
     case 'WIDGET_RESIZED': {
       const snapshot = await readAndroidSnapshot();
-      renderWidget(TodayWidget({ snapshot, width: widgetInfo.width }));
+      renderWidget(TodayWidget({ snapshot, width: widgetInfo.width, height: widgetInfo.height }));
       break;
     }
     default:

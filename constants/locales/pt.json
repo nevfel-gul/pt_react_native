@@ -1155,5 +1155,14 @@
   "settings.units.imperial": "Imperial (lb, in)",
   "settings.units.note": "Suas avaliações não mudam; só a exibição e a digitação mudam.",
   "newstudent.label.height_imperial": "Altura (ft / in)",
-  "recordNew.field.weight": "Peso"
+  "recordNew.field.weight": "Peso",
+  "widget.next": "Próximo",
+  "widget.packagesEnding": "pacotes acabando",
+  "widget.unpaid": "a receber",
+  "widget.thisWeek": "Esta semana",
+  "widget.weekSummary": "{{sessions}} aulas · {{records}} avaliações",
+  "widget.sessionsLeft": "restam {{count}}",
+  "widget.overdueTitle": "Avaliações atrasadas",
+  "widget.endingTitle": "Pacotes acabando",
+  "widget.allClear": "Nenhuma avaliação atrasada"
 }
