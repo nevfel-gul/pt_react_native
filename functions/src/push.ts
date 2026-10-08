@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
+import { langOf, type PushLang } from "./i18n/pushMessages";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const MAX_BATCH = 100; // Expo tek istekte en fazla 100 mesaj kabul eder
@@ -115,12 +116,14 @@ export async function sendPushBatch(targets: PushTarget[]): Promise<number> {
  * `pushEnabled === false` olanlar HER ZAMAN elenir — job'lar bu kontrolü
  * kendileri yapmadığı için bildirimleri kapatan kullanıcılara push gidiyordu.
  */
+export type PushRecipient = { token: string; lang: PushLang };
+
 export async function getPushRecipients(
     userIds: Iterable<string>
-): Promise<Map<string, string>> {
+): Promise<Map<string, PushRecipient>> {
     const db = admin.firestore();
     const ids = [...new Set(userIds)];
-    const out = new Map<string, string>();
+    const out = new Map<string, PushRecipient>();
 
     if (ids.length === 0) return out;
 
@@ -135,7 +138,7 @@ export async function getPushRecipients(
             if (data?.pushEnabled === false) return;
             const token = data?.pushToken;
             if (typeof token === "string" && token.length > 0) {
-                out.set(snap.id, token);
+                out.set(snap.id, { token, lang: langOf(data) });
             }
         });
     }

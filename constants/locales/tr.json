@@ -1023,7 +1023,7 @@
   "packages.alreadyLogged.message": "Bu randevunun dersi bu gün için zaten düşülmüş.",
   "packages.error": "İşlem kaydedilemedi. Bağlantınızı kontrol edip tekrar deneyin.",
   "packages.form.total": "Ders sayısı",
-  "packages.form.price": "Paket ücreti (₺)",
+  "packages.form.price": "Paket ücreti",
   "packages.form.paidNow": "Şimdi ödenen",
   "packages.form.paidAll": "Tamamı ödendi",
   "packages.form.optional": "Opsiyonel",

@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { pushText } from "../i18n/pushMessages";
 import { getPushRecipients, PushTarget, sendPushBatch } from "../push";
 
 const db = admin.firestore();
@@ -8,28 +9,7 @@ const TZ = "Europe/Istanbul";
 
 type SendType = "reminder" | "record" | "overdue1" | "overdue3" | "overdue7";
 
-const MESSAGES: Record<SendType, { title: string; body: string }> = {
-    record: {
-        title: "Kayıt Günü Geldi 📅",
-        body: "Öğrencinin değerlendirme günü bugün.",
-    },
-    reminder: {
-        title: "Kayıt Zamanı Yaklaşıyor ⏳",
-        body: "Yaklaşan bir değerlendirme kaydı var.",
-    },
-    overdue1: {
-        title: "Kayıt Gecikti ⚠️",
-        body: "Dün yapılması gereken kayıt girilmedi.",
-    },
-    overdue3: {
-        title: "Kayıt Hâlâ Girilmedi 🚨",
-        body: "3 gündür değerlendirme kaydı eksik.",
-    },
-    overdue7: {
-        title: "Kayıt 1 Haftadır Eksik ❗",
-        body: "7 gündür kayıt girilmedi.",
-    },
-};
+// Metinler: ../i18n/pushMessages.ts (kullanıcının dilinde).
 
 /** Bir Date'i Europe/Istanbul takviminde saat bilgisiz gün numarasına çevirir. */
 function dayNumberInTz(date: Date): number {
@@ -125,7 +105,7 @@ export const followUpReminderJob = onSchedule(
         const writes: Promise<unknown>[] = [];
 
         for (const item of pending) {
-            const token = recipients.get(item.userId);
+            const recipient = recipients.get(item.userId);
 
             // Bildirim gönderilmese bile flag yazılır: kullanıcı bildirimleri
             // kapattıysa açtığı anda geçmiş hatırlatmalar üst üste gelmesin.
@@ -146,13 +126,14 @@ export const followUpReminderJob = onSchedule(
                     )
             );
 
-            if (!token) continue;
+            if (!recipient) continue;
 
+            const msg = pushText(item.sendType, recipient.lang);
             targets.push({
                 userId: item.userId,
-                token,
-                title: MESSAGES[item.sendType].title,
-                body: MESSAGES[item.sendType].body,
+                token: recipient.token,
+                title: msg.title,
+                body: msg.body,
                 data: { type: item.sendType, studentId: item.studentId },
             });
         }

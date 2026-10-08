@@ -1,9 +1,11 @@
 import { functions } from "@/services/firebase";
+import type { AppLanguage } from "@/constants/languages";
 import { httpsCallable } from "firebase/functions";
 
 type RequestPasswordResetInput = {
     email: string;
-    locale: "tr" | "en";
+    /** E-posta bu dilde gönderilir (functions/src/passwordReset.ts). */
+    locale: AppLanguage;
 };
 
 type RequestPasswordResetResult = {

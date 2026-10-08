@@ -1,5 +1,6 @@
 // app/(tabs)/calendar.tsx
 import { CALENDAR_LOCALES, calendarFirstDay, calendarLangOf, type CalendarLang } from "@/constants/calendarLocale";
+import { appLocale } from "@/constants/languages";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
@@ -196,7 +197,7 @@ function buildDayLabels(lang: CalendarLang, t: (key: string) => string): { label
                     : dayNamesShort[d.getDay()];
         const month = monthNamesShort[d.getMonth()];
         // tr: "Pzt 8 Eyl" / en: "Mon, Sep 8"
-        const label = lang === "tr" ? `${prefix} ${d.getDate()} ${month}` : `${prefix}, ${month} ${d.getDate()}`;
+        const label = lang === "en" ? `${prefix}, ${month} ${d.getDate()}` : `${prefix} ${d.getDate()} ${month}`;
         result.push({ label, date: d });
     }
     return result;
@@ -896,7 +897,7 @@ export default function CalendarFollowUpScreen() {
                                     const d = toDateSafe(waApt?.date);
                                     return d ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : "";
                                 })(),
-                                date: new Date(selectedDay + "T00:00:00").toLocaleDateString(i18n.language === "en" ? "en-US" : "tr-TR", { day: "numeric", month: "long", weekday: "long" }),
+                                date: new Date(selectedDay + "T00:00:00").toLocaleDateString(appLocale(), { day: "numeric", month: "long", weekday: "long" }),
                             }}
                             templates={["appointmentReminder", "missedYou"]}
                         />

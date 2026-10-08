@@ -1023,7 +1023,7 @@
   "packages.alreadyLogged.message": "This appointment's session was already logged for this day.",
   "packages.error": "Couldn't save. Check your connection and try again.",
   "packages.form.total": "Number of sessions",
-  "packages.form.price": "Package price (₺)",
+  "packages.form.price": "Package price",
   "packages.form.paidNow": "Paid now",
   "packages.form.paidAll": "Paid in full",
   "packages.form.optional": "Optional",

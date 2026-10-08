@@ -20,14 +20,17 @@ import OpenAI from "openai";
 const MODEL = "gpt-4.1-mini";
 const MAX_REGENERATIONS = 2;
 
-type Req = { recordId?: string; force?: boolean; locale?: "tr" | "en" };
+const LANGS = { tr: "Turkish", en: "English", de: "German", es: "Spanish", pt: "Brazilian Portuguese", fr: "French", it: "Italian" } as const;
+type Lang = keyof typeof LANGS;
+
+type Req = { recordId?: string; force?: boolean; locale?: string };
 
 export type RecordAiComment = {
     summary: string;
     highlights: string[];
     warnings: string[];
     nextSteps: string[];
-    locale: "tr" | "en";
+    locale: Lang;
     model: string;
     comparedToPrevious: boolean;
     createdAt: string;
@@ -127,9 +130,10 @@ function strArr(v: unknown, max: number): string[] {
     return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim()).slice(0, max) : [];
 }
 
-function systemPrompt(locale: "tr" | "en") {
-    if (locale === "en") {
+function systemPrompt(locale: Lang) {
+    if (locale !== "tr") {
         return [
+            `Write ALL text values in ${LANGS[locale]}. Use metric units (kg, cm) unless told otherwise.`,
             "You are an assistant for personal trainers. You interpret ONE client's fitness assessment for the COACH (not the client).",
             "Focus on change versus the previous assessment when it is provided; otherwise describe the starting point.",
             "Use the given status labels (they come from age/sex norm tables); do not invent norms.",
@@ -154,7 +158,8 @@ export const recordAiComment = onCall<Req>(
         const uid = request.auth?.uid;
         if (!uid) throw new HttpsError("unauthenticated", "Login required.");
         const { recordId, force } = request.data ?? {};
-        const locale: "tr" | "en" = request.data?.locale === "en" ? "en" : "tr";
+        const raw = String(request.data?.locale ?? "tr").slice(0, 2).toLowerCase();
+        const locale: Lang = raw in LANGS ? (raw as Lang) : "tr";
         if (!recordId || typeof recordId !== "string") throw new HttpsError("invalid-argument", "recordId required.");
 
         const db = admin.firestore();

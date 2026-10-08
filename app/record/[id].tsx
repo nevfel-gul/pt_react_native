@@ -1,5 +1,6 @@
 // app/record/[id].tsx
 import type { ThemeUI } from "@/constants/types";
+import { appLocale } from "@/constants/languages";
 import { useTheme } from "@/constants/usetheme";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -238,7 +239,7 @@ export default function RecordDetailScreen() {
                             label={t("recordDetail.label.dob")}
                             value={
                                 student?.dateOfBirth
-                                    ? new Date(student.dateOfBirth).toLocaleDateString("tr-TR")
+                                    ? new Date(student.dateOfBirth).toLocaleDateString(appLocale())
                                     : "-"
                             }
                         />

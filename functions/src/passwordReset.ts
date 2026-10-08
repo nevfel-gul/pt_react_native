@@ -17,9 +17,18 @@ const THROTTLE_MAX = 3;
 const THROTTLE_WINDOW_MS = 60 * 60 * 1000;
 
 // Firebase'in ürettiği oobCode'un geçerlilik süresi (bilgi amaçlı, metinde geçiyor).
-const LINK_TTL_LABEL = { tr: "1 saat", en: "1 hour" };
+const LINK_TTL_LABEL: Record<Locale, string> = {
+    tr: "1 saat",
+    en: "1 hour",
+    de: "1 Stunde",
+    es: "1 hora",
+    pt: "1 hora",
+    fr: "1 heure",
+    it: "1 ora",
+};
 
-type Locale = "tr" | "en";
+const LOCALES = ["tr", "en", "de", "es", "pt", "fr", "it"] as const;
+type Locale = (typeof LOCALES)[number];
 
 type RequestPasswordResetInput = {
     email?: string;
@@ -55,7 +64,9 @@ function extractOobCode(firebaseLink: string) {
 }
 
 function buildResetUrl(oobCode: string, locale: Locale) {
-    return `${SITE_ORIGIN}/${locale}/${RESET_PATH}?oobCode=${encodeURIComponent(oobCode)}`;
+    // Sitede sıfırlama sayfası şimdilik yalnızca /tr ve /en altında var.
+    const sitePath = locale === "tr" ? "tr" : "en";
+    return `${SITE_ORIGIN}/${sitePath}/${RESET_PATH}?oobCode=${encodeURIComponent(oobCode)}`;
 }
 
 /**
@@ -94,68 +105,130 @@ async function assertNotThrottled(email: string) {
 // -------------------------
 // E-posta şablonu
 // -------------------------
+type Copy = {
+    subject: string;
+    preheader: string;
+    heading: string;
+    intro: string;
+    cta: string;
+    expiry: (ttl: string) => string;
+    fallback: string;
+    ignore: string;
+    help: string;
+    signature: string;
+};
+
+const COPY: Record<Locale, Copy> = {
+    tr: {
+        subject: "AthleTrack AI — Şifre sıfırlama",
+        preheader: "Şifrenizi sıfırlamak için bağlantı.",
+        heading: "Şifreni sıfırla",
+        intro: "AthleTrack AI hesabın için bir şifre sıfırlama talebi aldık. Yeni şifreni belirlemek için aşağıdaki butona tıkla.",
+        cta: "Yeni şifre belirle",
+        expiry: (ttl) => `Bu bağlantı <strong>${ttl}</strong> boyunca geçerli ve yalnızca bir kez kullanılabilir.`,
+        fallback: "Buton çalışmıyorsa bu adresi tarayıcına yapıştır:",
+        ignore: "Bu talebi sen yapmadıysan bu e-postayı yok sayabilirsin — şifren değişmeden kalır.",
+        help: "Sorun mu var?",
+        signature: "Sağlıkla kal,<br>AthleTrack AI ekibi",
+    },
+    en: {
+        subject: "AthleTrack AI — Reset your password",
+        preheader: "A link to reset your password.",
+        heading: "Reset your password",
+        intro: "We received a request to reset the password for your AthleTrack AI account. Click the button below to choose a new one.",
+        cta: "Set a new password",
+        expiry: (ttl) => `This link is valid for <strong>${ttl}</strong> and can only be used once.`,
+        fallback: "If the button doesn't work, paste this address into your browser:",
+        ignore: "If you didn't request this, you can safely ignore this email — your password won't change.",
+        help: "Need help?",
+        signature: "Stay strong,<br>The AthleTrack AI team",
+    },
+    de: {
+        subject: "AthleTrack AI — Passwort zurücksetzen",
+        preheader: "Ein Link zum Zurücksetzen deines Passworts.",
+        heading: "Passwort zurücksetzen",
+        intro: "Wir haben eine Anfrage zum Zurücksetzen des Passworts für dein AthleTrack AI-Konto erhalten. Tippe auf die Schaltfläche, um ein neues festzulegen.",
+        cta: "Neues Passwort festlegen",
+        expiry: (ttl) => `Dieser Link ist <strong>${ttl}</strong> gültig und kann nur einmal verwendet werden.`,
+        fallback: "Falls die Schaltfläche nicht funktioniert, füge diese Adresse in deinen Browser ein:",
+        ignore: "Wenn du das nicht angefordert hast, kannst du diese E-Mail ignorieren — dein Passwort bleibt unverändert.",
+        help: "Brauchst du Hilfe?",
+        signature: "Bleib stark,<br>Dein AthleTrack AI-Team",
+    },
+    es: {
+        subject: "AthleTrack AI — Restablecer contraseña",
+        preheader: "Un enlace para restablecer tu contraseña.",
+        heading: "Restablece tu contraseña",
+        intro: "Recibimos una solicitud para restablecer la contraseña de tu cuenta de AthleTrack AI. Pulsa el botón para elegir una nueva.",
+        cta: "Crear nueva contraseña",
+        expiry: (ttl) => `Este enlace es válido durante <strong>${ttl}</strong> y solo se puede usar una vez.`,
+        fallback: "Si el botón no funciona, pega esta dirección en tu navegador:",
+        ignore: "Si no lo solicitaste, puedes ignorar este correo — tu contraseña no cambiará.",
+        help: "¿Necesitas ayuda?",
+        signature: "¡A por todas!<br>El equipo de AthleTrack AI",
+    },
+    pt: {
+        subject: "AthleTrack AI — Redefinir senha",
+        preheader: "Um link para redefinir sua senha.",
+        heading: "Redefina sua senha",
+        intro: "Recebemos uma solicitação para redefinir a senha da sua conta AthleTrack AI. Toque no botão abaixo para escolher uma nova.",
+        cta: "Definir nova senha",
+        expiry: (ttl) => `Este link é válido por <strong>${ttl}</strong> e só pode ser usado uma vez.`,
+        fallback: "Se o botão não funcionar, cole este endereço no seu navegador:",
+        ignore: "Se você não fez essa solicitação, pode ignorar este e-mail — sua senha não será alterada.",
+        help: "Precisa de ajuda?",
+        signature: "Bons treinos,<br>Equipe AthleTrack AI",
+    },
+    fr: {
+        subject: "AthleTrack AI — Réinitialiser le mot de passe",
+        preheader: "Un lien pour réinitialiser votre mot de passe.",
+        heading: "Réinitialisez votre mot de passe",
+        intro: "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte AthleTrack AI. Appuyez sur le bouton ci-dessous pour en choisir un nouveau.",
+        cta: "Définir un nouveau mot de passe",
+        expiry: (ttl) => `Ce lien est valable <strong>${ttl}</strong> et ne peut être utilisé qu'une seule fois.`,
+        fallback: "Si le bouton ne fonctionne pas, collez cette adresse dans votre navigateur :",
+        ignore: "Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail — votre mot de passe ne changera pas.",
+        help: "Besoin d'aide ?",
+        signature: "Restez en forme,<br>L'équipe AthleTrack AI",
+    },
+    it: {
+        subject: "AthleTrack AI — Reimposta la password",
+        preheader: "Un link per reimpostare la password.",
+        heading: "Reimposta la password",
+        intro: "Abbiamo ricevuto una richiesta di reimpostazione della password del tuo account AthleTrack AI. Tocca il pulsante qui sotto per sceglierne una nuova.",
+        cta: "Imposta una nuova password",
+        expiry: (ttl) => `Questo link è valido per <strong>${ttl}</strong> e può essere usato una sola volta.`,
+        fallback: "Se il pulsante non funziona, incolla questo indirizzo nel browser:",
+        ignore: "Se non hai fatto tu la richiesta, puoi ignorare questa email — la tua password non cambierà.",
+        help: "Serve aiuto?",
+        signature: "Forza e costanza,<br>Il team di AthleTrack AI",
+    },
+};
+
 export function subjectFor(locale: Locale) {
-    return locale === "tr"
-        ? "AthleTrack AI — Şifre sıfırlama"
-        : "AthleTrack AI — Reset your password";
+    return COPY[locale].subject;
 }
 
 export function textBody(locale: Locale, resetUrl: string) {
-    if (locale === "tr") {
-        return [
-            "AthleTrack AI hesabınız için şifre sıfırlama talebi aldık.",
-            "",
-            "Yeni şifrenizi belirlemek için:",
-            resetUrl,
-            "",
-            `Bu bağlantı ${LINK_TTL_LABEL.tr} boyunca geçerlidir ve yalnızca bir kez kullanılabilir.`,
-            "",
-            "Bu talebi siz yapmadıysanız bu e-postayı yok sayabilirsiniz; şifreniz değişmez.",
-            "",
-            `Sorunuz olursa: ${SUPPORT_ADDRESS}`,
-            "AthleTrack AI",
-        ].join("\n");
-    }
+    const c = COPY[locale];
+    const strip = (h: string) => h.replace(/<br>/g, "\n").replace(/<[^>]+>/g, "");
     return [
-        "We received a request to reset the password for your AthleTrack AI account.",
+        strip(c.intro),
         "",
-        "Choose a new password here:",
         resetUrl,
         "",
-        `This link is valid for ${LINK_TTL_LABEL.en} and can only be used once.`,
+        strip(c.expiry(LINK_TTL_LABEL[locale])),
         "",
-        "If you didn't request this, you can safely ignore this email — your password won't change.",
+        strip(c.ignore),
         "",
-        `Questions? ${SUPPORT_ADDRESS}`,
+        `${c.help} ${SUPPORT_ADDRESS}`,
         "AthleTrack AI",
     ].join("\n");
 }
 
 export function htmlBody(locale: Locale, resetUrl: string) {
-    const copy =
-        locale === "tr"
-            ? {
-                preheader: "Şifrenizi sıfırlamak için bağlantı.",
-                heading: "Şifreni sıfırla",
-                intro: "AthleTrack AI hesabın için bir şifre sıfırlama talebi aldık. Yeni şifreni belirlemek için aşağıdaki butona tıkla.",
-                cta: "Yeni şifre belirle",
-                expiry: `Bu bağlantı <strong>${LINK_TTL_LABEL.tr}</strong> boyunca geçerli ve yalnızca bir kez kullanılabilir.`,
-                fallback: "Buton çalışmıyorsa bu adresi tarayıcına yapıştır:",
-                ignore: "Bu talebi sen yapmadıysan bu e-postayı yok sayabilirsin — şifren değişmeden kalır.",
-                help: "Sorun mu var?",
-                signature: "Sağlıkla kal,<br>AthleTrack AI ekibi",
-            }
-            : {
-                preheader: "A link to reset your password.",
-                heading: "Reset your password",
-                intro: "We received a request to reset the password for your AthleTrack AI account. Click the button below to choose a new one.",
-                cta: "Set a new password",
-                expiry: `This link is valid for <strong>${LINK_TTL_LABEL.en}</strong> and can only be used once.`,
-                fallback: "If the button doesn't work, paste this address into your browser:",
-                ignore: "If you didn't request this, you can safely ignore this email — your password won't change.",
-                help: "Need help?",
-                signature: "Stay strong,<br>The AthleTrack AI team",
-            };
+    const base = COPY[locale];
+    const copy = { ...base, expiry: base.expiry(LINK_TTL_LABEL[locale]) };
 
     return `<!doctype html>
 <html lang="${locale}">
@@ -271,7 +344,7 @@ export const requestPasswordReset = onCall(
         const traceId = Math.random().toString(36).slice(2, 10);
         const data = (request.data ?? {}) as RequestPasswordResetInput;
 
-        const locale: Locale = data.locale === "en" ? "en" : "tr";
+        const locale: Locale = (LOCALES as readonly string[]).includes(String(data.locale)) ? (data.locale as Locale) : "tr";
         const rawEmail = typeof data.email === "string" ? data.email : "";
         const email = normalizeEmail(rawEmail);
 

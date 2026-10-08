@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { durationLabel, pushText } from "../i18n/pushMessages";
 import { getPushRecipients, PushTarget, sendPushBatch } from "../push";
 
 const db = admin.firestore();
@@ -12,10 +13,10 @@ const QUIET_HOURS_START = 22; // 22:00'dan sonra gönderme
 const QUIET_HOURS_END = 9;    // 09:00'dan önce gönderme
 
 const TRIGGERS = [
-    { key: "hour1", ms: 1 * 60 * 60 * 1000, label: "1 saat" },
-    { key: "day1", ms: 24 * 60 * 60 * 1000, label: "1 gün" },
-    { key: "day3", ms: 3 * 24 * 60 * 60 * 1000, label: "3 gün" },
-    { key: "day7", ms: 7 * 24 * 60 * 60 * 1000, label: "7 gün" },
+    { key: "hour1", ms: 1 * 60 * 60 * 1000, unit: "hour", n: 1 },
+    { key: "day1", ms: 24 * 60 * 60 * 1000, unit: "day", n: 1 },
+    { key: "day3", ms: 3 * 24 * 60 * 60 * 1000, unit: "day", n: 3 },
+    { key: "day7", ms: 7 * 24 * 60 * 60 * 1000, unit: "day", n: 7 },
 ] as const;
 
 function hourInTz(date: Date): number {
@@ -51,7 +52,8 @@ export const noRecordReminderJob = onSchedule(
             studentId: string;
             userId: string;
             triggerKey: string;
-            label: string;
+            unit: "hour" | "day";
+            n: number;
             newFlags: Record<string, boolean>;
         };
 
@@ -88,7 +90,8 @@ export const noRecordReminderJob = onSchedule(
                 studentId: doc.id,
                 userId,
                 triggerKey: latest.key,
-                label: latest.label,
+                unit: latest.unit,
+                n: latest.n,
                 newFlags,
             });
         }
@@ -112,14 +115,17 @@ export const noRecordReminderJob = onSchedule(
                     )
             );
 
-            const token = recipients.get(item.userId);
-            if (!token) continue;
+            const recipient = recipients.get(item.userId);
+            if (!recipient) continue;
 
+            const msg = pushText("noRecord", recipient.lang, {
+                label: durationLabel(recipient.lang, item.unit, item.n),
+            });
             targets.push({
                 userId: item.userId,
-                token,
-                title: "Kayıt Oluşturulmadı ⚠️",
-                body: `Öğrenci eklendi ancak ${item.label} içinde değerlendirme girilmedi.`,
+                token: recipient.token,
+                title: msg.title,
+                body: msg.body,
                 data: { type: "noRecord", studentId: item.studentId },
             });
         }

@@ -4,6 +4,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import OpenAI from "openai";
+import { langOf, MORNING } from "./i18n/pushMessages";
 import { PushTarget, sendPushBatch } from "./push";
 
 setGlobalOptions({ region: "europe-west1" });
@@ -526,26 +527,20 @@ export const morningMotivation = onSchedule(
             .where("pushEnabled", "==", true)
             .get();
 
-        const messages = [
-            "Bugün antrenman günü 🔥",
-            "Hedefine 1 gün daha yaklaştın 🏋️",
-            "Öğrencilerin seni bekliyor 👀",
-            "Güne bir ölçümle başla 💪",
-        ];
-
-        const random =
-            messages[Math.floor(Math.random() * messages.length)];
+        // Herkese aynı gün aynı mesaj (sırası) gitsin, ama kendi dilinde.
+        const pick = Math.floor(Math.random() * MORNING.tr.bodies.length);
 
         const targets: PushTarget[] = [];
 
         snap.forEach((doc) => {
             const u = doc.data();
             if (typeof u.pushToken === "string" && u.pushToken) {
+                const m = MORNING[langOf(u)];
                 targets.push({
                     userId: doc.id,
                     token: u.pushToken,
-                    title: "Günaydın ☀️",
-                    body: random,
+                    title: m.title,
+                    body: m.bodies[pick] ?? m.bodies[0],
                     data: { type: "morningMotivation" },
                 });
             }

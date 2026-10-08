@@ -1,4 +1,5 @@
 import StudentPackages from "@/components/StudentPackages";
+import { appLocale } from "@/constants/languages";
 import WhatsAppSheet from "@/components/WhatsAppSheet";
 import TransformationCard from "@/components/TransformationCard";
 import { formatMoney } from "@/services/packages";
@@ -136,7 +137,7 @@ const formatDateTR = (iso?: string) => {
   if (parts.length !== 3) return "-";
   const [y, m, d] = parts;
   if (!y || !m || !d) return "-";
-  return new Date(y, m - 1, d).toLocaleDateString("tr-TR");
+  return new Date(y, m - 1, d).toLocaleDateString(appLocale());
 };
 
 function num(v: any): number | null {
@@ -170,10 +171,10 @@ function monthKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 function formatShortDateTR(d: Date) {
-  return d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" });
+  return d.toLocaleDateString(appLocale(), { day: "2-digit", month: "2-digit" });
 }
 function formatLongDateTR(d: Date) {
-  return d.toLocaleDateString("tr-TR", {
+  return d.toLocaleDateString(appLocale(), {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -219,7 +220,7 @@ function buildDailyPoints(records: any[], days: number): ChartPoint[] {
       const date = new Date(y, m - 1, d);
       const label =
         days <= 7
-          ? date.toLocaleDateString("tr-TR", { weekday: "short" })
+          ? date.toLocaleDateString(appLocale(), { weekday: "short" })
           : i % 5 === 0 || i === days - 1
             ? formatShortDateTR(date)
             : "";
@@ -283,8 +284,8 @@ function buildMonthlyPoints(records: any[]): ChartPoint[] {
     map[key] = 0;
     points.push({
       key,
-      label: current.toLocaleDateString("tr-TR", { month: "short" }),
-      fullLabel: current.toLocaleDateString("tr-TR", {
+      label: current.toLocaleDateString(appLocale(), { month: "short" }),
+      fullLabel: current.toLocaleDateString(appLocale(), {
         month: "long",
         year: "numeric",
       }),
@@ -727,7 +728,7 @@ function MetricLineChart({
                 fontWeight: "700",
               }}
             >
-              {activePoint.date.toLocaleDateString("tr-TR", {
+              {activePoint.date.toLocaleDateString(appLocale(), {
                 day: "2-digit",
                 month: "long",
                 year: "numeric",
@@ -1416,7 +1417,7 @@ function AnalyticsCard({
           summary.selectedPeriodRecords.map((r: any) => {
             const dt = getRecordDate(r);
             const ds = dt
-              ? `${dt.toLocaleDateString("tr-TR")} • ${dt.toLocaleTimeString("tr-TR")}`
+              ? `${dt.toLocaleDateString(appLocale())} • ${dt.toLocaleTimeString(appLocale())}`
               : "-";
             return (
               <View
@@ -1494,7 +1495,7 @@ function TestsCard({
 
   const selectedDt = getRecordDate(selectedRecord);
   const selectedDateLabel = selectedDt
-    ? `${selectedDt.toLocaleDateString("tr-TR")} • ${selectedDt.toLocaleTimeString("tr-TR")}`
+    ? `${selectedDt.toLocaleDateString(appLocale())} • ${selectedDt.toLocaleTimeString(appLocale())}`
     : "-";
 
   // ─── Gauge konfigürasyonları — tamamen dinamik ────────────────────────────
@@ -1689,7 +1690,7 @@ function TestsCard({
             records.slice(0, 12).map((r, i) => {
               const dt = getRecordDate(r);
               const ds = dt
-                ? `${dt.toLocaleDateString("tr-TR")} • ${dt.toLocaleTimeString("tr-TR")}`
+                ? `${dt.toLocaleDateString(appLocale())} • ${dt.toLocaleTimeString(appLocale())}`
                 : "-";
               const isActive = i === safeIdx;
               return (
@@ -1985,7 +1986,7 @@ export default function StudentDetailScreen() {
     ({ item }: { item: RecordItem }) => {
       const dt = item.createdAt?.toDate ? item.createdAt.toDate() : null;
       const dateStr = dt
-        ? `${dt.toLocaleDateString("tr-TR")} • ${dt.toLocaleTimeString("tr-TR")}`
+        ? `${dt.toLocaleDateString(appLocale())} • ${dt.toLocaleTimeString(appLocale())}`
         : "-";
       return (
         <TouchableOpacity
@@ -2359,7 +2360,7 @@ export default function StudentDetailScreen() {
                     {notes.slice(0, 12).map((n) => {
                       const dt = n.createdAt?.toDate ? n.createdAt.toDate() : null;
                       const dateStr = dt
-                        ? `${dt.toLocaleDateString("tr-TR")} • ${dt.toLocaleTimeString("tr-TR")}`
+                        ? `${dt.toLocaleDateString(appLocale())} • ${dt.toLocaleTimeString(appLocale())}`
                         : "-";
                       const raw = (n.text ?? "").trim();
                       const lines = raw.split("\n").map((x) => x.trim()).filter(Boolean);
@@ -2442,7 +2443,7 @@ export default function StudentDetailScreen() {
               name: student.name,
               remaining: (student as any).activePackage?.remaining,
               amount: (student as any).activePackage?.unpaid
-                ? formatMoney((student as any).activePackage.unpaid, "TRY", i18n.language === "en" ? "en-US" : "tr-TR")
+                ? formatMoney((student as any).activePackage.unpaid, (student as any).activePackage.currency ?? "TRY", appLocale())
                 : undefined,
             }}
             templates={[

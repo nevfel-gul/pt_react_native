@@ -10,6 +10,7 @@ import {
     where,
     writeBatch,
 } from "firebase/firestore";
+import * as Localization from "expo-localization";
 import { db } from "./firebase";
 import { studentDocRef } from "./firestorePaths";
 
@@ -61,6 +62,7 @@ export type ActivePackageSummary = {
     endDate: string | null;
     /** Ödenmemiş tutar (fiyat girilmediyse 0). */
     unpaid: number;
+    currency?: string;
 };
 
 export const packagesColRef = (uid: string, sid: string) =>
@@ -92,6 +94,7 @@ function summaryOf(id: string, p: Omit<SessionPackage, "id">): ActivePackageSumm
         remaining: remainingOf(p),
         endDate: p.endDate ?? null,
         unpaid: unpaidOf(p),
+        currency: p.currency,
     };
 }
 
@@ -115,7 +118,7 @@ export async function createPackage(uid: string, sid: string, input: NewPackageI
         usedSessions: 0,
         price: input.price,
         paidAmount: Math.max(0, input.paidAmount || 0),
-        currency: input.currency ?? "TRY",
+        currency: input.currency ?? defaultCurrency(),
         startDate: input.startDate,
         endDate: input.endDate,
         note: input.note,
@@ -230,6 +233,24 @@ export async function deletePackage(uid: string, sid: string, packageId: string,
     batch.delete(doc(packagesColRef(uid, sid), packageId));
     if (wasActive) batch.update(studentDocRef(uid, sid), { activePackage: deleteField() });
     await batch.commit();
+}
+
+/** Yeni paketlerin para birimi: cihaz bölgesinin parası (TR → TRY, DE → EUR, BR → BRL…). */
+export function defaultCurrency(): string {
+    try {
+        return Localization.getLocales()?.[0]?.currencyCode || "TRY";
+    } catch {
+        return "TRY";
+    }
+}
+
+/** "EUR" → "€", "TRY" → "₺" (dile göre). */
+export function currencySymbol(currency: string, locale: string): string {
+    try {
+        return new Intl.NumberFormat(locale, { style: "currency", currency }).formatToParts(0).find((p) => p.type === "currency")?.value ?? currency;
+    } catch {
+        return currency === "TRY" ? "₺" : currency;
+    }
 }
 
 export function formatMoney(amount: number, currency: string, locale: string) {

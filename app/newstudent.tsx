@@ -1,4 +1,5 @@
 import { usePremium } from "@/constants/PremiumContext";
+import { appLocale } from "@/constants/languages";
 import { useRating } from "@/constants/RatingContext";
 import {
     ACTIVITY_LEVELS,
@@ -269,7 +270,7 @@ const YeniOgrenciScreen = () => {
     const formatDateTR = (iso?: string) => {
         const d = parseISODate(iso);
         if (!d) return "";
-        return d.toLocaleDateString("tr-TR"); // 30.01.2000
+        return d.toLocaleDateString(appLocale()); // 30.01.2000
     };
 
     const onDobChange = (event: DateTimePickerEvent, selected?: Date) => {

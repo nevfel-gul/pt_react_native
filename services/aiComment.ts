@@ -1,5 +1,5 @@
 import { httpsCallable } from "firebase/functions";
-import i18n from "i18next";
+import { currentLanguage } from "@/constants/languages";
 import { functions } from "./firebase";
 
 // Ölçüm sonrası AI yorumu (functions/src/ai/recordAiComment.ts).
@@ -10,19 +10,19 @@ export type RecordAiComment = {
     highlights: string[];
     warnings: string[];
     nextSteps: string[];
-    locale: "tr" | "en";
+    locale: string;
     model: string;
     comparedToPrevious: boolean;
     createdAt: string;
 };
 
-const fn = httpsCallable<{ recordId: string; force?: boolean; locale?: "tr" | "en" }, RecordAiComment>(
+const fn = httpsCallable<{ recordId: string; force?: boolean; locale?: string }, RecordAiComment>(
     functions,
     "recordAiComment",
 );
 
 export async function generateRecordAiComment(recordId: string, force = false): Promise<RecordAiComment> {
-    const res = await fn({ recordId, force, locale: i18n.language === "en" ? "en" : "tr" });
+    const res = await fn({ recordId, force, locale: currentLanguage() });
     return res.data;
 }
 

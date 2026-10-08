@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { langOf, pushText } from "../i18n/pushMessages";
 import { PushTarget, sendPushBatch } from "../push";
 
 const db = admin.firestore();
@@ -32,11 +33,12 @@ export const weeklyAnalyticsReminderJob = onSchedule(
                 .get();
             if (studentsSnap.empty) continue;
 
+            const msg = pushText("weeklyAnalytics", langOf(userDoc.data()));
             targets.push({
                 userId: userDoc.id,
                 token,
-                title: "Haftalık Analiz Zamanı 📊",
-                body: "Öğrencilerinin gelişim analizlerine baktın mı? Kontrol etmeyi unutma.",
+                title: msg.title,
+                body: msg.body,
                 data: { type: "weeklyAnalytics", screen: "analytics" },
             });
         }

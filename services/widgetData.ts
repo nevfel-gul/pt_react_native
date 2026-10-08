@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { appLocale } from "@/constants/languages";
 import { getDocs } from "firebase/firestore";
 import i18n from "i18next";
 import { Platform } from "react-native";
@@ -132,7 +133,7 @@ export async function buildWidgetSnapshot(uid: string): Promise<WidgetSnapshot> 
         dueSoon,
         activeStudents,
         labels: labels(),
-        locale: i18n.language === "en" ? "en-US" : "tr-TR",
+        locale: appLocale(),
     };
 }
 
@@ -146,7 +147,7 @@ export function signedOutSnapshot(): WidgetSnapshot {
         dueSoon: 0,
         activeStudents: 0,
         labels: labels(),
-        locale: i18n.language === "en" ? "en-US" : "tr-TR",
+        locale: appLocale(),
     };
 }
 

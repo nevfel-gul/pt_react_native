@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { langOf, pushText } from "../i18n/pushMessages";
 import { PushTarget, sendPushBatch } from "../push";
 
 const db = admin.firestore();
@@ -56,11 +57,12 @@ export const noStudentReminderJob = onSchedule(
 
             if (!studentsSnap.empty) continue;
 
+            const msg = pushText("noStudent", langOf(userData));
             targets.push({
                 userId: userDoc.id,
                 token,
-                title: "Öğrenci Eklemeyi Unuttun 👀",
-                body: "Henüz hiç öğrenci eklemedin. Hemen ekleyip takibe başla.",
+                title: msg.title,
+                body: msg.body,
                 data: { type: "noStudent", screen: "home" },
             });
 

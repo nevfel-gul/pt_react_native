@@ -1,3 +1,4 @@
+import { appLocale } from "@/constants/languages";
 import {
   bloodPressureCategory,
   bloodPressureNeedsReferral,
@@ -1973,7 +1974,7 @@ export default function NewRecordScreen() {
                       <Calendar size={14} color="#9ca3af" />
                       <Text style={styles.metaText}>
                         {new Date(student.dateOfBirth).toLocaleDateString(
-                          "tr-TR",
+                          appLocale(),
                         )}
                       </Text>
                     </View>

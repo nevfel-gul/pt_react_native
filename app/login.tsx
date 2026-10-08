@@ -11,6 +11,9 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { requestPasswordReset } from "@/services/passwordReset";
+import { setAppLanguage } from "@/services/i18n";
+import { normalizeLanguage, sitePathLanguage } from "@/constants/languages";
+import LanguagePicker from "@/components/LanguagePicker";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
@@ -74,7 +77,7 @@ export default function LoginScreen() {
 
   // ✅ DİNAMİK LEGAL LİNKLER - dile göre otomatik değişir
   const legalLinks = useMemo(() => {
-    const l = i18n.language.startsWith("tr") ? "tr" : "en";
+    const l = sitePathLanguage(normalizeLanguage(i18n.language));
     return {
       terms: `https://www.athletrackai.com/${l}/terms-of-service`,
       privacy: `https://www.athletrackai.com/${l}/privacy-policy`,
@@ -109,9 +112,14 @@ export default function LoginScreen() {
         setRememberMe(isEnabled);
         if (isEnabled && savedEmail) setEmail(savedEmail);
 
+        // Eski sürüm giriş ekranında seçilen dili ayrı bir anahtara yazıyordu
+        // ("app_lang"); uygulama ise "app_language" okuyor. Bir kez taşı.
         const savedLang = await AsyncStorage.getItem(STORAGE_LANG_KEY);
-        if (savedLang && savedLang !== i18n.language) {
-          await i18n.changeLanguage(savedLang);
+        if (savedLang) {
+          await AsyncStorage.removeItem(STORAGE_LANG_KEY);
+          if (normalizeLanguage(savedLang) !== normalizeLanguage(i18n.language)) {
+            await setAppLanguage(normalizeLanguage(savedLang));
+          }
         }
       } catch {
         // sessiz
@@ -128,11 +136,6 @@ export default function LoginScreen() {
     } catch { }
   };
 
-  const persistLang = async (lang: "tr" | "en") => {
-    try {
-      await AsyncStorage.setItem(STORAGE_LANG_KEY, lang);
-    } catch { }
-  };
 
   const onToggleRemember = async () => {
     const next = !rememberMe;
@@ -145,11 +148,8 @@ export default function LoginScreen() {
     if (rememberMe) await persistRemember(true, v);
   };
 
-  const toggleLang = async () => {
-    const next = (i18n.language || "tr").startsWith("tr") ? "en" : "tr";
-    await i18n.changeLanguage(next);
-    await persistLang(next);
-  };
+  const [langOpen, setLangOpen] = useState(false);
+  const toggleLang = () => setLangOpen(true);
 
   const openLegalLink = async (url: string) => {
     try {
@@ -173,7 +173,7 @@ export default function LoginScreen() {
       setLoading(true);
       await requestPasswordReset({
         email: email.trim(),
-        locale: (i18n.language || "tr").startsWith("tr") ? "tr" : "en",
+        locale: normalizeLanguage(i18n.language),
       });
       track("password_reset_requested");
       Alert.alert(t("login.forgot.sentTitle"), t("login.forgot.sent"));
@@ -234,6 +234,9 @@ export default function LoginScreen() {
           displayName: cleanName,
           username: cleanUsername,
           pushEnabled: true,
+          // Bildirim / e-posta dili (setDoc merge değil: burada yazılmazsa
+          // kayıt anındaki dil senkronu bu yazımla ezilebiliyordu).
+          language: normalizeLanguage(i18n.language),
           legalApprovals: {
             terms: acceptMainLegal,
             privacy: acceptMainLegal,
@@ -260,6 +263,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.root}>
+      <LanguagePicker visible={langOpen} onClose={() => setLangOpen(false)} />
       <LinearGradient
         colors={
           mode === "dark"
@@ -295,7 +299,7 @@ export default function LoginScreen() {
                 style={styles.langBtn}
               >
                 <Text style={styles.langText}>
-                  {(i18n.language || "tr").startsWith("tr") ? "TR" : "EN"}
+                  {normalizeLanguage(i18n.language).toUpperCase()}
                 </Text>
               </TouchableOpacity>
             </View>

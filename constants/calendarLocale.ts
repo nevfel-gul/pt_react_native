@@ -1,9 +1,10 @@
 // constants/calendarLocale.ts
 // react-native-calendars ve tarih seçicilerin dilini uygulama diline bağlar.
 import i18n from "@/services/i18n";
+import { LANGUAGE_META, normalizeLanguage, type AppLanguage } from "@/constants/languages";
 import { LocaleConfig } from "react-native-calendars";
 
-export type CalendarLang = "tr" | "en";
+export type CalendarLang = AppLanguage;
 
 type CalendarLocale = {
     monthNames: string[];
@@ -34,25 +35,71 @@ export const CALENDAR_LOCALES: Record<CalendarLang, CalendarLocale> = {
         amDesignator: "AM",
         pmDesignator: "PM",
     },
+    de: {
+        monthNames: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+        monthNamesShort: ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"],
+        dayNames: ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"],
+        dayNamesShort: ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
+        today: "Heute",
+        amDesignator: "AM",
+        pmDesignator: "PM",
+    },
+    es: {
+        monthNames: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
+        monthNamesShort: ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"],
+        dayNames: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
+        dayNamesShort: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"],
+        today: "Hoy",
+        amDesignator: "a. m.",
+        pmDesignator: "p. m.",
+    },
+    pt: {
+        monthNames: ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"],
+        monthNamesShort: ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"],
+        dayNames: ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"],
+        dayNamesShort: ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"],
+        today: "Hoje",
+        amDesignator: "AM",
+        pmDesignator: "PM",
+    },
+    fr: {
+        monthNames: ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"],
+        monthNamesShort: ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."],
+        dayNames: ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
+        dayNamesShort: ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
+        today: "Aujourd'hui",
+        amDesignator: "AM",
+        pmDesignator: "PM",
+    },
+    it: {
+        monthNames: ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"],
+        monthNamesShort: ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"],
+        dayNames: ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"],
+        dayNamesShort: ["dom", "lun", "mar", "mer", "gio", "ven", "sab"],
+        today: "Oggi",
+        amDesignator: "AM",
+        pmDesignator: "PM",
+    },
 };
 
 /** i18n dil kodunu ("tr-TR", "en-US" ...) desteklenen takvim diline indirger. */
 export function calendarLangOf(lang?: string | null): CalendarLang {
-    return (lang ?? i18n.language ?? "tr").toLowerCase().startsWith("tr") ? "tr" : "en";
+    return normalizeLanguage(lang ?? i18n.language);
 }
 
-/** Türkçe'de hafta pazartesi, İngilizce'de pazar başlar. */
+/** Hafta pazartesi başlar; yalnızca ABD İngilizcesinde pazar. */
 export function calendarFirstDay(lang: CalendarLang): number {
-    return lang === "tr" ? 1 : 0;
+    return lang === "en" ? 0 : 1;
 }
 
 /** DateTimePicker (iOS) için BCP-47 kodu. */
 export function pickerLocaleOf(lang: CalendarLang): string {
-    return lang === "tr" ? "tr-TR" : "en-US";
+    return LANGUAGE_META[lang].locale;
 }
 
-LocaleConfig.locales.tr = CALENDAR_LOCALES.tr;
-LocaleConfig.locales.en = CALENDAR_LOCALES.en;
+for (const [code, loc] of Object.entries(CALENDAR_LOCALES)) {
+    LocaleConfig.locales[code] = loc;
+}
 
 export function applyCalendarLocale(lang?: string | null): CalendarLang {
     const resolved = calendarLangOf(lang);

@@ -39,6 +39,7 @@ import { formatRemaining, promoErrorKey, redeemPromoCoupon } from "@/services/pr
 
 import i18n from "@/services/i18n";
 import { track } from '@/services/analytics';
+import { sitePathLanguage } from '@/constants/languages';
 import { isOwnershipConflict, verifyApplePurchase, type VerifiedSubscription } from '@/services/billing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Purchase } from 'react-native-iap';
@@ -1078,8 +1079,7 @@ export default function PaywallMonthlyScreen({
               <Text
                 style={{ color: theme.colors.primary, textDecorationLine: 'underline' }}
                 onPress={() => {
-                  const l = i18n.language.startsWith('tr') ? 'tr' : 'en';
-                  Linking.openURL(`https://www.athletrackai.com/${l}/terms-of-service`);
+                  Linking.openURL(`https://www.athletrackai.com/${sitePathLanguage()}/terms-of-service`);
                 }}
               >
                 {t('paywall.legal.terms')}
@@ -1088,8 +1088,7 @@ export default function PaywallMonthlyScreen({
               <Text
                 style={{ color: theme.colors.primary, textDecorationLine: 'underline' }}
                 onPress={() => {
-                  const l = i18n.language.startsWith('tr') ? 'tr' : 'en';
-                  Linking.openURL(`https://www.athletrackai.com/${l}/privacy-policy`);
+                  Linking.openURL(`https://www.athletrackai.com/${sitePathLanguage()}/privacy-policy`);
                 }}
               >
                 {t('paywall.legal.privacy')}

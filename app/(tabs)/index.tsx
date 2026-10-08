@@ -1,4 +1,5 @@
 import { auth, functions } from "@/services/firebase";
+import { appLocale } from "@/constants/languages";
 import { track } from "@/services/analytics";
 import { recordsColRef, studentsColRef } from "@/services/firestorePaths";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -338,7 +339,7 @@ export default function KayitlarScreen() {
     }
   }
 
-  const dateLocale = i18n.language?.startsWith("en") ? "en-US" : "tr-TR";
+  const dateLocale = appLocale();
 
   if (loading) {
     return (

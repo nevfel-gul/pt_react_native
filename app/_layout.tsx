@@ -21,6 +21,7 @@ import PromoPopup from "@/components/PromoPopup";
 import AnnouncementPopup from "@/components/AnnouncementPopup";
 import WidgetSync from "@/components/WidgetSync";
 import { identifyUser, resetAnalytics, setUserProperties, track } from "@/services/analytics";
+import { syncUserLanguage } from "@/services/i18n";
 import { db } from "@/services/firebase";
 import {
   ensureAndroidChannelAsync,
@@ -95,6 +96,12 @@ function AppNav() {
   useEffect(() => {
     if (i18n.language) setUserProperties({ appLanguage: i18n.language });
   }, [i18n.language]);
+
+  // Sunucudaki bildirim / e-posta / AI dili için dili hesaba yaz. Dil servisi
+  // yüklenmeden yazılırsa yanlış (varsayılan) dil kaydedilirdi.
+  useEffect(() => {
+    if (user && i18nReady) syncUserLanguage();
+  }, [user, i18nReady]);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { pushText } from "../i18n/pushMessages";
 import { getPushRecipients, PushTarget, sendPushBatch } from "../push";
 
 // ─────────────────────────────────────────────────────────────
@@ -23,30 +24,10 @@ const TZ = "Europe/Istanbul";
 
 type SendType = "lowSessions" | "packageFinished" | "packageExpiring";
 
-function message(type: SendType, name: string): { title: string; body: string } {
-    switch (type) {
-        case "lowSessions":
-            return {
-                title: "Pakette 1 ders kaldı 📦",
-                body: `${name} için son ders. Yeni paketi konuşmanın tam zamanı.`,
-            };
-        case "packageFinished":
-            return {
-                title: "Paket bitti ✅",
-                body: `${name} paketindeki tüm dersleri tamamladı. Devam için yeni paket ekleyebilirsin.`,
-            };
-        case "packageExpiring":
-            return {
-                title: "Paket süresi doluyor ⏳",
-                body: `${name} paketinin süresi 3 gün içinde doluyor, hâlâ dersi var.`,
-            };
-    }
-}
-
 /** Kilit ekranında tam ad görünmesin: "Ayşe K." */
 function shortName(full?: string): string {
     const parts = String(full ?? "").trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return "Öğrencin";
+    if (!parts.length) return "—";
     if (parts.length === 1) return parts[0];
     return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
 }
@@ -167,13 +148,13 @@ export const packageReminderJob = onSchedule(
                     )
             );
 
-            const token = recipients.get(item.userId);
-            if (!token) continue;
+            const recipient = recipients.get(item.userId);
+            if (!recipient) continue;
 
-            const msg = message(item.sendType, item.name);
+            const msg = pushText(item.sendType, recipient.lang, { name: item.name });
             targets.push({
                 userId: item.userId,
-                token,
+                token: recipient.token,
                 title: msg.title,
                 body: msg.body,
                 data: { type: item.sendType, studentId: item.studentId },

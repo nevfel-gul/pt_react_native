@@ -1,4 +1,5 @@
-import { setAppLanguage } from "@/services/i18n";
+import { LANGUAGE_META, normalizeLanguage, sitePathLanguage } from "@/constants/languages";
+import LanguagePicker from "@/components/LanguagePicker";
 import { track } from "@/services/analytics";
 import { openStoreReviewPage } from "@/services/rating";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -46,7 +47,7 @@ const STORAGE_SETTINGS_KEY = "settings_v1";
 
 // ✅ DİNAMİK LEGAL LİNKLER - dile göre otomatik değişir
 const getLegalLinks = (lang: string) => {
-  const l = lang.startsWith("tr") ? "tr" : "en";
+  const l = sitePathLanguage(normalizeLanguage(lang));
   return {
     privacy: `https://www.athletrackai.com/${l}/privacy-policy`,
     terms: `https://www.athletrackai.com/${l}/terms-of-service`,
@@ -127,6 +128,7 @@ export default function SettingsScreen() {
 
   const [activeTab, setActiveTab] = useState<TabKey>("preferences");
   const [settingsReady, setSettingsReady] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
 
   // ✅ DİNAMİK LEGAL LİNKLER
   const legalLinks = useMemo(() => getLegalLinks(i18n.language), [i18n.language]);
@@ -450,7 +452,7 @@ export default function SettingsScreen() {
     try {
       await requestPasswordReset({
         email,
-        locale: (i18n.language || "tr").startsWith("tr") ? "tr" : "en",
+        locale: normalizeLanguage(i18n.language),
       });
       Alert.alert(
         t("settings.security.changePassword"),
@@ -476,9 +478,7 @@ export default function SettingsScreen() {
   }, [t]);
 
   const handleLanguagePress = useCallback(() => {
-    const next = i18n.language === "tr" ? "en" : "tr";
-    track("language_changed", { language: next });
-    setAppLanguage(next);
+    setLangOpen(true);
   }, [i18n.language]);
 
   // ✅ TAB BUTTON
@@ -601,7 +601,7 @@ export default function SettingsScreen() {
             subtitle={t("settings.preference.language.sub")}
             right={
               <Text style={styles.settingValueText}>
-                {i18n.language === "tr" ? "Türkçe 🇹🇷" : "English 🇺🇸"}
+                {`${LANGUAGE_META[normalizeLanguage(i18n.language)].label} ${LANGUAGE_META[normalizeLanguage(i18n.language)].flag}`}
               </Text>
             }
             onPress={handleLanguagePress}
@@ -852,6 +852,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <LanguagePicker visible={langOpen} onClose={() => setLangOpen(false)} />
       <View style={styles.container}>
         {/* HEADER */}
         <View style={styles.header}>

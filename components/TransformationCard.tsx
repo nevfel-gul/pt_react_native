@@ -1,4 +1,5 @@
 import type { ThemeUI } from '@/constants/types';
+import { appLocale, formatPercent } from "@/constants/languages";
 import { useTheme } from '@/constants/usetheme';
 import { normalizeGoals } from '@/constants/studentForm';
 import { track } from '@/services/analytics';
@@ -90,10 +91,9 @@ function fmt(n: number, decimals: number, locale: string) {
   return n.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-/** Yüzde işareti: Türkçede başta (%28), İngilizcede sonda (28%). */
-function pct(m: Metric, value: string, locale: string) {
-  if (m.unit !== '%') return value;
-  return locale.startsWith('tr') ? `%${value}` : `${value}%`;
+/** Yüzde işareti dile göre (constants/languages.ts → formatPercent). */
+function pct(m: Metric, value: string, _locale: string) {
+  return m.unit === '%' ? formatPercent(value) : value;
 }
 
 function displayName(full: string, mode: NameMode, fallback: string) {
@@ -118,7 +118,7 @@ export default function TransformationCard({
   const { t, i18n } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { width: screenW } = useWindowDimensions();
-  const locale = i18n.language === 'en' ? 'en-US' : 'tr-TR';
+  const locale = appLocale();
   const cardRef = useRef<View>(null);
 
   const goals = useMemo(() => normalizeGoals(student.trainingGoals), [student.trainingGoals]);
