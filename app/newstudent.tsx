@@ -1,4 +1,6 @@
 import { usePremium } from "@/constants/PremiumContext";
+import { cmToFtIn, ftInToCm, parseNum } from "@/constants/units";
+import { useUnits } from "@/constants/UnitsContext";
 import { appLocale } from "@/constants/languages";
 import { useRating } from "@/constants/RatingContext";
 import {
@@ -143,6 +145,10 @@ const YeniOgrenciScreen = () => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const { studentLimit, isUnlimited, hasPremium, tier } = usePremium();
+    // Boy her zaman cm saklanır; imperial seçiliyse ft + in olarak girilir.
+    const { system: unitSystem } = useUnits();
+    const [heightFt, setHeightFt] = useState("");
+    const [heightIn, setHeightIn] = useState("");
 
     const today = new Date().toISOString().split("T")[0];
 
@@ -250,6 +256,14 @@ const YeniOgrenciScreen = () => {
 
     // Türkiye numarası (05xx…) ya da ülke koduyla uluslararası numara (+49…).
     const isValidPhone = (p: string) => /^05\d{9}$/.test(p) || /^\+\d{8,15}$/.test(p);
+
+    const onImperialHeight = (ft: string, inch: string) => {
+        setHeightFt(ft);
+        setHeightIn(inch);
+        const f = parseNum(ft);
+        const i = parseNum(inch) ?? 0;
+        updateField("boy", f != null ? String(ftInToCm(f, i)) : "");
+    };
 
     const toISODate = (d: Date) => {
         const y = d.getFullYear();
@@ -365,6 +379,18 @@ const YeniOgrenciScreen = () => {
             }
         })();
     }, [isEdit, id]);
+
+    // Düzenlemede kayıtlı cm değerini ft/in kutularına yansıt (bir kez).
+    const heightSynced = React.useRef(false);
+    useEffect(() => {
+        if (!isEdit || unitSystem !== "imperial" || heightSynced.current) return;
+        const cm = parseNum(form.boy);
+        if (cm == null) return;
+        const { ft, inch } = cmToFtIn(cm);
+        setHeightFt(String(ft));
+        setHeightIn(String(inch));
+        heightSynced.current = true;
+    }, [form.boy, unitSystem, isEdit]);
 
     /* -------------------- submit -------------------- */
     const handleSubmit = async () => {
@@ -506,16 +532,41 @@ const YeniOgrenciScreen = () => {
 
                             <View style={styles.row}>
                                 <View style={styles.rowItem}>
-                                    <FormInput
-                                        theme={theme}
-                                        styles={styles}
-                                        label={t("newstudent.label.height_cm")}
-                                        placeholder={t("newstudent.placeholder.height_cm")}
-                                        keyboardType="numeric"
-                                        value={form.boy}
-                                        onChangeText={(tx) => updateField("boy", tx)}
-                                        error={errors.boy}
-                                    />
+                                    {unitSystem === "imperial" ? (
+                                        <View style={{ marginBottom: 14 }}>
+                                            <Text style={styles.label}>{t("newstudent.label.height_imperial")}</Text>
+                                            <View style={{ flexDirection: "row", gap: 8 }}>
+                                                <TextInput
+                                                    value={heightFt}
+                                                    onChangeText={(tx) => onImperialHeight(tx, heightIn)}
+                                                    placeholder="5 ft"
+                                                    placeholderTextColor={theme.colors.text.muted}
+                                                    keyboardType="number-pad"
+                                                    style={[styles.input, { flex: 1 }]}
+                                                />
+                                                <TextInput
+                                                    value={heightIn}
+                                                    onChangeText={(tx) => onImperialHeight(heightFt, tx)}
+                                                    placeholder="6 in"
+                                                    placeholderTextColor={theme.colors.text.muted}
+                                                    keyboardType="number-pad"
+                                                    style={[styles.input, { flex: 1 }]}
+                                                />
+                                            </View>
+                                            {errors.boy && <Text style={styles.errorText}>{errors.boy}</Text>}
+                                        </View>
+                                    ) : (
+                                        <FormInput
+                                            theme={theme}
+                                            styles={styles}
+                                            label={t("newstudent.label.height_cm")}
+                                            placeholder={t("newstudent.placeholder.height_cm")}
+                                            keyboardType="numeric"
+                                            value={form.boy}
+                                            onChangeText={(tx) => updateField("boy", tx)}
+                                            error={errors.boy}
+                                        />
+                                    )}
                                 </View>
 
                                 <View style={styles.rowItem}>

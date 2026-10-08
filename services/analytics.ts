@@ -79,6 +79,7 @@ export type AnalyticsEvent =
   | "appointment_created"
   | "appointment_deleted"
   | "language_changed"
+  | "units_changed"
   | "theme_changed"
   // Gelir
   | "paywall_viewed"

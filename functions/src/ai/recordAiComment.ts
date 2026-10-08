@@ -130,10 +130,14 @@ function strArr(v: unknown, max: number): string[] {
     return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim()).slice(0, max) : [];
 }
 
-function systemPrompt(locale: Lang) {
+function systemPrompt(locale: Lang, imperial: boolean) {
+    const unitsLine = imperial
+        ? "The input data is metric (kg, cm), but the coach uses IMPERIAL units: convert and write all weights in lb and lengths in inches (1 decimal)."
+        : "Use metric units (kg, cm).";
     if (locale !== "tr") {
         return [
-            `Write ALL text values in ${LANGS[locale]}. Use metric units (kg, cm) unless told otherwise.`,
+            `Write ALL text values in ${LANGS[locale]}.`,
+            unitsLine,
             "You are an assistant for personal trainers. You interpret ONE client's fitness assessment for the COACH (not the client).",
             "Focus on change versus the previous assessment when it is provided; otherwise describe the starting point.",
             "Use the given status labels (they come from age/sex norm tables); do not invent norms.",
@@ -148,6 +152,7 @@ function systemPrompt(locale: Lang) {
         "Verilen sınıflandırmaları kullan (yaş/cinsiyet norm tablolarından geliyor); kendi normunu uydurma.",
         "Tıbbi teşhis koyma, ilaç/tedavi önerme. Tansiyon yüksekse (>=160/100) ya da PAR-Q uyarısı varsa doktor onayı öneren bir uyarı ekle.",
         "Kısa, somut, cesaretlendirici ama dürüst ol. Sayı kullan. Türkçe yaz, 'sen' değil 'öğrenci' diye bahset.",
+        imperial ? "Veri metrik (kg, cm) ama hoca İMPERİAL kullanıyor: ağırlıkları lb, uzunlukları inç olarak (1 ondalık) yaz." : "Metrik birim kullan (kg, cm).",
         'SADECE JSON döndür: {"summary":"2-3 cümle","highlights":["en fazla 3 kısa olumlu değişim"],"warnings":["en fazla 3"],"nextSteps":["sonraki dönem için 2-3 somut antrenman odağı"]}',
     ].join("\n");
 }
@@ -233,7 +238,7 @@ export const recordAiComment = onCall<Req>(
                 max_tokens: 600,
                 response_format: { type: "json_object" },
                 messages: [
-                    { role: "system", content: systemPrompt(locale) },
+                    { role: "system", content: systemPrompt(locale, userSnap.data()?.units === "imperial") },
                     { role: "user", content: JSON.stringify(payload) },
                 ],
             });

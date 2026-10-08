@@ -4,6 +4,8 @@ import WhatsAppSheet from "@/components/WhatsAppSheet";
 import TransformationCard from "@/components/TransformationCard";
 import { formatMoney } from "@/services/packages";
 import { STATUS_SCORE, statusId, statusLabel } from "@/constants/statusLabels";
+import { LENGTH_FIELDS, MASS_FIELDS, parseNum, quantityOf, toDisplay, type UnitSystem } from "@/constants/units";
+import { useUnits } from "@/constants/UnitsContext";
 import { goalLabel, normalizeGoals, parqYesCount } from "@/constants/studentForm";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
@@ -344,6 +346,29 @@ function getMetricSnapshot(records: any[], key: string, suffix = "", t: (key: st
   };
 }
 
+/**
+ * Grafik ve özet kartları için kayıtların birimli alanlarını gösterim
+ * birimine çevirir (imperial seçiliyse). Veritabanı her zaman metriktir.
+ */
+function toDisplayRecords(records: any[], system: UnitSystem): any[] {
+  if (system === "metric") return records;
+  return records.map((r) => {
+    const out: any = { ...r };
+    for (const f of [...MASS_FIELDS, ...LENGTH_FIELDS]) {
+      const n = parseNum(r?.[f]);
+      if (n != null) out[f] = Math.round(toDisplay(quantityOf(f)!, n, system) * 10) / 10;
+    }
+    return out;
+  });
+}
+
+/** Grafik sekmelerinin birim eki (" kg" / " lb" / "%"). */
+function useMetricSuffix() {
+  const { unit } = useUnits();
+  return (key: string, fallback: string) =>
+    key === "weight" ? ` ${unit("mass")}` : key === "bel" || key === "kalca" ? ` ${unit("length")}` : fallback;
+}
+
 // ─── SVG smooth path ──────────────────────────────────────────────────────────
 function buildSmoothPath(pts: Array<{ x: number; y: number }>): string {
   if (pts.length === 0) return "";
@@ -411,6 +436,8 @@ function MetricLineChart({
   const chartH = H - PAD.top - PAD.bottom;
 
   const metaCfg = METRIC_TABS.find((m) => m.key === activeMetric)!;
+  const suffixOf = useMetricSuffix();
+  const metaSuffix = suffixOf(metaCfg.key, metaCfg.suffix);
   const metaCfgColor = theme.colors.status[metaCfg.colorKey];
 
   const series = useMemo(
@@ -742,7 +769,7 @@ function MetricLineChart({
               }}
             >
               {activePoint.value}
-              {metaCfg.suffix}
+              {metaSuffix}
             </Text>
           </View>
         )}
@@ -784,7 +811,7 @@ function MetricLineChart({
                 >
                   {sign}
                   {diff.toFixed(1)}
-                  {metaCfg.suffix}
+                  {metaSuffix}
                 </Text>
               </View>
             );
@@ -1179,6 +1206,7 @@ function AnalyticsCard({
   setOpen: (v: boolean) => void;
 }) {
   const { t } = useTranslation();
+  const { unit } = useUnits();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const summary = useMemo(() => {
@@ -1210,16 +1238,16 @@ function AnalyticsCard({
           return db - da;
         })
       : [];
-    const weight = getMetricSnapshot(records, "weight", " kg", t);
+    const weight = getMetricSnapshot(records, "weight", ` ${unit("mass")}`, t);
     const fat = getMetricSnapshot(records, "bodyFat", " %", t);
-    const bel = getMetricSnapshot(records, "bel", " cm", t);
-    const kalca = getMetricSnapshot(records, "kalca", " cm", t);
+    const bel = getMetricSnapshot(records, "bel", ` ${unit("length")}`, t);
+    const kalca = getMetricSnapshot(records, "kalca", ` ${unit("length")}`, t);
     return {
       chart, total, avg, peak,
       safeIdx, selectedPoint, selectedPeriodRecords,
       weight, fat, bel, kalca,
     };
-  }, [records, range, selectedIndex, t]);
+  }, [records, range, selectedIndex, t, unit]);
 
   useEffect(() => {
     const chart = buildChartData(records, range, t);
@@ -1478,6 +1506,7 @@ function TestsCard({
   setOpen: (v: boolean) => void;
 }) {
   const { t } = useTranslation();
+  const { fmt } = useUnits();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -1562,7 +1591,7 @@ function TestsCard({
       },
       {
         label: "Sit & Reach",
-        value: srNum != null ? `${srNum} cm` : null,
+        value: srNum != null ? fmt("length", srNum) : null,
         numericValue: srNum,
         min: -20, max: 40,
         statusLabel: null,
@@ -1601,7 +1630,7 @@ function TestsCard({
         ],
       },
     ];
-  }, [a, theme, t]);
+  }, [a, theme, t, fmt]);
 
   return (
     <CollapsibleCard
@@ -1791,6 +1820,9 @@ export default function StudentDetailScreen() {
 
   const [student, setStudent] = useState<Student | null>(null);
   const [records, setRecords] = useState<RecordItem[]>([]);
+  const { system: unitSystem, fmtHeight } = useUnits();
+  // Grafik / özet kartları için gösterim biriminde kopya (veri metrik kalır).
+  const displayRecords = useMemo(() => toDisplayRecords(records, unitSystem), [records, unitSystem]);
   const [loadingStudent, setLoadingStudent] = useState(true);
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [toggling, setToggling] = useState(false);
@@ -2209,7 +2241,7 @@ export default function StudentDetailScreen() {
                 )}
                 <InfoRow styles={styles} label={t("studentDetail.label.gender")} value={student.gender === "F" ? t("newstudent.gender.female") : student.gender === "M" ? t("newstudent.gender.male") : "-"} icon={<User size={16} color={theme.colors.primary} />} />
                 <InfoRow styles={styles} label={t("studentDetail.label.birthDate")} value={formatDateTR(student.dateOfBirth)} icon={<Calendar size={16} color={theme.colors.primary} />} />
-                <InfoRow styles={styles} label={t("studentDetail.label.height")} value={student.boy || "-"} icon={<User size={16} color={theme.colors.primary} />} lastRow={!(student as any).emergencyContactPhone} />
+                <InfoRow styles={styles} label={t("studentDetail.label.height")} value={fmtHeight(student.boy)} icon={<User size={16} color={theme.colors.primary} />} lastRow={!(student as any).emergencyContactPhone} />
                 {!!(student as any).emergencyContactPhone && (
                   <InfoRow
                     styles={styles}
@@ -2225,7 +2257,7 @@ export default function StudentDetailScreen() {
               <AnalyticsCard
                 theme={theme}
                 styles={styles}
-                records={records}
+                records={displayRecords}
                 range={range}
                 setRange={setRange}
                 open={analyticsOpen}

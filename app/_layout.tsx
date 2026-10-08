@@ -17,6 +17,7 @@ import { PremiumProvider } from "@/constants/PremiumContext";
 import { PromoProvider } from "@/constants/PromoContext";
 import { PopupProvider } from "@/constants/PopupContext";
 import { RatingProvider } from "@/constants/RatingContext";
+import { UnitsProvider } from "@/constants/UnitsContext";
 import PromoPopup from "@/components/PromoPopup";
 import AnnouncementPopup from "@/components/AnnouncementPopup";
 import WidgetSync from "@/components/WidgetSync";
@@ -246,7 +247,9 @@ export default function RootLayout() {
         <PromoProvider>
           <PopupProvider>
             <RatingProvider>
-              <AppNav />
+              <UnitsProvider>
+                <AppNav />
+              </UnitsProvider>
             </RatingProvider>
           </PopupProvider>
         </PromoProvider>

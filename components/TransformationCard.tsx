@@ -2,6 +2,8 @@ import type { ThemeUI } from '@/constants/types';
 import { appLocale, formatPercent } from "@/constants/languages";
 import { useTheme } from '@/constants/usetheme';
 import { normalizeGoals } from '@/constants/studentForm';
+import { toDisplay, type Quantity, type UnitSystem } from '@/constants/units';
+import { useUnits } from '@/constants/UnitsContext';
 import { track } from '@/services/analytics';
 import { auth } from '@/services/firebase';
 import * as Sharing from 'expo-sharing';
@@ -61,7 +63,7 @@ const num = (v: unknown): number | null => {
 
 const ms = (r: any) => r?.createdAt?.toMillis?.() ?? 0;
 
-function buildMetrics(records: any[], goals: string[]): Metric[] {
+function buildMetrics(records: any[], goals: string[], system: UnitSystem, unitLabel: (q: Quantity) => string): Metric[] {
   const sorted = [...records].sort((a, b) => ms(a) - ms(b));
   const muscleGoal = goals.includes('muscle_gain') && !goals.includes('fat_loss');
   const defs: { id: MetricId; get: (r: any) => number | null; unit: string; goodDir: 1 | -1; decimals: number }[] = [
@@ -79,7 +81,17 @@ function buildMetrics(records: any[], goals: string[]): Metric[] {
     const first = sorted.find((r) => d.get(r) != null);
     const last = [...sorted].reverse().find((r) => d.get(r) != null);
     if (!first || !last || first === last) continue;
-    out.push({ id: d.id, from: d.get(first)!, to: d.get(last)!, unit: d.unit, goodDir: d.goodDir, decimals: d.decimals });
+    // Veri metrik; imperial seçiliyse kilo/çevre ölçüleri lb/in'e çevrilir.
+    const q: Quantity | null = d.unit === 'kg' ? 'mass' : d.unit === 'cm' ? 'length' : null;
+    const conv = (v: number) => (q ? toDisplay(q, v, system) : v);
+    out.push({
+      id: d.id,
+      from: conv(d.get(first)!),
+      to: conv(d.get(last)!),
+      unit: q ? unitLabel(q) : d.unit,
+      goodDir: d.goodDir,
+      decimals: q && system === 'imperial' ? 1 : d.decimals,
+    });
   }
   return out;
 }
@@ -122,7 +134,8 @@ export default function TransformationCard({
   const cardRef = useRef<View>(null);
 
   const goals = useMemo(() => normalizeGoals(student.trainingGoals), [student.trainingGoals]);
-  const metrics = useMemo(() => buildMetrics(records, goals), [records, goals]);
+  const { system, unit: unitLabel } = useUnits();
+  const metrics = useMemo(() => buildMetrics(records, goals, system, unitLabel), [records, goals, system, unitLabel]);
   const improved = useMemo(() => metrics.filter((m) => gain(m) > 0), [metrics]);
 
   const [selected, setSelected] = useState<MetricId[]>([]);

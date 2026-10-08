@@ -14,6 +14,7 @@ import { requestPasswordReset } from "@/services/passwordReset";
 import { setAppLanguage } from "@/services/i18n";
 import { normalizeLanguage, sitePathLanguage } from "@/constants/languages";
 import LanguagePicker from "@/components/LanguagePicker";
+import { deviceUnitSystem } from "@/constants/UnitsContext";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
@@ -237,6 +238,8 @@ export default function LoginScreen() {
           // Bildirim / e-posta dili (setDoc merge değil: burada yazılmazsa
           // kayıt anındaki dil senkronu bu yazımla ezilebiliyordu).
           language: normalizeLanguage(i18n.language),
+          // Ölçü birimi: cihaz bölgesinden (ABD → imperial). Eski hesaplarda alan yok → metrik.
+          units: deviceUnitSystem(),
           legalApprovals: {
             terms: acceptMainLegal,
             privacy: acceptMainLegal,

@@ -30,6 +30,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { statusLabel, yesNo, yesNoLabel } from "@/constants/statusLabels";
 import { track } from "@/services/analytics";
+import { useUnits } from "@/constants/UnitsContext";
 import AiCommentCard from "@/components/AiCommentCard";
 import { auth } from "@/services/firebase";
 import { recordDocRef, studentDocRef } from "@/services/firestorePaths";
@@ -55,6 +56,7 @@ type RecordType = {
 export default function RecordDetailScreen() {
     const router = useRouter();
     const { t } = useTranslation();
+    const { fmtField, fmtHeight, fmt } = useUnits();
     const { id } = useLocalSearchParams<{ id: string }>();
 
     const { theme } = useTheme();
@@ -180,7 +182,7 @@ export default function RecordDetailScreen() {
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.studentName}>{student?.name ?? "-"}</Text>
                                 <Text style={styles.studentMeta}>
-                                    {student?.boy ? `${student.boy} ${t("common.unit.cm")}` : ""}
+                                    {student?.boy ? fmtHeight(student.boy) : ""}
                                 </Text>
                                 {student?.aktif && (
                                     <View style={styles.statusRow}>
@@ -262,7 +264,7 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.label.weight")}
-                            value={formatVal(record.weight, t("common.unit.kg"))}
+                            value={fmtField("weight", record.weight)}
                             firstLine={true}
                         />
 
@@ -297,13 +299,13 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.label.totalMuscle")}
-                            value={formatVal(record.totalMuscleMass, t("common.unit.kg"))}
+                            value={fmtField("totalMuscleMass", record.totalMuscleMass)}
                         />
 
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.label.leanBodyMass")}
-                            value={formatVal(record.leanBodyMass, t("common.unit.kg"))}
+                            value={fmtField("leanBodyMass", record.leanBodyMass)}
                         />
                         <Text style={styles.analysisText}>
                             {t("recordDetail.analysis.status")}{" "}
@@ -360,7 +362,7 @@ export default function RecordDetailScreen() {
                             label={t("recordDetail.label.waistHipRaw")}
                             value={
                                 record.bel && record.kalca
-                                    ? `Bel: ${record.bel} cm, Kalça: ${record.kalca} cm`
+                                    ? `${t("recordNew.field.waist")}: ${fmtField("bel", record.bel)}, ${t("recordNew.field.hip")}: ${fmtField("kalca", record.kalca)}`
                                     : "-"
                             }
                         />
@@ -376,58 +378,58 @@ export default function RecordDetailScreen() {
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.neck")}
-                            value={formatVal(record.boyun, t("common.unit.cm"))}
+                            value={fmtField("boyun", record.boyun)}
                             firstLine={true}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.shoulder")}
-                            value={formatVal(record.omuz, t("common.unit.cm"))}
+                            value={fmtField("omuz", record.omuz)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.chest")}
-                            value={formatVal(record.gogus, t("common.unit.cm"))}
+                            value={fmtField("gogus", record.gogus)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.rightArm")}
-                            value={formatVal(record.sagKol, t("common.unit.cm"))}
+                            value={fmtField("sagKol", record.sagKol)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.leftArm")}
-                            value={formatVal(record.solKol, t("common.unit.cm"))}
+                            value={fmtField("solKol", record.solKol)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.waist")}
-                            value={formatVal(record.bel, t("common.unit.cm"))}
+                            value={fmtField("bel", record.bel)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.hip")}
-                            value={formatVal(record.kalca, t("common.unit.cm"))}
+                            value={fmtField("kalca", record.kalca)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.rightLeg")}
-                            value={formatVal(record.sagBacak, t("common.unit.cm"))}
+                            value={fmtField("sagBacak", record.sagBacak)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.leftLeg")}
-                            value={formatVal(record.solBacak, t("common.unit.cm"))}
+                            value={fmtField("solBacak", record.solBacak)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.rightCalf")}
-                            value={formatVal(record.sagKalf, t("common.unit.cm"))}
+                            value={fmtField("sagKalf", record.sagKalf)}
                         />
                         <InfoRow
                             styles={styles}
                             label={t("recordDetail.tape.leftCalf")}
-                            value={formatVal(record.solKalf, t("common.unit.cm"))}
+                            value={fmtField("solKalf", record.solKalf)}
                         />
                         <InfoRow
                             styles={styles}
@@ -683,7 +685,7 @@ export default function RecordDetailScreen() {
                         >
                             {t("recordDetail.analysis.bestValue")}{" "}
                             {record.analysis?.sitAndReachBest != null
-                                ? `${record.analysis.sitAndReachBest} ${t("common.unit.cm")}`
+                                ? fmt("length", record.analysis.sitAndReachBest)
                                 : "-"}
                             {"  "} | {t("recordDetail.analysis.status")}{" "}
                             {statusLabel(t, record.analysis?.sitAndReachStatus)}

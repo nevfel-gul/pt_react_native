@@ -1,5 +1,6 @@
 import { LANGUAGE_META, normalizeLanguage, sitePathLanguage } from "@/constants/languages";
 import LanguagePicker from "@/components/LanguagePicker";
+import { useUnits } from "@/constants/UnitsContext";
 import { track } from "@/services/analytics";
 import { openStoreReviewPage } from "@/services/rating";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -129,6 +130,7 @@ export default function SettingsScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("preferences");
   const [settingsReady, setSettingsReady] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const { system: unitSystem, setSystem: setUnitSystem } = useUnits();
 
   // ✅ DİNAMİK LEGAL LİNKLER
   const legalLinks = useMemo(() => getLegalLinks(i18n.language), [i18n.language]);
@@ -609,6 +611,24 @@ export default function SettingsScreen() {
           />
 
           <SettingRow
+            label={t("settings.preference.units")}
+            subtitle={t("settings.preference.units.sub")}
+            right={
+              <Text style={styles.settingValueText}>
+                {unitSystem === "imperial" ? t("settings.units.imperial") : t("settings.units.metric")}
+              </Text>
+            }
+            onPress={() =>
+              Alert.alert(t("settings.preference.units"), t("settings.units.note"), [
+                { text: t("settings.units.metric"), onPress: () => setUnitSystem("metric") },
+                { text: t("settings.units.imperial"), onPress: () => setUnitSystem("imperial") },
+                { text: t("common.cancel"), style: "cancel" },
+              ])
+            }
+            showChevron
+          />
+
+          <SettingRow
             label={t("settings.preference.region")}
             subtitle={t("settings.preference.region.sub")}
             right={<Text style={styles.settingValueText}>{t("settings.value.turkey")}</Text>}
@@ -715,6 +735,8 @@ export default function SettingsScreen() {
       isEmailEnabled,
       isHapticEnabled,
       i18n.language,
+      unitSystem,
+      setUnitSystem,
       colors,
       legalLinks,
       handleThemeToggle,

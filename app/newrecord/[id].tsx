@@ -5,6 +5,8 @@ import {
   visceralFatStatus,
 } from "@/constants/healthRanges";
 import { useRating } from "@/constants/RatingContext";
+import { inputToMetricString, quantityOf } from "@/constants/units";
+import { useUnits } from "@/constants/UnitsContext";
 import { usePremium } from "@/constants/PremiumContext";
 import { generateRecordAiComment } from "@/services/aiComment";
 import { pushUpRating, vo2maxRating, ymcaStepTestRating } from "@/constants/fitnessNorms";
@@ -198,6 +200,13 @@ export default function NewRecordScreen() {
   ];
   const isLastStep = step === STEPS.length - 1;
   const { notifyPositiveMoment } = useRating();
+  // Birimli alanlar formda tercih edilen birimde girilir, kaydederken metriğe çevrilir.
+  const { system: unitSystem, unit, fmtHeight } = useUnits();
+  /** Form metnini (gösterim birimi) metrik metne çevirir; birimsiz alan aynen döner. */
+  const metricOf = (field: keyof FormData, value: unknown) => {
+    const q = quantityOf(String(field));
+    return q && typeof value === "string" ? inputToMetricString(q, value, unitSystem) : value;
+  };
   const { hasPremium } = usePremium();
   const openedAt = useRef(Date.now());
 
@@ -754,7 +763,13 @@ export default function NewRecordScreen() {
     return "Geçersiz veri";
   };
 
+  // handleSubmit içindeki metrik kopya aynı adı kullandığı için form durumuna bu adla erişilir.
+  const formDataState = formData;
   const handleSubmit = async () => {
+    // Bundan sonra kaydedilen ve hesaplanan her şey METRİK (constants/units.ts).
+    const formData = Object.fromEntries(
+      Object.entries(formDataState).map(([k, v]) => [k, metricOf(k as keyof FormData, v)]),
+    ) as FormData;
     if (!id) {
       Alert.alert(t("common.error"), t("recordNew.alert.noStudentId"));
       return;
@@ -993,11 +1008,13 @@ export default function NewRecordScreen() {
     hint?: boolean,
   ) => {
     const hintImage = measurementHintImages[field];
+    const q = quantityOf(String(field));
+    const shownLabel = q ? `${label} (${unit(q)})` : label;
 
     return (
       <View style={styles.field}>
         <View style={styles.labelRow}>
-          <Text style={styles.label}>{label}</Text>
+          <Text style={styles.label}>{shownLabel}</Text>
 
           {hint && showTips && hintImage ? (
             <HintImageButton
@@ -1771,9 +1788,9 @@ export default function NewRecordScreen() {
                     ? statusLabel(t, getSitAndReachStatus(
                       Number(
                         getMaxOfThree(
-                          formData.sitandreach1,
-                          formData.sitandreach2,
-                          formData.sitandreach3,
+                          metricOf("sitandreach1", formData.sitandreach1) as string,
+                          metricOf("sitandreach2", formData.sitandreach2) as string,
+                          metricOf("sitandreach3", formData.sitandreach3) as string,
                         ) || 0,
                       ),
                       student.gender,
@@ -1956,7 +1973,7 @@ export default function NewRecordScreen() {
                   {student.boy && (
                     <View style={styles.metaItem}>
                       <Ruler size={14} color="#9ca3af" />
-                      <Text style={styles.metaText}>{student.boy} cm</Text>
+                      <Text style={styles.metaText}>{fmtHeight(student.boy)}</Text>
                     </View>
                   )}
                   {student.gender && (
