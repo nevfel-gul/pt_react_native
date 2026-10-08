@@ -573,6 +573,9 @@ export { packageReminderJob } from "./jobs/packageReminderJob";
 // Apple abonelik doğrulaması + App Store Server Notifications V2
 export { appleNotifications, verifyApplePurchase } from "./billing/appleBilling";
 
+// Ölçüm sonrası AI yorumu (premium)
+export { recordAiComment } from "./ai/recordAiComment";
+
 // Şifre sıfırlama akışı (Resend + athletrackai.com üzerindeki kendi sayfamız).
 export { requestPasswordReset } from "./passwordReset";
 

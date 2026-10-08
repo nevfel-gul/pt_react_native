@@ -34,6 +34,7 @@ import {
   MessageCircle,
   Phone,
   ShieldCheck,
+  Sparkles,
   User,
 } from "lucide-react-native";
 import React, {
@@ -2165,6 +2166,18 @@ export default function StudentDetailScreen() {
 
               {/* PAKET & SEANS */}
               <StudentPackages studentId={student.id} />
+
+              {/* SON ÖLÇÜMÜN AI YORUMU (özet) — tamamı kayıt detayında */}
+              {(records[0] as any)?.aiComment?.summary ? (
+                <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={() => viewRecord(records[0].id)}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <Sparkles size={16} color={theme.colors.accent} />
+                    <Text style={[styles.cardTitle, { flex: 1, marginBottom: 0 }]}>{t("aiComment.latestTitle")}</Text>
+                    <Text style={{ color: theme.colors.accent, fontWeight: "700", fontSize: theme.fontSize.sm }}>{t("aiComment.seeAll")}</Text>
+                  </View>
+                  <Text style={styles.noteText} numberOfLines={3}>{(records[0] as any).aiComment.summary}</Text>
+                </TouchableOpacity>
+              ) : null}
 
               {/* KİŞİSEL BİLGİLER */}
               <View style={styles.card}>

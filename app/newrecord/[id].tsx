@@ -4,6 +4,8 @@ import {
   visceralFatStatus,
 } from "@/constants/healthRanges";
 import { useRating } from "@/constants/RatingContext";
+import { usePremium } from "@/constants/PremiumContext";
+import { generateRecordAiComment } from "@/services/aiComment";
 import { pushUpRating, vo2maxRating, ymcaStepTestRating } from "@/constants/fitnessNorms";
 import { statusLabel, yesNo } from "@/constants/statusLabels";
 import { parqYesCount } from "@/constants/studentForm";
@@ -192,6 +194,7 @@ export default function NewRecordScreen() {
   ];
   const isLastStep = step === STEPS.length - 1;
   const { notifyPositiveMoment } = useRating();
+  const { hasPremium } = usePremium();
   const openedAt = useRef(Date.now());
 
   useEffect(() => {
@@ -855,12 +858,19 @@ export default function NewRecordScreen() {
         mekikStatus: mekikSec && gender ? getMekikScore(mekikSec, gender) : "",
       };
 
-      await addDoc(recordsColRef(auth.currentUser?.uid!), {
+      const recordRef = await addDoc(recordsColRef(auth.currentUser?.uid!), {
         studentId: id,
         ...formData,
         analysis,
         createdAt: serverTimestamp(),
       });
+
+      // AI yorumu arka planda üretilir; kayıt detayı açılınca hazır olur.
+      if (hasPremium) {
+        generateRecordAiComment(recordRef.id)
+          .then((c) => track("ai_comment_generated", { compared: c.comparedToPrevious, source: "record_saved" }))
+          .catch((e) => track("ai_comment_failed", { code: e?.code ?? "unknown" }));
+      }
 
       await updateDoc(studentDocRef(auth.currentUser?.uid!, id!), {
         lastRecordedAt: serverTimestamp(),

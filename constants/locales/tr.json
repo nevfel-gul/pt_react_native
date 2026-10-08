@@ -1093,5 +1093,21 @@
   "calendar.device.deniedTitle": "Takvim izni gerekli",
   "calendar.device.deniedMessage": "Randevuları eklemek için Ayarlar'dan AthleTrack'e takvim izni verin.",
   "calendar.device.openSettings": "Ayarları aç",
-  "calendar.device.error": "Takvim güncellenemedi."
+  "calendar.device.error": "Takvim güncellenemedi.",
+  "aiComment.title": "AI yorumu",
+  "aiComment.latestTitle": "Son ölçüm yorumu",
+  "aiComment.seeAll": "Tamamı",
+  "aiComment.generating": "Ölçüm yorumlanıyor…",
+  "aiComment.highlights": "Öne çıkanlar",
+  "aiComment.warnings": "Dikkat",
+  "aiComment.nextSteps": "Sonraki dönem odağı",
+  "aiComment.comparedNote": "Bir önceki ölçümle karşılaştırıldı",
+  "aiComment.firstNote": "İlk ölçüm: başlangıç değerlendirmesi",
+  "aiComment.disclaimer": "AI tarafından üretildi, tıbbi tavsiye değildir",
+  "aiComment.regenerate": "Yeniden oluştur",
+  "aiComment.retry": "Tekrar dene",
+  "aiComment.locked": "Her ölçümden sonra önceki ölçümle karşılaştırmalı yorum, dikkat edilecekler ve sonraki dönem için antrenman odağı. Premium planlarda.",
+  "aiComment.error.generic": "Yorum şu an üretilemedi.",
+  "aiComment.error.premium": "AI yorumu Premium planlarda kullanılabilir.",
+  "aiComment.error.regenLimit": "Bu ölçüm için yeniden oluşturma hakkı doldu."
 }

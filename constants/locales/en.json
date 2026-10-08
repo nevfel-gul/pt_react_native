@@ -1093,5 +1093,21 @@
   "calendar.device.deniedTitle": "Calendar access needed",
   "calendar.device.deniedMessage": "Allow AthleTrack to access your calendar in Settings to add appointments.",
   "calendar.device.openSettings": "Open Settings",
-  "calendar.device.error": "Couldn't update the calendar."
+  "calendar.device.error": "Couldn't update the calendar.",
+  "aiComment.title": "AI insight",
+  "aiComment.latestTitle": "Latest assessment insight",
+  "aiComment.seeAll": "See all",
+  "aiComment.generating": "Analysing the assessment…",
+  "aiComment.highlights": "Highlights",
+  "aiComment.warnings": "Watch out",
+  "aiComment.nextSteps": "Next focus",
+  "aiComment.comparedNote": "Compared with the previous assessment",
+  "aiComment.firstNote": "First assessment: starting point",
+  "aiComment.disclaimer": "AI-generated, not medical advice",
+  "aiComment.regenerate": "Regenerate",
+  "aiComment.retry": "Try again",
+  "aiComment.locked": "After every assessment: a comparison with the previous one, things to watch and next training focus. Available on Premium.",
+  "aiComment.error.generic": "The insight couldn't be generated right now.",
+  "aiComment.error.premium": "AI insights are available on Premium plans.",
+  "aiComment.error.regenLimit": "No more regenerations left for this assessment."
 }

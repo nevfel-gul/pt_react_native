@@ -29,6 +29,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { statusLabel, yesNo, yesNoLabel } from "@/constants/statusLabels";
 import { track } from "@/services/analytics";
+import AiCommentCard from "@/components/AiCommentCard";
 import { auth } from "@/services/firebase";
 import { recordDocRef, studentDocRef } from "@/services/firestorePaths";
 import { getDoc } from "firebase/firestore";
@@ -207,6 +208,9 @@ export default function RecordDetailScreen() {
                             </View>
                         </View>
                     </View>
+
+                    {/* AI YORUMU — ölçüm kaydedilince üretilir (components/AiCommentCard) */}
+                    {record?.id ? <AiCommentCard recordId={record.id} /> : null}
 
                     {/* KİŞİSEL BİLGİLER */}
                     <View style={styles.card}>
