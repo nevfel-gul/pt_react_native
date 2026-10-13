@@ -392,9 +392,13 @@ export default function NewRecordScreen() {
   const HintImageButton = ({
     label,
     imageSource,
+    title,
+    text,
   }: {
     label: string;
     imageSource: any;
+    title: string;
+    text: string;
   }) => {
     const [visible, setVisible] = useState(false);
 
@@ -420,9 +424,10 @@ export default function NewRecordScreen() {
                 <Image
                   source={imageSource}
                   style={styles.hintImage}
-                  resizeMode="contain"
+                  resizeMode="cover"
                 />
-                <Text style={styles.hintImageLabel}>Ogito tesasadt</Text>
+                <Text style={styles.hintImageLabel}>{title}</Text>
+                <Text style={styles.hintImageText}>{text}</Text>
               </View>
 
               <Pressable
@@ -988,18 +993,19 @@ export default function NewRecordScreen() {
       })}
     </View>
   );
-  const measurementHintImages: Partial<Record<keyof FormData, any>> = {
-    boyun: require("@/assets/images/olcum/boyun.jpg"),
-    omuz: require("@/assets/images/olcum/omuz.jpg"),
-    gogus: require("@/assets/images/olcum/gogus.jpg"),
-    sagKol: require("@/assets/images/olcum/kol.jpg"),
-    solKol: require("@/assets/images/olcum/kol.jpg"),
-    bel: require("@/assets/images/olcum/bel.jpg"),
-    kalca: require("@/assets/images/olcum/kalca.jpg"),
-    sagBacak: require("@/assets/images/olcum/bacak.jpg"),
-    solBacak: require("@/assets/images/olcum/bacak.jpg"),
-    sagKalf: require("@/assets/images/olcum/baldir.jpg"),
-    solKalf: require("@/assets/images/olcum/baldir.jpg"),
+  // Görsel + "recordNew.measureHint.<key>" talimat metni.
+  const measurementHints: Partial<Record<keyof FormData, { image: any; key: string }>> = {
+    boyun: { image: require("@/assets/images/olcum/boyun.jpg"), key: "neck" },
+    omuz: { image: require("@/assets/images/olcum/omuz.jpg"), key: "shoulder" },
+    gogus: { image: require("@/assets/images/olcum/gogus.jpg"), key: "chest" },
+    sagKol: { image: require("@/assets/images/olcum/kol.jpg"), key: "arm" },
+    solKol: { image: require("@/assets/images/olcum/kol.jpg"), key: "arm" },
+    bel: { image: require("@/assets/images/olcum/bel.jpg"), key: "waist" },
+    kalca: { image: require("@/assets/images/olcum/kalca.jpg"), key: "hip" },
+    sagBacak: { image: require("@/assets/images/olcum/bacak.jpg"), key: "leg" },
+    solBacak: { image: require("@/assets/images/olcum/bacak.jpg"), key: "leg" },
+    sagKalf: { image: require("@/assets/images/olcum/baldir.jpg"), key: "calf" },
+    solKalf: { image: require("@/assets/images/olcum/baldir.jpg"), key: "calf" },
   };
   const renderNumericInput = (
     field: keyof FormData,
@@ -1007,7 +1013,7 @@ export default function NewRecordScreen() {
     placeholder?: string,
     hint?: boolean,
   ) => {
-    const hintImage = measurementHintImages[field];
+    const measureHint = measurementHints[field];
     const q = quantityOf(String(field));
     const shownLabel = q ? `${label} (${unit(q)})` : label;
 
@@ -1016,10 +1022,12 @@ export default function NewRecordScreen() {
         <View style={styles.labelRow}>
           <Text style={styles.label}>{shownLabel}</Text>
 
-          {hint && showTips && hintImage ? (
+          {hint && showTips && measureHint ? (
             <HintImageButton
               label={t("recordNew.hint.tap")}
-              imageSource={hintImage}
+              imageSource={measureHint.image}
+              title={placeholder ?? label}
+              text={t(`recordNew.measureHint.${measureHint.key}`)}
             />
           ) : null}
         </View>
@@ -2422,6 +2430,7 @@ const makeStyles = (theme: ThemeUI, isWide = false) =>
     },
     modalContent: {
       width: "88%",
+      maxWidth: 560,
       maxHeight: "80%",
       backgroundColor: theme.colors.surface,
       borderRadius: 18,
@@ -2503,18 +2512,28 @@ const makeStyles = (theme: ThemeUI, isWide = false) =>
     hintImageLabel: {
       color: theme.colors.text.primary,
       fontSize: 16,
-      fontWeight: "600",
+      fontWeight: "700",
       textAlign: "center",
+      marginTop: theme.spacing.md,
+    },
+    hintImageText: {
+      color: theme.colors.text.secondary,
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: "center",
+      marginTop: 6,
       marginBottom: theme.spacing.md,
     },
     hintImage: {
-      width: 250,
-      height: 150,
-      borderBlockColor: theme.colors.border,
+      width: "100%",
+      // Kırpılmış ölçüm görselleri 2048x852.
+      aspectRatio: 2048 / 852,
+      borderColor: theme.colors.border,
       borderWidth: 1,
       borderRadius: 12,
     },
     imageWrapper: {
       alignItems: "center",
+      alignSelf: "stretch",
     },
   });

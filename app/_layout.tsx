@@ -21,6 +21,8 @@ import { UnitsProvider } from "@/constants/UnitsContext";
 import PromoPopup from "@/components/PromoPopup";
 import AnnouncementPopup from "@/components/AnnouncementPopup";
 import WidgetSync from "@/components/WidgetSync";
+import ForceUpdateGate from "@/components/ForceUpdateGate";
+import AppLockGate from "@/components/AppLockGate";
 import { identifyUser, resetAnalytics, setUserProperties, track } from "@/services/analytics";
 import { syncUserLanguage } from "@/services/i18n";
 import { db } from "@/services/firebase";
@@ -234,6 +236,8 @@ function AppNav() {
       {user ? <PromoPopup /> : null}
       {user ? <AnnouncementPopup /> : null}
       <WidgetSync />
+      <AppLockGate active={!!user} />
+      <ForceUpdateGate />
       <StatusBar style="auto" />
     </ThemeProvider>
   );

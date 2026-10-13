@@ -34,6 +34,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { registerForPushNotificationsAsync } from "@/services/registerForPush";
+import { authenticate, canUseAppLock, getAppLockEnabled, setAppLockEnabled } from "@/services/appLock";
 import { auth, db } from "../../services/firebase";
 
 // ✅ THEME
@@ -130,6 +131,30 @@ export default function SettingsScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("preferences");
   const [settingsReady, setSettingsReady] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const [appLockOn, setAppLockOn] = useState(false);
+  // Doğrulama başarısızsa anahtar eski konumuna dönsün diye yeniden kurulur.
+  const [appLockKey, setAppLockKey] = useState(0);
+  useEffect(() => {
+    getAppLockEnabled().then(setAppLockOn);
+  }, []);
+  const handleAppLockToggle = async (next: boolean) => {
+    if (next && !(await canUseAppLock())) {
+      Alert.alert(t("appLock.title"), t("appLock.unavailable"));
+      setAppLockOn(false);
+      setAppLockKey((k) => k + 1);
+      return;
+    }
+    // Açarken de kapatırken de kimlik doğrulat: kilit başkası tarafından kapatılamasın.
+    const ok = await authenticate(next ? t("appLock.confirmEnable") : t("appLock.confirmDisable"), t("common.cancel"));
+    if (!ok) {
+      setAppLockOn(!next);
+      setAppLockKey((k) => k + 1);
+      return;
+    }
+    await setAppLockEnabled(next);
+    setAppLockOn(next);
+    track(next ? "app_lock_enabled" : "app_lock_disabled");
+  };
   const { system: unitSystem, setSystem: setUnitSystem } = useUnits();
 
   // ✅ DİNAMİK LEGAL LİNKLER
@@ -590,6 +615,23 @@ export default function SettingsScreen() {
                 id="theme"
                 value={isDarkMode}
                 onToggle={handleThemeToggle}
+                trackColorActive={colors.trackActive}
+                trackColorInactive={colors.trackInactive}
+                thumbColorActive={colors.thumbActive}
+                thumbColorInactive={colors.thumbInactive}
+              />
+            }
+          />
+
+          <SettingRow
+            label={t("appLock.title")}
+            subtitle={t("appLock.sub")}
+            right={
+              <CustomSwitch
+                key={appLockKey}
+                id="applock"
+                value={appLockOn}
+                onToggle={handleAppLockToggle}
                 trackColorActive={colors.trackActive}
                 trackColorInactive={colors.trackInactive}
                 thumbColorActive={colors.thumbActive}

@@ -40,8 +40,11 @@ import {
   Share2,
   ShieldCheck,
   Sparkles,
+  Trash2,
   User,
 } from "lucide-react-native";
+import { softDeleteStudent } from "@/services/softDelete";
+import { requestWidgetRefresh } from "@/services/widgetData";
 import React, {
   useCallback,
   useEffect,
@@ -142,10 +145,13 @@ const formatDateTR = (iso?: string) => {
   return new Date(y, m - 1, d).toLocaleDateString(appLocale());
 };
 
-function num(v: any): number | null {
-  if (v == null) return null;
-  const n = Number(String(v).replace(",", "."));
-  return isNaN(n) ? null : n;
+// Boş bırakılan alanlar kayıtta "" olarak durur; Number("") 0 verdiği için
+// parseNum kullanılır, yoksa girilmeyen ölçüm "0" diye görünür.
+const num = parseNum;
+/** Kilo/yağ/çevre gibi ölçümlerde 0 ve altı "girilmemiş" demektir. */
+function measured(v: any): number | null {
+  const n = parseNum(v);
+  return n != null && n > 0 ? n : null;
 }
 function getRecordDate(r: any): Date | null {
   const ts = r?.createdAt;
@@ -330,7 +336,7 @@ function buildChartData(records: any[], range: RangeKey, t: (key: string) => str
 
 function getMetricSnapshot(records: any[], key: string, suffix = "", t: (key: string) => string) {
   const values = records
-    .map((r) => num(r?.[key]))
+    .map((r) => measured(r?.[key]))
     .filter((v): v is number => v != null);
   const latest = values[0] ?? null;
   const previous = values[1] ?? null;
@@ -391,7 +397,7 @@ function buildMetricSeries(
 ): Array<{ date: Date; value: number; label: string }> {
   return records
     .map((r) => {
-      const v = num(r?.[key]);
+      const v = measured(r?.[key]);
       const dt = getRecordDate(r);
       return v != null && dt
         ? { date: dt, value: v, label: formatShortDateTR(dt) }
@@ -489,10 +495,13 @@ function MetricLineChart({
 
   const yTicks = useMemo(() => {
     const count = 4;
+    // Dar aralıkta (72.7–73.1 gibi) tam sayıya yuvarlamak tüm etiketleri aynı yapıyordu.
+    const step = (maxV - minV) / (count - 1);
+    const decimals = step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
     return Array.from({ length: count }, (_, i) => {
-      const v = minV + ((maxV - minV) * i) / (count - 1);
+      const v = minV + step * i;
       const y = PAD.top + chartH - ((v - minV) / (maxV - minV)) * chartH;
-      return { v: v.toFixed(0), y };
+      return { v: v.toFixed(decimals), y };
     });
   }, [minV, maxV]);
 
@@ -1529,8 +1538,8 @@ function TestsCard({
 
   // ─── Gauge konfigürasyonları — tamamen dinamik ────────────────────────────
   const gauges: GaugeConfig[] = useMemo(() => {
-    const bmiNum = num(a?.bmi);
-    const vo2Num = num(a?.bruceVO2Max);
+    const bmiNum = measured(a?.bmi);
+    const vo2Num = measured(a?.bruceVO2Max);
 
     // Kayıtlı sonuçlar Türkçe metin ("Ortalama Altı"); eski eşleme tablosu
     // "Ortanın Altı", "Kötü" gibi değerleri tanımadığı için gösterge boş kalıyordu.
@@ -2015,6 +2024,34 @@ export default function StudentDetailScreen() {
     router.push({ pathname: "/newstudent", params: { id: student.id, mode: "edit" } });
   };
 
+  const confirmDelete = () => {
+    if (!student) return;
+    Alert.alert(
+      t("studentDetail.delete.title"),
+      t("studentDetail.delete.message", { name: student.name }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("studentDetail.delete.confirm"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const uid = auth.currentUser?.uid;
+              if (!uid) throw new Error("no_user");
+              await softDeleteStudent(uid, student.id);
+              track("student_deleted");
+              requestWidgetRefresh();
+              router.replace("/(tabs)");
+            } catch (e) {
+              console.error("student delete error:", e);
+              Alert.alert(t("common.error"), t("studentDetail.delete.error"));
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const firstLetter = student?.name?.[0]?.toUpperCase() ?? "?";
 
   const renderRecordItem = useCallback(
@@ -2117,6 +2154,14 @@ export default function StudentDetailScreen() {
                       >
                         <Edit size={14} color={theme.colors.text.onAccent} />
                         <Text style={styles.editButtonText}>{t("studentDetail.edit")}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.editButton, { marginLeft: theme.spacing.xs, backgroundColor: theme.colors.danger }]}
+                        onPress={confirmDelete}
+                        activeOpacity={0.85}
+                        accessibilityLabel={t("studentDetail.delete")}
+                      >
+                        <Trash2 size={14} color={theme.colors.text.onAccent} />
                       </TouchableOpacity>
                     </View>
                   </View>

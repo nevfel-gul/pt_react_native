@@ -36,6 +36,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Uygulama ayarları (zorunlu güncelleme: minVersion). Giriş yapmamış
+    // kullanıcı da okuyabilmeli; yazma yalnızca yönetici (Admin SDK).
+    match /app_config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /users/{userId} {
       allow read, delete: if isOwner(userId);
       allow create: if isOwner(userId)
@@ -57,6 +64,18 @@ service cloud.firestore {
         match /sessions/{sessionId} {
           allow read, write: if isOwner(userId);
         }
+      }
+
+      // "Silinen" öğrenci ve kayıtlar (services/softDelete.ts). İstemci yalnızca
+      // yazabilir; okuma/geri yükleme yönetici tarafında yapılır.
+      match /deleted_students/{studentId} {
+        allow create, update: if isOwner(userId);
+        match /{sub}/{docId} {
+          allow create, update: if isOwner(userId);
+        }
+      }
+      match /deleted_records/{recordId} {
+        allow create, update: if isOwner(userId);
       }
 
       match /records/{recordId} {

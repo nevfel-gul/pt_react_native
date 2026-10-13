@@ -20,8 +20,8 @@ import { auth } from "./firebase";
 // ise serbesttir: openStoreReviewPage().
 // ─────────────────────────────────────────────────────────────
 
-const IOS_APP_ID = "6757748679";
-const ANDROID_PACKAGE = "com.athletrack.athletrack";
+export const IOS_APP_ID = "6757748679";
+export const ANDROID_PACKAGE = "com.athletrack.athletrack";
 
 const K = {
   firstOpenAt: "rating:firstOpenAt",

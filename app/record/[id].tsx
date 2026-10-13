@@ -12,6 +12,7 @@ import {
     PersonStanding,
     Phone,
     SquareActivity,
+    Trash2,
     User,
     VenusAndMars,
 } from "lucide-react-native";
@@ -20,6 +21,7 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import {
     ActivityIndicator,
+    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -35,6 +37,8 @@ import AiCommentCard from "@/components/AiCommentCard";
 import { auth } from "@/services/firebase";
 import { recordDocRef, studentDocRef } from "@/services/firestorePaths";
 import { getDoc } from "firebase/firestore";
+import { softDeleteRecord } from "@/services/softDelete";
+import { requestWidgetRefresh } from "@/services/widgetData";
 
 type Student = {
     id: string;
@@ -134,6 +138,29 @@ export default function RecordDetailScreen() {
         }
     };
 
+    const confirmDelete = () => {
+        Alert.alert(t("recordDetail.delete.title"), t("recordDetail.delete.message"), [
+            { text: t("common.cancel"), style: "cancel" },
+            {
+                text: t("recordDetail.delete.confirm"),
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        const uid = auth.currentUser?.uid;
+                        if (!uid || !id) throw new Error("no_user");
+                        await softDeleteRecord(uid, String(id));
+                        track("record_deleted");
+                        requestWidgetRefresh();
+                        handleGoBack();
+                    } catch (e) {
+                        console.error("record delete error:", e);
+                        Alert.alert(t("common.error"), t("recordDetail.delete.error"));
+                    }
+                },
+            },
+        ]);
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={styles.safeArea}>
@@ -171,6 +198,14 @@ export default function RecordDetailScreen() {
                             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
                                 <ArrowLeft size={18} color={theme.colors.text.primary} />
                                 <Text style={styles.backButtonText}>{t("recordDetail.back")}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.backButton, { marginLeft: "auto", backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }]}
+                                onPress={confirmDelete}
+                                activeOpacity={0.85}
+                                accessibilityLabel={t("recordDetail.delete")}
+                            >
+                                <Trash2 size={16} color={theme.colors.text.onAccent} />
                             </TouchableOpacity>
                         </View>
 

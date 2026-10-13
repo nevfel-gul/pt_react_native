@@ -57,7 +57,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "imageWidth": 160,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
@@ -66,6 +66,12 @@
         }
       ],
       "expo-localization",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "AthleTrack uses Face ID to keep your clients' data private."
+        }
+      ],
       "@react-native-community/datetimepicker",
       "expo-notifications",
       "expo-video",

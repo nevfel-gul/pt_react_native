@@ -2,7 +2,8 @@
   "ios": {
     "CFBundleDisplayName": "AthleTrack AI",
     "NSCalendarsUsageDescription": "AthleTrack ajoute les rendez-vous de vos clients au calendrier de votre téléphone pour que vous receviez des rappels et les voyiez avec vos autres projets.",
-    "NSCalendarsFullAccessUsageDescription": "AthleTrack ajoute les rendez-vous de vos clients au calendrier de votre téléphone pour que vous receviez des rappels et les voyiez avec vos autres projets."
+    "NSCalendarsFullAccessUsageDescription": "AthleTrack ajoute les rendez-vous de vos clients au calendrier de votre téléphone pour que vous receviez des rappels et les voyiez avec vos autres projets.",
+    "NSFaceIDUsageDescription": "AthleTrack utilise Face ID pour protéger les données de tes clients."
   },
   "android": {
     "app_name": "AthleTrack AI"
