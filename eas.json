@@ -17,6 +17,7 @@
       "channel": "preview"
     },
     "production": {
+      "node": "22.14.0",
       "autoIncrement": true,
       "ios": {
         "simulator": false
