@@ -1,3 +1,4 @@
+import { hapticFeedback } from "@/services/haptics";
 import { appLocale } from "@/constants/languages";
 import {
   bloodPressureCategory,
@@ -901,6 +902,7 @@ export default function NewRecordScreen() {
       });
 
       // Hangi bölümler dolduruldu — değerler değil, sadece var/yok.
+      void hapticFeedback("success");
       track("record_created", {
         hasBodyComp: !!(formData.weight || formData.bodyFat),
         hasTape: !!(formData.bel || formData.kalca),

@@ -1,15 +1,16 @@
+import { maybePromptForPush } from "@/services/push-permission";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useSegments, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
-import { auth } from "@/services/firebase";
-import { initI18n } from "@/services/i18n";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { auth, db } from "@/services/firebase";
+import { initI18n, syncUserLanguage } from "@/services/i18n";
+import { onIdTokenChanged, User } from "firebase/auth";
 import { useEffect, useMemo, useState } from "react";
 import { CONTENT_MAX_WIDTH, useIsTablet } from "@/constants/layout";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Platform, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Platform, Text, View } from "react-native";
 
 // ✅ SENİN THEME PROVIDER
 import { ThemeProvider as AppThemeProvider, useTheme } from "@/constants/usetheme";
@@ -24,8 +25,6 @@ import WidgetSync from "@/components/WidgetSync";
 import ForceUpdateGate from "@/components/ForceUpdateGate";
 import AppLockGate from "@/components/AppLockGate";
 import { identifyUser, resetAnalytics, setUserProperties, track } from "@/services/analytics";
-import { syncUserLanguage } from "@/services/i18n";
-import { db } from "@/services/firebase";
 import {
   ensureAndroidChannelAsync,
   registerForPushNotificationsAsync,
@@ -72,6 +71,10 @@ function AppNav() {
     return { ...base, colors: { ...base.colors, background: theme.colors.background } };
   }, [mode, theme.colors.background]);
   const router = useRouter();
+  const segments = useSegments();
+  const pathname = usePathname();
+  const [requiresVerification, setRequiresVerification] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
   const { t, i18n } = useTranslation();
 
   const [user, setUser] = useState<User | null>(null);
@@ -80,9 +83,20 @@ function AppNav() {
 
   useEffect(() => {
     let prevUid: string | null = null;
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
+    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+      setCheckingAccess(true);
+      try {
+        const result = await firebaseUser?.getIdTokenResult();
+        if (auth.currentUser?.uid !== firebaseUser?.uid) return;
+        setRequiresVerification(result?.claims.email_verification_required === true && result?.claims.email_verified !== true);
+        setUser(firebaseUser);
+        setLoading(false);
+      } catch {
+        // Keep access closed until the token can be read; never assume verified.
+        setUser(firebaseUser);
+        setRequiresVerification(!!firebaseUser);
+        setLoading(false);
+      } finally { setCheckingAccess(false); }
 
       // Analitik kimliği: sadece uid — e-posta/ad gönderilmez.
       if (firebaseUser) {
@@ -103,8 +117,8 @@ function AppNav() {
   // Sunucudaki bildirim / e-posta / AI dili için dili hesaba yaz. Dil servisi
   // yüklenmeden yazılırsa yanlış (varsayılan) dil kaydedilirdi.
   useEffect(() => {
-    if (user && i18nReady) syncUserLanguage();
-  }, [user, i18nReady]);
+    if (user && !requiresVerification && i18nReady) syncUserLanguage();
+  }, [user, requiresVerification, i18nReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,7 +131,7 @@ function AppNav() {
         console.warn("Push channel error:", err);
       }
 
-      if (!user) return;
+      if (!user || requiresVerification) return;
 
       try {
         const userRef = doc(db, "users", user.uid);
@@ -127,9 +141,9 @@ function AppNav() {
         const pushEnabled = snap.data()?.pushEnabled ?? true;
         if (!pushEnabled) return;
 
-        const result = await registerForPushNotificationsAsync();
+        const result = await registerForPushNotificationsAsync(false);
         track("push_permission_result", { status: result.status });
-        if (cancelled || result.status !== "granted") return;
+        if (cancelled || auth.currentUser?.uid !== user.uid || result.status !== "granted") return;
 
         // Token değişmediyse gereksiz yazma yapma.
         if (snap.data()?.pushToken === result.token) return;
@@ -149,15 +163,17 @@ function AppNav() {
     }
 
     setupPush();
+    const subscription = AppState.addEventListener("change", state => { if (state === "active") void setupPush(); });
 
     return () => {
+      subscription.remove();
       cancelled = true;
     };
-  }, [user]);
+  }, [user, requiresVerification]);
 
   // 🔔 Bildirime tıklama → ilgili ekrana git (uygulama kapalıyken de çalışır)
   useEffect(() => {
-    if (!user) return;
+    if (!user || requiresVerification) return;
 
     const go = (response: Notifications.NotificationResponse | null) => {
       if (!response) return;
@@ -176,14 +192,27 @@ function AppNav() {
       Notifications.addNotificationResponseReceivedListener(go);
 
     return () => subscription.remove();
-  }, [user, router]);
+  }, [user, requiresVerification, router]);
 
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/landing");
-    }
-  }, [loading, user, router]);
+    if (loading || checkingAccess) return;
+    const page = segments[0] as string;
+    if (!user && !['landing', 'login', 'forgot-password'].includes(page)) router.replace('/landing');
+    else if (user && requiresVerification && page !== 'verify-email') router.replace('/verify-email');
+  }, [loading, checkingAccess, user, requiresVerification, segments, router]);
+
+  useEffect(() => {
+    if (!user || requiresVerification) return;
+    const recordActivity = () => {
+      if (AppState.currentState !== 'active') return;
+      void setDoc(doc(db, 'users', user.uid), { lastActiveAt: new Date() }, { merge: true }).catch(() => {});
+      if (pathname === '/') void maybePromptForPush();
+    };
+    recordActivity();
+    const sub = AppState.addEventListener('change', state => { if (state === 'active') recordActivity(); });
+    return () => sub.remove();
+  }, [user, requiresVerification, pathname]);
 
   useEffect(() => {
     let mounted = true;
@@ -192,7 +221,7 @@ function AppNav() {
       try {
         await initI18n();
         if (mounted) setI18nReady(true);
-      } catch (e) {
+      } catch {
         if (mounted) setI18nReady(true);
       }
     })();
@@ -202,7 +231,7 @@ function AppNav() {
     };
   }, []);
 
-  if (loading) {
+  if (loading || checkingAccess) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#4f46e5" />
@@ -222,6 +251,8 @@ function AppNav() {
             : undefined
         }
       >
+        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen name="verify-email" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ title: "Login", headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
@@ -233,9 +264,9 @@ function AppNav() {
       </Stack>
       {/* Kupon popup'ı — kullanıcı hangi ekranda olursa olsun çıkabilsin diye
           navigasyonun dışında, en üstte duruyor. */}
-      {user ? <PromoPopup /> : null}
-      {user ? <AnnouncementPopup /> : null}
-      <WidgetSync />
+      {user && !requiresVerification ? <PromoPopup /> : null}
+      {user && !requiresVerification ? <AnnouncementPopup /> : null}
+      {!requiresVerification ? <WidgetSync /> : null}
       <AppLockGate active={!!user} />
       <ForceUpdateGate />
       <StatusBar style="auto" />

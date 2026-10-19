@@ -577,3 +577,6 @@ export { requestPasswordReset } from "./passwordReset";
 export { issuePromoCoupon, redeemPromoCoupon } from "./promo/promo";
 
 export { promoAdmin } from "./admin/promoAdmin";
+
+export { registerEmailAccount, requestEmailCode, confirmEmailCode } from './accountSecurity';
+export { getNewsletterPreference, setNewsletterPreference, syncNewsletterContact, newsletterUnsubscribe, newsletterReactivation, removeNewsletterOnAccountDelete } from './newsletter';

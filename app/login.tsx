@@ -1,3 +1,5 @@
+import { PASSWORD_RE, passwordChecks, registerEmailAccount } from "@/services/account-security";
+import { SocialSignIn } from "@/components/social-sign-in";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { track } from "@/services/analytics";
 import Checkbox from "expo-checkbox";
@@ -6,16 +8,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile,
 } from "firebase/auth";
-import { requestPasswordReset } from "@/services/passwordReset";
 import { setAppLanguage } from "@/services/i18n";
 import { normalizeLanguage, sitePathLanguage } from "@/constants/languages";
 import LanguagePicker from "@/components/LanguagePicker";
 import { deviceUnitSystem } from "@/constants/UnitsContext";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,7 +31,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { db } from "../services/firebase";
 
 import type { ThemeMode, ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
@@ -54,10 +51,12 @@ function authErrorKey(code?: string): string {
       return "login.error.invalid_credentials";
     case "auth/invalid-email":
       return "login.error.invalid_email";
+    case "functions/already-exists":
     case "auth/email-already-in-use":
       return "login.error.email_in_use";
     case "auth/weak-password":
       return "login.error.password_too_short";
+    case "functions/resource-exhausted":
     case "auth/too-many-requests":
       return "login.error.too_many_requests";
     case "auth/network-request-failed":
@@ -102,7 +101,6 @@ export default function LoginScreen() {
 
   const [acceptMainLegal, setAcceptMainLegal] = useState(false);
   const [acceptKvkkConsent, setAcceptKvkkConsent] = useState(false);
-  const [acceptCookie, setAcceptCookie] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -165,38 +163,23 @@ export default function LoginScreen() {
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      Alert.alert(t("login.error.prefix"), t("login.validation.fill_all"));
-      return;
-    }
-    try {
-      setLoading(true);
-      await requestPasswordReset({
-        email: email.trim(),
-        locale: normalizeLanguage(i18n.language),
-      });
-      track("password_reset_requested");
-      Alert.alert(t("login.forgot.sentTitle"), t("login.forgot.sent"));
-    } catch (err: any) {
-      const message =
-        err?.code === "functions/resource-exhausted"
-          ? t("login.forgot.tooMany")
-          : t("login.forgot.failed");
-      Alert.alert(t("login.error.prefix"), message);
-    } finally {
-      setLoading(false);
-    }
+  const handleForgotPassword = () => {
+    router.push({ pathname: "/forgot-password", params: { email: email.trim() } });
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
     const fillAllMsg = t("login.validation.fill_all");
 
-    if (!email || !password || (!isLoginMode && (!name || !username))) {
+    if (!email.trim() || !password || (!isLoginMode && (!name.trim() || !username.trim()))) {
       Alert.alert(t("login.error.prefix"), fillAllMsg);
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      Alert.alert(t("login.error.prefix"), t("login.error.invalid_email"));
+      return;
+    }
     if (!isLoginMode) {
       if (!password2) {
         Alert.alert(t("login.error.prefix"), fillAllMsg);
@@ -206,8 +189,8 @@ export default function LoginScreen() {
         Alert.alert(t("login.error.prefix"), t("login.error.passwords_mismatch"));
         return;
       }
-      if (password.length < 6) {
-        Alert.alert(t("login.error.prefix"), t("login.error.password_too_short"));
+      if (!PASSWORD_RE.test(password)) {
+        Alert.alert(t("login.error.prefix"), t("password.requirements"));
         return;
       }
       if (!acceptMainLegal || !acceptKvkkConsent) {
@@ -226,33 +209,17 @@ export default function LoginScreen() {
         const cleanName = name.trim();
         const cleanUsername = username.trim().toLowerCase();
 
-        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-        await updateProfile(cred.user, { displayName: cleanName });
-
-        await setDoc(doc(db, "users", cred.user.uid), {
-          uid: cred.user.uid,
-          email: email.trim().toLowerCase(),
-          displayName: cleanName,
-          username: cleanUsername,
-          pushEnabled: true,
-          // Bildirim / e-posta dili (setDoc merge değil: burada yazılmazsa
-          // kayıt anındaki dil senkronu bu yazımla ezilebiliyordu).
-          language: normalizeLanguage(i18n.language),
-          // Ölçü birimi: cihaz bölgesinden (ABD → imperial). Eski hesaplarda alan yok → metrik.
-          units: deviceUnitSystem(),
-          legalApprovals: {
-            terms: acceptMainLegal,
-            privacy: acceptMainLegal,
-            kvkk: acceptKvkkConsent,
-            explicitConsent: acceptKvkkConsent,
-          },
-          createdAt: serverTimestamp(),
+        await registerEmailAccount({
+          email: email.trim(), password, name: cleanName, username: cleanUsername,
+          language: normalizeLanguage(i18n.language), units: deviceUnitSystem(), acceptLegal: true,
         });
+        await signInWithEmailAndPassword(auth, email.trim(), password);
         track("signup_completed", { method: "email" });
       }
 
       await persistRemember(rememberMe, email.trim());
-      router.replace("/(tabs)");
+      if (!isLoginMode) router.replace("/verify-email");
+      else router.replace("/(tabs)");
     } catch (err: any) {
       track(isLoginMode ? "login_failed" : "signup_failed", { code: err?.code ?? "unknown" });
       Alert.alert(t("login.error.prefix"), t(authErrorKey(err?.code)));
@@ -380,6 +347,13 @@ export default function LoginScreen() {
                   </Pressable>
                 </View>
 
+                {!isLoginMode && <View style={{ gap: 4, marginBottom: 14 }}>
+                  {Object.entries(passwordChecks(password)).map(([key, met]) =>
+                    <Text key={key} style={{ color: met ? theme.colors.primary : theme.colors.text.secondary, fontSize: 12 }}>
+                      {met ? "✓" : "○"} {t(`password.${key}`)}
+                    </Text>)}
+                </View>}
+
                 {!isLoginMode && (
                   <View style={styles.inputRow}>
                     <Lock size={18} color={styles.inputPh.color as any} />
@@ -415,7 +389,7 @@ export default function LoginScreen() {
                   )}
                 </View>
 
-                {!isLoginMode && (
+                {(
                   <View style={styles.legalWrap}>
                     <View style={styles.legalRow}>
                       <Checkbox
@@ -460,6 +434,8 @@ export default function LoginScreen() {
                     </View>
                   </View>
                 )}
+
+                <SocialSignIn onBusyChange={setLoading} busy={loading} legalAccepted={acceptMainLegal && acceptKvkkConsent} />
 
                 <TouchableOpacity
                   activeOpacity={0.9}

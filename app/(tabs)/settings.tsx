@@ -1,3 +1,7 @@
+import { getNewsletterPreference, setNewsletterPreference } from "@/services/newsletter";
+import { hapticFeedback } from "@/services/haptics";
+import * as Application from "expo-application";
+import Constants from "expo-constants";
 import { LANGUAGE_META, normalizeLanguage, sitePathLanguage } from "@/constants/languages";
 import LanguagePicker from "@/components/LanguagePicker";
 import { useUnits } from "@/constants/UnitsContext";
@@ -41,7 +45,7 @@ import { auth, db } from "../../services/firebase";
 import { TIER_STUDENT_LIMITS, usePremium } from "@/constants/PremiumContext";
 import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
-import { deleteDoc, deleteField, doc, getDoc, setDoc } from "firebase/firestore";
+import { deleteField, doc, getDoc, setDoc } from "firebase/firestore";
 
 type TabKey = "preferences" | "security";
 
@@ -93,28 +97,14 @@ const CustomSwitch = ({
   thumbColorInactive: string;
   disabled?: boolean;
 }) => {
-  const [internalValue, setInternalValue] = useState(value);
-
-  useEffect(() => {
-    setInternalValue(value);
-  }, [value]);
-
-  const handleChange = useCallback(
-    (newVal: boolean) => {
-      setInternalValue(newVal);
-      onToggle(newVal);
-    },
-    [onToggle]
-  );
-
   return (
     <Switch
-      key={`switch-${id}-${internalValue ? "on" : "off"}`}
-      value={internalValue}
+      key={`switch-${id}`}
+      value={value}
       disabled={disabled}
-      onValueChange={handleChange}
+      onValueChange={onToggle}
       trackColor={{ false: trackColorInactive, true: trackColorActive }}
-      thumbColor={internalValue ? thumbColorActive : thumbColorInactive}
+      thumbColor={value ? thumbColorActive : thumbColorInactive}
       ios_backgroundColor={trackColorInactive}
     />
   );
@@ -137,7 +127,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     getAppLockEnabled().then(setAppLockOn);
   }, []);
-  const handleAppLockToggle = async (next: boolean) => {
+  const handleAppLockToggle = useCallback(async (next: boolean) => {
     if (next && !(await canUseAppLock())) {
       Alert.alert(t("appLock.title"), t("appLock.unavailable"));
       setAppLockOn(false);
@@ -154,7 +144,7 @@ export default function SettingsScreen() {
     await setAppLockEnabled(next);
     setAppLockOn(next);
     track(next ? "app_lock_enabled" : "app_lock_disabled");
-  };
+  }, [t]);
   const { system: unitSystem, setSystem: setUnitSystem } = useUnits();
 
   // ✅ DİNAMİK LEGAL LİNKLER
@@ -163,6 +153,9 @@ export default function SettingsScreen() {
   // ✅ STATE - Her toggle için ayrı state
   const [isDarkMode, setIsDarkMode] = useState(mode === "dark");
   const [isPushEnabled, setIsPushEnabled] = useState(DEFAULT_SETTINGS.pushEnabled);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailReady, setEmailReady] = useState(false);
+  const [emailLoadError, setEmailLoadError] = useState(false);
   const [isEmailEnabled, setIsEmailEnabled] = useState(DEFAULT_SETTINGS.emailEnabled);
   const [isHapticEnabled, setIsHapticEnabled] = useState(DEFAULT_SETTINGS.hapticEnabled);
   const [isSaveLoginEnabled, setIsSaveLoginEnabled] = useState(DEFAULT_SETTINGS.saveLogin);
@@ -217,7 +210,7 @@ export default function SettingsScreen() {
         if (!mounted) return;
 
         setIsPushEnabled(settings.pushEnabled);
-        setIsEmailEnabled(settings.emailEnabled);
+        // Marketing consent is account-owned, never restored from device-only settings.
         setIsHapticEnabled(settings.hapticEnabled);
         setIsSaveLoginEnabled(settings.saveLogin);
         setIsTwoFactorEnabled(settings.twoFactor);
@@ -232,6 +225,21 @@ export default function SettingsScreen() {
       mounted = false;
     };
   }, []);
+
+  const loadNewsletter = useCallback(async () => {
+    if (!auth.currentUser) return;
+    setEmailBusy(true);
+    setEmailLoadError(false);
+    try {
+      const result = await getNewsletterPreference();
+      setIsEmailEnabled(result.data.enabled);
+      setEmailReady(true);
+    } catch { setEmailLoadError(true); }
+    finally { setEmailBusy(false); }
+  }, []);
+  useEffect(() => {
+    if (settingsReady) void loadNewsletter();
+  }, [settingsReady, loadNewsletter]);
 
   // ✅ PERSIST HELPER
   const persistSettings = useCallback(async (patch: Partial<StoredSettings>) => {
@@ -335,6 +343,7 @@ export default function SettingsScreen() {
             doc(db, "users", user.uid),
             {
               pushEnabled: true,
+              pushOptOut: false,
               pushToken: result.token,
               pushTokenUpdatedAt: new Date(),
             },
@@ -357,6 +366,7 @@ export default function SettingsScreen() {
           doc(db, "users", user.uid),
           {
             pushEnabled: false,
+            pushOptOut: true,
             pushToken: deleteField(),
             pushTokenUpdatedAt: new Date(),
           },
@@ -370,17 +380,32 @@ export default function SettingsScreen() {
   );
 
   const handleEmailToggle = useCallback(
-    (newValue: boolean) => {
-      setIsEmailEnabled(newValue);
-      if (settingsReady) persistSettings({ emailEnabled: newValue });
+    async (newValue: boolean) => {
+      if (emailBusy) return;
+      setEmailBusy(true);
+      try {
+        await setNewsletterPreference({ enabled: newValue });
+        setIsEmailEnabled(newValue);
+        await persistSettings({ emailEnabled: newValue });
+      } catch (error: any) {
+        if (error?.code === 'functions/failed-precondition') {
+          Alert.alert(t('verify.title'), t('newsletter.verify'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('verify.send'), onPress: () => {
+              router.push('/verify-email');
+            } },
+          ]);
+        } else Alert.alert(t('common.error'), t('newsletter.failed'));
+      } finally { setEmailBusy(false); }
     },
-    [settingsReady, persistSettings]
+    [emailBusy, persistSettings, t, router]
   );
 
   const handleHapticToggle = useCallback(
-    (newValue: boolean) => {
+    async (newValue: boolean) => {
       setIsHapticEnabled(newValue);
-      if (settingsReady) persistSettings({ hapticEnabled: newValue });
+      if (settingsReady) await persistSettings({ hapticEnabled: newValue });
+      if (newValue) void hapticFeedback();
     },
     [settingsReady, persistSettings]
   );
@@ -435,8 +460,8 @@ export default function SettingsScreen() {
               const user = auth.currentUser;
               if (!user) throw new Error(t("common.error"));
 
-              await deleteDoc(doc(db, "users", user.uid));
               await deleteUser(user);
+              // Auth deletion triggers trusted server cleanup, including marketing consent.
               track("account_deleted");
 
             } catch (error: unknown) {
@@ -506,7 +531,7 @@ export default function SettingsScreen() {
 
   const handleLanguagePress = useCallback(() => {
     setLangOpen(true);
-  }, [i18n.language]);
+  }, []);
 
   // ✅ TAB BUTTON
   const TabButton = useCallback(
@@ -702,10 +727,12 @@ export default function SettingsScreen() {
 
           <SettingRow
             label={t("settings.notifications.email")}
-            subtitle={t("settings.notifications.email.sub")}
+            subtitle={t(emailLoadError ? "newsletter.loadFailed" : "settings.notifications.email.sub")}
+            onPress={emailLoadError ? loadNewsletter : undefined}
             right={
               <CustomSwitch
                 id="email"
+                disabled={emailBusy || !emailReady}
                 value={isEmailEnabled}
                 onToggle={handleEmailToggle}
                 trackColorActive={colors.trackActive}
@@ -783,6 +810,13 @@ export default function SettingsScreen() {
       legalLinks,
       handleThemeToggle,
       handlePushToggle,
+      appLockKey,
+      appLockOn,
+      handleAppLockToggle,
+      emailBusy,
+      emailReady,
+      emailLoadError,
+      loadNewsletter,
       handleEmailToggle,
       handleHapticToggle,
       handleLanguagePress,
@@ -856,12 +890,12 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <SettingRow
             label={t("settings.about.version")}
-            right={<Text style={styles.settingValueText}>v0.0.0</Text>}
+            right={<Text style={styles.settingValueText}>{Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? "—"}{Application.nativeBuildVersion ? ` (${Application.nativeBuildVersion})` : ""}</Text>}
           />
 
           <SettingRow
-            label={t("settings.about.license")}
-            right={<Text style={styles.settingValueText}>PT Lab</Text>}
+            label={t("settings.about.publisher")}
+            right={<Text style={styles.settingValueText}>Callidus</Text>}
           />
 
           <SettingRow

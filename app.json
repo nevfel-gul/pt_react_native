@@ -2,7 +2,7 @@
   "expo": {
     "name": "AthleTrack AI",
     "slug": "pt_react_native",
-    "version": "1.3",
+    "version": "1.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ptreactnative",
@@ -24,7 +24,8 @@
         "com.apple.security.application-groups": [
           "group.com.athletrack.athletrack"
         ]
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -101,7 +102,9 @@
         {
           "calendarPermission": "AthleTrack adds your client appointments to your phone's calendar so you get reminders and see them alongside your other plans."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -469,8 +469,6 @@ export default function ProfileScreen() {
           await updateProfile(user, { displayName: next });
         } else if (fieldKey === "username") {
           patch.username = next; // @siz
-        } else if (fieldKey === "email") {
-          patch.email = next.toLowerCase();
         } else {
           patch[fieldKey] = next;
         }
@@ -619,21 +617,6 @@ export default function ProfileScreen() {
                 saving={saving}
                 value={profile.username}
                 placeholder={t("profile.field.username.placeholder")}
-              />
-              <SettingRow
-                label={t("profile.field.email.label")}
-                subtitle={t("profile.field.email.subtitle")}
-                fieldKey="email"
-                isEditing={editKey === "email"}
-                onStartEdit={startEdit}
-                onSave={saveField}
-                onScrollToInput={scrollToKeyboard}
-                theme={theme}
-                styles={styles}
-                editLabel={t("profile.value.edit")}
-                saving={saving}
-                value={profile.email}
-                placeholder={t("profile.field.email.placeholder")}
               />
               <SettingRow
                 label={t("profile.field.phone.label")}

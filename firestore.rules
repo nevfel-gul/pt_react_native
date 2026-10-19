@@ -11,7 +11,10 @@ service cloud.firestore {
     // ─────────────────────────────────────────────────────────────
 
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId
+        && (!('email_verification_required' in request.auth.token)
+          || request.auth.token.email_verification_required != true
+          || request.auth.token.email_verified == true);
     }
 
     // Abonelik (users/{uid}.subscription) Apple'dan doğrulanarak SUNUCUDA

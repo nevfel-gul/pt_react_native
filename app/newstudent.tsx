@@ -1,3 +1,5 @@
+import { hapticFeedback } from "@/services/haptics";
+import { maybePromptForPush } from "@/services/push-permission";
 import { usePremium } from "@/constants/PremiumContext";
 import { cmToFtIn, ftInToCm, parseNum } from "@/constants/units";
 import { useUnits } from "@/constants/UnitsContext";
@@ -465,9 +467,10 @@ const YeniOgrenciScreen = () => {
                 notifyPositiveMoment("student_created");
             }
             requestWidgetRefresh();
+            void hapticFeedback("success");
 
             Alert.alert(t("newstudent.alert.success.title"), t("newstudent.alert.success.message"), [
-                { text: t("newstudent.alert.success.ok"), onPress: () => router.replace("/(tabs)") },
+                { text: t("newstudent.alert.success.ok"), onPress: () => { router.replace("/(tabs)"); if (!isEdit) void maybePromptForPush(true); } },
             ]);
         } catch (e) {
             console.error("student save error:", e);
