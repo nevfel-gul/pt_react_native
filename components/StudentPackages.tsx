@@ -2,6 +2,7 @@ import { usePremium } from '@/constants/PremiumContext';
 import { appLocale, normalizeLanguage } from "@/constants/languages";
 import type { ThemeUI } from '@/constants/types';
 import { useTheme } from '@/constants/usetheme';
+import { parseMoneyInput } from '@/services/payment-policy';
 import { track } from '@/services/analytics';
 import { auth } from '@/services/firebase';
 import {
@@ -13,6 +14,10 @@ import {
   PackageFullError,
   packagesColRef,
   recordPayment,
+  paymentsColRef,
+  newPaymentId,
+  voidPayment,
+  type PaymentEntry,
   remainingOf,
   sessionsColRef,
   sessionTime,
@@ -27,7 +32,7 @@ import { requestWidgetRefresh } from '@/services/widgetData';
 import { onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { Lock, Minus, Package, Plus, RotateCcw, Trash2, Wallet } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -75,10 +80,6 @@ function isValidISO(s: string) {
   return x.getFullYear() === y && x.getMonth() === m - 1 && x.getDate() === d;
 }
 
-function parseAmount(s: string): number | null {
-  const n = Number(String(s).replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, ''));
-  return s.trim() && !isNaN(n) ? n : null;
-}
 
 export default function StudentPackages({ studentId }: { studentId: string }) {
   const { theme } = useTheme();
@@ -96,6 +97,21 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
   const [newOpen, setNewOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [payments, setPayments] = useState<PaymentEntry[]>([]);
+  const [paymentsOpen, setPaymentsOpen] = useState(false);
+  const [paymentsLoading, setPaymentsLoading] = useState(true);
+  const [paymentsError, setPaymentsError] = useState(false);
+  const [paymentRetry, setPaymentRetry] = useState(0);
+  const runLock = useRef(false);
+
+  useEffect(() => {
+    if (!uid) return;
+    setPaymentsLoading(true); setPaymentsError(false);
+    return onSnapshot(query(paymentsColRef(uid), where('studentId', '==', studentId)), snapshot => {
+      setPayments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PaymentEntry)).sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)));
+      setPaymentsLoading(false);
+    }, () => { setPaymentsError(true); setPaymentsLoading(false); });
+  }, [uid, studentId, paymentRetry]);
 
   useEffect(() => {
     if (!uid) return;
@@ -131,8 +147,8 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
   }, [uid, studentId, active?.id]);
 
   const run = async (fn: () => Promise<void>) => {
-    if (busy) return;
-    setBusy(true);
+    if (runLock.current) return;
+    runLock.current = true; setBusy(true);
     try {
       await fn();
       requestWidgetRefresh();
@@ -141,10 +157,10 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
         Alert.alert(t('packages.full.title'), t('packages.full.message'));
       } else {
         console.warn('[Packages]', e);
-        Alert.alert(t('common.error'), t('packages.error'));
+        Alert.alert(t('common.error'), t(e?.message === 'payment_exceeds_balance' ? 'payments.balanceChanged' : 'packages.error'));
       }
     } finally {
-      setBusy(false);
+      runLock.current = false; setBusy(false);
     }
   };
 
@@ -282,6 +298,29 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
         </View>
       )}
 
+      <View style={{ marginTop: 16 }}>
+        <TouchableOpacity onPress={() => setPaymentsOpen(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: paymentsOpen }}>
+          <Text style={styles.link}>{t('payments.title')}</Text>
+        </TouchableOpacity>
+        {paymentsOpen && <>
+          {paymentsLoading ? <ActivityIndicator color={theme.colors.accent} /> : paymentsError ? <TouchableOpacity onPress={() => setPaymentRetry(k => k + 1)}><Text style={styles.muted}>{t('payments.loadError')} · {t('common.retry')}</Text></TouchableOpacity> : <>
+            {payments.length === 0 && !packages.some(p => !p.paymentLedger && p.paidAmount > 0) && <Text style={styles.muted}>{t('payments.empty')}</Text>}
+            {packages.filter(p => !p.paymentLedger && p.paidAmount > 0).map(p => <View key={`legacy-${p.id}`} style={styles.historyRow}><Text style={styles.muted}>{t('payments.opening')} · {formatMoney(p.paidAmount, p.currency, locale)}</Text></View>)}
+            {payments.map(payment => <View key={payment.id} style={styles.historyRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.historyTitle, payment.voidedAt && { textDecorationLine: 'line-through' }]}>{formatMoney(payment.amount, payment.currency, locale)}{payment.voidedAt ? ` · ${t('payments.voided')}` : ''}</Text>
+                <Text style={styles.muted}>{payment.kind === 'opening' ? t('payments.opening') : payment.createdAt?.toDate?.().toLocaleString(locale) ?? t('common.saving')}</Text>
+                {!!payment.note && <Text style={styles.muted}>{payment.note}</Text>}
+              </View>
+              {payment.kind === 'payment' && !payment.voidedAt && packages.some(p => p.id === payment.packageId) && <TouchableOpacity disabled={busy} accessibilityLabel={t('payments.void')} onPress={() => Alert.alert(t('payments.void'), t('payments.voidMessage'), [
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('payments.void'), style: 'destructive', onPress: () => { void run(() => voidPayment(uid, studentId, payment.id)); } },
+              ])}><RotateCcw size={18} color={theme.colors.danger} /></TouchableOpacity>}
+            </View>)}
+          </>}
+        </>}
+      </View>
+
       <NewPackageModal
         visible={newOpen}
         onClose={() => setNewOpen(false)}
@@ -314,15 +353,16 @@ export default function StudentPackages({ studentId }: { studentId: string }) {
       {active && (
         <PaymentModal
           visible={payOpen}
+          busy={busy}
           onClose={() => setPayOpen(false)}
           styles={styles}
           theme={theme}
           unpaid={unpaidOf(active)}
           currency={active.currency}
           locale={locale}
-          onSave={(amount) =>
+          onSave={(amount, requestId, note) =>
             run(async () => {
-              await recordPayment(uid, studentId, active.id, amount);
+              await recordPayment(uid, studentId, active.id, amount, requestId, note);
               track('package_payment_recorded', { fullyPaid: amount >= unpaidOf(active) });
               setPayOpen(false);
             })
@@ -499,8 +539,10 @@ function NewPackageModal({
       Alert.alert(t('common.error'), t('packages.form.invalidDate'));
       return;
     }
-    const priceN = parseAmount(price);
-    const paidN = parseAmount(paid) ?? 0;
+    const priceN = parseMoneyInput(price, locale);
+    const parsedPaid = parseMoneyInput(paid, locale);
+    if ((price.trim() && priceN == null) || (paid.trim() && parsedPaid == null)) { Alert.alert(t('common.error'), t('packages.form.invalidAmount')); return; }
+    const paidN = parsedPaid ?? 0;
 
     const doSave = () =>
       onSave({
@@ -714,6 +756,7 @@ function SessionNoteModal({
 
 function PaymentModal({
   visible,
+  busy,
   onClose,
   onSave,
   styles,
@@ -723,8 +766,9 @@ function PaymentModal({
   locale,
 }: {
   visible: boolean;
+  busy: boolean;
   onClose: () => void;
-  onSave: (amount: number) => void;
+  onSave: (amount: number, requestId: string, note: string) => void;
   styles: Styles;
   theme: ThemeUI;
   unpaid: number;
@@ -733,18 +777,26 @@ function PaymentModal({
 }) {
   const { t } = useTranslation();
   const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const requestId = useRef('');
+  const unpaidRef = useRef(unpaid); unpaidRef.current = unpaid;
 
   useEffect(() => {
-    if (visible) setAmount(String(unpaid));
-  }, [visible, unpaid]);
+    if (visible) {
+      setAmount(new Intl.NumberFormat(locale, { useGrouping: false, maximumFractionDigits: 2 }).format(unpaidRef.current));
+      setNote(''); requestId.current = newPaymentId(auth.currentUser!.uid);
+    }
+  }, [visible, locale]);
 
   const save = () => {
-    const n = parseAmount(amount);
+    if (busy) return;
+    const n = parseMoneyInput(amount, locale);
     if (n == null || n <= 0) {
       Alert.alert(t('common.error'), t('packages.form.invalidAmount'));
       return;
     }
-    onSave(Math.min(n, unpaid));
+    if (n > unpaid) { Alert.alert(t('common.error'), t('payments.balanceChanged')); return; }
+    onSave(n, requestId.current, note);
   };
 
   return (
@@ -761,10 +813,12 @@ function PaymentModal({
               keyboardType="decimal-pad"
               value={amount}
               onChangeText={setAmount}
+              editable={!busy}
               autoFocus
             />
-            <TouchableOpacity style={styles.primaryBtn} onPress={save}>
-              <Text style={styles.primaryBtnText}>{t('packages.form.save')}</Text>
+            <TextInput style={styles.input} value={note} onChangeText={setNote} editable={!busy} maxLength={300} placeholder={t('payments.note')} placeholderTextColor={theme.colors.text.muted} />
+            <TouchableOpacity disabled={busy} style={[styles.primaryBtn, busy && { opacity: 0.5 }]} onPress={save}>
+              <Text style={styles.primaryBtnText}>{t(busy ? 'common.saving' : 'packages.form.save')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={onClose} style={{ alignItems: 'center', paddingVertical: 10 }}>
               <Text style={styles.link}>{t('common.cancel')}</Text>

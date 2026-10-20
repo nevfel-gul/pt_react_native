@@ -5,6 +5,7 @@ import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 import { auth } from "@/services/firebase";
 import { appointmentDocRef, appointmentsColRef, recordsColRef, studentsColRef } from "@/services/firestorePaths";
+import { appointmentDuration, appointmentsOverlap } from "@/services/appointment-conflicts";
 import { addDays, daysDiff, isAppointmentOnDay, startOfDay, toDateSafe, ymd } from "@/services/schedule";
 import { usePremium } from "@/constants/PremiumContext";
 import { useRating } from "@/constants/RatingContext";
@@ -20,7 +21,7 @@ import {
 } from "@/services/deviceCalendar";
 import { AlreadyLoggedError, logSession, PackageFullError, type ActivePackageSummary } from "@/services/packages";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { addDoc, deleteDoc, onSnapshot, orderBy, query, serverTimestamp, Timestamp } from "firebase/firestore";
+import { addDoc, deleteDoc, getDocsFromServer, onSnapshot, orderBy, query, serverTimestamp, Timestamp } from "firebase/firestore";
 import { CalendarPlus, Check, MessageCircle, Trash2, X } from "lucide-react-native";
 import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -78,6 +79,7 @@ type Appointment = {
     studentName?: string;
     date: Timestamp; // full datetime (date + time)
     note?: string;
+    durationMinutes?: number;
     repeatDays?: number | null; // 0/null = tekrar yok, 1 = her gün, 3 = 3 günde bir vs.
     createdAt?: Timestamp;
 };
@@ -263,7 +265,7 @@ function AddAppointmentModal({
     students: Student[];
     theme: ThemeUI;
     onClose: () => void;
-    onSave: (studentId: string, studentName: string, date: Date, note: string, repeatDays: number) => void;
+    onSave: (studentId: string, studentName: string, date: Date, note: string, repeatDays: number, durationMinutes: number) => Promise<void>;
     t: (key: string, opts?: any) => string;
     lang: CalendarLang;
 }) {
@@ -275,6 +277,9 @@ function AddAppointmentModal({
     const [timeIndex, setTimeIndex] = useState(6); // 09:00
     const [repeatDays, setRepeatDays] = useState(0);
     const [note, setNote] = useState("");
+    const [durationMinutes, setDurationMinutes] = useState(60);
+    const [saving, setSaving] = useState(false);
+    const saveLock = useRef(false);
 
     // Gün etiketleri hem dile hem de "bugün"e bağlı; gece yarısını geçmiş olabiliriz
     // diye modal her açıldığında yeniden üretiliyor.
@@ -290,6 +295,7 @@ function AddAppointmentModal({
             setDayIndex(0);
             setTimeIndex(6);
             setRepeatDays(0);
+            setDurationMinutes(60);
             setNote("");
         }
     }, [visible]);
@@ -308,7 +314,8 @@ function AddAppointmentModal({
         setStep("datetime");
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (saveLock.current) return;
         const dayInfo = dayItems[dayIndex];
         const timeStr = TIME_ITEMS[timeIndex] ?? "09:00";
         if (!dayInfo || !selectedStudentId) return;
@@ -318,7 +325,9 @@ function AddAppointmentModal({
         date.setHours(hh ?? 9);
         date.setMinutes(mm ?? 0);
         date.setSeconds(0);
-        onSave(selectedStudentId, selectedStudentName, date, note, repeatDays);
+        saveLock.current = true; setSaving(true);
+        try { await onSave(selectedStudentId, selectedStudentName, date, note, repeatDays, durationMinutes); }
+        finally { saveLock.current = false; setSaving(false); }
     };
 
     const selectedDayLabel = dayItems[dayIndex]?.label ?? "";
@@ -442,6 +451,16 @@ function AddAppointmentModal({
                                 </ScrollView>
                             </View>
 
+                            <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                                <Text style={{ color: theme.colors.text.secondary, marginBottom: 8 }}>{t("calendar.duration")}</Text>
+                                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                                    {[30, 45, 60, 90, 120].map(minutes => <Pressable key={minutes} disabled={saving} onPress={() => setDurationMinutes(minutes)}
+                                        accessibilityRole="radio" accessibilityState={{ selected: durationMinutes === minutes }}
+                                        style={{ padding: 10, borderRadius: 16, borderWidth: 1, borderColor: durationMinutes === minutes ? theme.colors.accent : theme.colors.border }}>
+                                        <Text style={{ color: theme.colors.text.primary }}>{t("calendar.minutes", { count: minutes })}</Text>
+                                    </Pressable>)}
+                                </View>
+                            </View>
                             {/* Not */}
                             <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
                                 <TextInput
@@ -458,10 +477,10 @@ function AddAppointmentModal({
                             {/* Kaydet */}
                             <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
                                 <Pressable
-                                    onPress={handleSave}
+                                    disabled={saving} onPress={handleSave}
                                     style={({ pressed }) => ({ backgroundColor: theme.colors.primary, borderRadius: 14, paddingVertical: 14, alignItems: "center", opacity: pressed ? 0.85 : 1 })}
                                 >
-                                    <Text style={{ color: theme.colors.white, fontSize: 16, fontWeight: "900" }}>{t("calendar.appointment.save")}</Text>
+                                    <Text style={{ color: theme.colors.white, fontSize: 16, fontWeight: "900" }}>{saving ? t("common.saving") : t("calendar.appointment.save")}</Text>
                                 </Pressable>
                             </View>
                         </ScrollView>
@@ -545,27 +564,36 @@ export default function CalendarFollowUpScreen() {
         return t("calendar.diff.remainingDays", { days: Math.abs(daysToDue) });
     }, [t]);
 
-    const handleSaveAppointment = useCallback(async (studentId: string, studentName: string, date: Date, note: string, repeatDays: number) => {
+    const handleSaveAppointment = useCallback(async (studentId: string, studentName: string, date: Date, note: string, repeatDays: number, durationMinutes: number) => {
         if (!uid) return;
         try {
+            const latest = await getDocsFromServer(appointmentsColRef(uid));
+            const conflicting = latest.docs.find(item => appointmentsOverlap({ date, repeatDays, durationMinutes }, item.data()));
+            if (conflicting) {
+                Alert.alert(t("calendar.conflict.title"), t("calendar.conflict.message", { name: conflicting.data().studentName || "—" }));
+                return;
+            }
             const ref = await addDoc(appointmentsColRef(uid), {
                 studentId,
                 studentName,
                 date: Timestamp.fromDate(date),
                 note: note.trim() || null,
                 repeatDays: repeatDays > 0 ? repeatDays : null,
+                durationMinutes,
                 createdAt: serverTimestamp(),
             });
             setShowAddModal(false);
             addAppointmentToDeviceCalendar(
-                { id: ref.id, studentName, date: Timestamp.fromDate(date), note: note.trim() || null, repeatDays },
+                { id: ref.id, studentName, date: Timestamp.fromDate(date), note: note.trim() || null, repeatDays, durationMinutes },
                 eventTitle,
             ).catch((e) => console.warn("[DeviceCalendar] eklenemedi:", e));
             track("appointment_created", { repeatDays: repeatDays > 0 ? repeatDays : 0, hasNote: !!note.trim() });
             notifyPositiveMoment("appointment_created");
             requestWidgetRefresh();
-        } catch (e) { console.error(e); }
-    }, [uid, notifyPositiveMoment, eventTitle]);
+        } catch {
+            Alert.alert(t("common.error"), t("calendar.saveFailed"));
+        }
+    }, [uid, notifyPositiveMoment, eventTitle, t]);
 
     const toggleDeviceCalendar = useCallback(async (next: boolean) => {
         if (deviceCalBusy) return;
@@ -924,7 +952,7 @@ export default function CalendarFollowUpScreen() {
                                             <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: theme.colors.premium }} />
                                             <View style={{ flex: 1 }}>
                                                 <Text style={{ color: theme.colors.text.primary, fontSize: 15, fontWeight: "900" }}>{apt.studentName ?? "—"}</Text>
-                                                {timeStr ? <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "700", marginTop: 2 }}>🕐 {timeStr}</Text> : null}
+                                                {timeStr ? <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "700", marginTop: 2 }}>🕐 {timeStr} · {t("calendar.minutes", { count: appointmentDuration(apt) })}</Text> : null}
                                                 {apt.note ? <Text style={{ color: theme.colors.text.secondary, fontSize: 12, fontWeight: "600", marginTop: 2 }}>{apt.note}</Text> : null}
                                                 {hasPremium ? <Text style={{ color: !pkg ? theme.colors.text.muted : pkg.remaining <= 2 ? theme.colors.warning : theme.colors.text.secondary, fontSize: 12, fontWeight: "700", marginTop: 2 }}>
                                                     {!pkg ? t("packages.calendar.noPackage") : pkg.remaining === 0 ? t("packages.calendar.finished") : t("packages.calendar.remaining", { count: pkg.remaining })}

@@ -262,9 +262,15 @@ export const recordAiComment = onCall<Req>(
             createdAt: new Date().toISOString(),
         };
 
-        await recRef.update({
-            aiComment: comment,
-            ...(existing && force ? { aiCommentRegenCount: regenCount + 1 } : {}),
+        await db.runTransaction(async tx => {
+            const current = await tx.get(recRef);
+            if (!current.exists || current.data()?.contentVersion !== rec.contentVersion) {
+                throw new HttpsError("aborted", "record_changed");
+            }
+            tx.update(recRef, {
+                aiComment: comment,
+                ...(existing && force ? { aiCommentRegenCount: regenCount + 1 } : {}),
+            });
         });
 
         logger.info("recordAiComment generated", { uid, recordId, compared: !!previous, regenerated: !!(existing && force) });

@@ -1,3 +1,7 @@
+import { useFormDraft } from "@/hooks/use-form-draft";
+import DraftNotice from "@/components/DraftNotice";
+import { measurementVersion, saveMeasurement } from "@/services/measurements";
+import * as Crypto from 'expo-crypto';
 import { hapticFeedback } from "@/services/haptics";
 import { appLocale } from "@/constants/languages";
 import {
@@ -6,7 +10,7 @@ import {
   visceralFatStatus,
 } from "@/constants/healthRanges";
 import { useRating } from "@/constants/RatingContext";
-import { inputToMetricString, quantityOf } from "@/constants/units";
+import { inputToMetricString, metricToInputString, quantityOf } from "@/constants/units";
 import { useUnits } from "@/constants/UnitsContext";
 import { usePremium } from "@/constants/PremiumContext";
 import { generateRecordAiComment } from "@/services/aiComment";
@@ -16,9 +20,9 @@ import { parqYesCount } from "@/constants/studentForm";
 import { track } from "@/services/analytics";
 import { auth } from "@/services/firebase";
 import { requestWidgetRefresh } from "@/services/widgetData";
-import { recordsColRef, studentDocRef } from "@/services/firestorePaths";
+import { recordDocRef, studentDocRef } from "@/services/firestorePaths";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { addDoc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { getDoc } from "firebase/firestore";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -179,7 +183,15 @@ type FormData = {
 export default function NewRecordScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, recordId } = useLocalSearchParams<{ id: string; recordId?: string }>();
+  const isEdit = !!recordId;
+  const [newRecordId, setNewRecordId] = useState(() => Crypto.randomUUID());
+  const original = useRef<Record<string, any>>({});
+  const originalDisplay = useRef<Record<string, unknown>>({});
+  const loadedVersion = useRef<string | undefined>(undefined);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  const submitLock = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
   // ✅ theme
   const { theme } = useTheme();
@@ -206,6 +218,7 @@ export default function NewRecordScreen() {
   /** Form metnini (gösterim birimi) metrik metne çevirir; birimsiz alan aynen döner. */
   const metricOf = (field: keyof FormData, value: unknown) => {
     const q = quantityOf(String(field));
+    if (isEdit && q && originalDisplay.current[field] === value && field in original.current) return original.current[field];
     return q && typeof value === "string" ? inputToMetricString(q, value, unitSystem) : value;
   };
   const { hasPremium } = usePremium();
@@ -313,6 +326,15 @@ export default function NewRecordScreen() {
     assessmentDate: new Date().toISOString().split("T")[0],
   });
 
+  const draft = useFormDraft(auth.currentUser?.uid, `measurement:${id}:${recordId ?? 'new'}:${unitSystem}`, { formData, step, version: loadedVersion.current, submissionId: newRecordId }, !loadingStudent && !loadError, saved => {
+    if (!saved?.formData || typeof saved.formData !== 'object' || (isEdit && saved.version !== loadedVersion.current)) {
+      Alert.alert(t("common.error"), t("recordEdit.conflict")); return;
+    }
+    setFormData(prev => Object.fromEntries(Object.keys(prev).map(key => [key, key in saved.formData ? saved.formData[key as keyof FormData] : prev[key as keyof FormData]])) as FormData);
+    if (typeof saved.submissionId === 'string' && /^[a-zA-Z0-9-]+$/.test(saved.submissionId)) setNewRecordId(saved.submissionId);
+    setStep(Math.max(0, Math.min(3, Number(saved.step) || 0)));
+  });
+
   const handleChange = (field: keyof FormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value as any }));
   };
@@ -349,9 +371,24 @@ export default function NewRecordScreen() {
     const fetchStudent = async () => {
       if (!id) return;
       try {
-        const ref = studentDocRef(auth.currentUser?.uid!, id);
+        setLoadingStudent(true); setLoadError(false);
+        const uid = auth.currentUser?.uid;
+        if (!uid) throw new Error('signed_out');
+        const ref = studentDocRef(uid, id);
         const snap = await getDoc(ref);
         if (snap.exists()) {
+          if (recordId) {
+            const record = await getDoc(recordDocRef(uid, recordId));
+            if (!record.exists() || record.data().studentId !== id) throw new Error('record_missing');
+            const values = record.data(); original.current = values; loadedVersion.current = measurementVersion(values);
+            setFormData(prev => {
+              const display = Object.fromEntries(Object.entries(prev).map(([key, fallback]) => {
+                const stored = key === 'assessmentDate' ? values[key] ?? values.createdAt?.toDate?.().toISOString().slice(0, 10) : values[key]; const q = quantityOf(key);
+                return [key, stored == null ? fallback : q ? metricToInputString(q, stored, unitSystem) : typeof fallback === 'boolean' ? !!stored : String(stored)];
+              })) as FormData;
+              originalDisplay.current = display; return display;
+            });
+          }
           const data = snap.data() as any;
           setStudent({
             id: snap.id,
@@ -367,8 +404,10 @@ export default function NewRecordScreen() {
           });
         } else {
           setStudent(null);
+          throw new Error('student_missing');
         }
       } catch (err) {
+        setLoadError(true);
         console.error("Öğrenci çekme hatası:", err);
       } finally {
         setLoadingStudent(false);
@@ -376,7 +415,7 @@ export default function NewRecordScreen() {
     };
 
     fetchStudent();
-  }, [id]);
+  }, [id, recordId, unitSystem, retryKey]);
 
   const InfoNote = ({ children }: { children: React.ReactNode }) =>
     showTips ? (
@@ -449,7 +488,8 @@ export default function NewRecordScreen() {
     if (!student?.dateOfBirth) return 0;
     const dob = new Date(student.dateOfBirth);
     if (isNaN(dob.getTime())) return 0;
-    const now = new Date();
+    const assessment = new Date(`${formData.assessmentDate}T12:00:00`);
+    const now = isNaN(assessment.getTime()) ? new Date() : assessment;
     let a = now.getFullYear() - dob.getFullYear();
     const m = now.getMonth() - dob.getMonth();
     if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) a--;
@@ -772,6 +812,7 @@ export default function NewRecordScreen() {
   // handleSubmit içindeki metrik kopya aynı adı kullandığı için form durumuna bu adla erişilir.
   const formDataState = formData;
   const handleSubmit = async () => {
+    if (submitLock.current || !draft.ready) return;
     // Bundan sonra kaydedilen ve hesaplanan her şey METRİK (constants/units.ts).
     const formData = Object.fromEntries(
       Object.entries(formDataState).map(([k, v]) => [k, metricOf(k as keyof FormData, v)]),
@@ -782,7 +823,8 @@ export default function NewRecordScreen() {
     }
 
     try {
-      setSubmitting(true);
+      submitLock.current = true; setSubmitting(true);
+      await draft.flush();
 
       const age = getAge();
       const gender = student?.gender;
@@ -883,27 +925,15 @@ export default function NewRecordScreen() {
         mekikStatus: mekikSec && gender ? getMekikScore(mekikSec, gender) : "",
       };
 
-      const recordRef = await addDoc(recordsColRef(auth.currentUser?.uid!), {
-        studentId: id,
-        ...formData,
-        analysis,
-        createdAt: serverTimestamp(),
-      });
-
-      // AI yorumu arka planda üretilir; kayıt detayı açılınca hazır olur.
+      const savedId = await saveMeasurement(auth.currentUser!.uid, id, recordId ?? newRecordId, { ...formData, analysis }, isEdit ? loadedVersion.current : undefined);
+      await draft.clear();
       if (hasPremium) {
-        generateRecordAiComment(recordRef.id)
-          .then((c) => track("ai_comment_generated", { compared: c.comparedToPrevious, source: "record_saved" }))
-          .catch((e) => track("ai_comment_failed", { code: e?.code ?? "unknown" }));
+        void generateRecordAiComment(savedId).catch(e => track("ai_comment_failed", { code: e?.code ?? "unknown" }));
       }
-
-      await updateDoc(studentDocRef(auth.currentUser?.uid!, id!), {
-        lastRecordedAt: serverTimestamp(),
-      });
 
       // Hangi bölümler dolduruldu — değerler değil, sadece var/yok.
       void hapticFeedback("success");
-      track("record_created", {
+      track(isEdit ? "record_updated" : "record_created", {
         hasBodyComp: !!(formData.weight || formData.bodyFat),
         hasTape: !!(formData.bel || formData.kalca),
         hasBloodPressure: !!(formData.systolicBP && formData.diastolicBP),
@@ -912,21 +942,22 @@ export default function NewRecordScreen() {
         durationSec: Math.round((Date.now() - openedAt.current) / 1000),
         studentFirstRecord: !!student?.isFirstRecord,
       });
-      if (student?.isFirstRecord) track("first_record_created");
+      if (!isEdit && student?.isFirstRecord) track("first_record_created");
       requestWidgetRefresh();
-      notifyPositiveMoment("record_created");
+      if (!isEdit) notifyPositiveMoment("record_created");
 
       Alert.alert(t("recordNew.alert.okTitle"), t("recordNew.alert.saved"));
       router.back();
     } catch (err) {
       console.error("Kayıt hata:", err);
-      Alert.alert(t("common.error"), t("recordNew.alert.saveError"));
+      Alert.alert(t("common.error"), t(err instanceof Error && err.message === 'record_conflict' ? "recordEdit.conflict" : "recordNew.alert.saveError"));
     } finally {
-      setSubmitting(false);
+      submitLock.current = false; setSubmitting(false);
     }
   };
 
-  if (loadingStudent) {
+  if (loadError) return <SafeAreaView style={styles.safeArea}><Text style={{ color: theme.colors.text.primary, padding: 24 }}>{t("draft.loadError")}</Text><TouchableOpacity onPress={() => setRetryKey(k => k + 1)}><Text style={{ color: theme.colors.primary, padding: 24 }}>{t("common.retry")}</Text></TouchableOpacity></SafeAreaView>;
+  if (loadingStudent || (student && !draft.ready)) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
@@ -1908,6 +1939,8 @@ export default function NewRecordScreen() {
             </View>
           )}
 
+          {isEdit && <Text style={{ color: theme.colors.text.primary, fontWeight: '700', marginHorizontal: 16 }}>{t("recordEdit.title")}</Text>}
+          <DraftNotice status={draft.status} />
           {/* Stepper */}
           {renderStepIndicator()}
 
@@ -2045,7 +2078,7 @@ export default function NewRecordScreen() {
                     <>
                       <Calendar size={18} color="#0f172a" />
                       <Text style={styles.saveButtonText}>
-                        {t("recordNew.submit")}
+                        {t(isEdit ? "recordEdit.save" : "recordNew.submit")}
                       </Text>
                     </>
                   )}

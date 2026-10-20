@@ -13,6 +13,14 @@ import {
 import * as Localization from "expo-localization";
 import { db } from "./firebase";
 import { studentDocRef } from "./firestorePaths";
+import { paymentAmount } from './payment-policy';
+
+export type PaymentEntry = {
+    id: string; studentId: string; packageId: string; amount: number; currency: string;
+    kind: 'payment' | 'opening'; note: string | null; createdAt?: Timestamp; voidedAt?: Timestamp;
+};
+export const paymentsColRef = (uid: string) => collection(db, 'users', uid, 'payments');
+export const newPaymentId = (uid: string) => doc(paymentsColRef(uid)).id;
 
 // ─────────────────────────────────────────────────────────────
 // Seans / paket takibi.
@@ -41,6 +49,7 @@ export type SessionPackage = {
     note: string | null;
     createdAt?: Timestamp;
     closedAt?: Timestamp | null;
+    paymentLedger?: boolean;
 };
 
 export type SessionLog = {
@@ -123,10 +132,15 @@ export async function createPackage(uid: string, sid: string, input: NewPackageI
         endDate: input.endDate,
         note: input.note,
         closedAt: null,
+        paymentLedger: true,
     };
 
     const batch = writeBatch(db);
     batch.set(ref, { ...data, createdAt: serverTimestamp() });
+    if (data.paidAmount > 0) batch.set(doc(paymentsColRef(uid)), {
+        studentId: sid, packageId: ref.id, amount: data.paidAmount, currency: data.currency,
+        kind: 'payment', note: null, createdAt: serverTimestamp(),
+    });
     if (previousActiveId) {
         batch.update(doc(packagesColRef(uid, sid), previousActiveId), { closedAt: serverTimestamp() });
     }
@@ -213,15 +227,49 @@ export function sessionTime(d: any): number {
     return d?.createdAt?.toMillis?.() ?? d?.date?.toMillis?.() ?? Date.now();
 }
 
-export async function recordPayment(uid: string, sid: string, packageId: string, amount: number) {
+export async function recordPayment(uid: string, sid: string, packageId: string, amount: number, requestId = newPaymentId(uid), note = '') {
+    amount = paymentAmount(amount);
     const pkgRef = doc(packagesColRef(uid, sid), packageId);
+    const paymentRef = doc(paymentsColRef(uid), requestId);
     await runTransaction(db, async (tx) => {
-        const snap = await tx.get(pkgRef);
+        const [snap, payment] = await Promise.all([tx.get(pkgRef), tx.get(paymentRef)]);
+        if (payment.exists()) {
+            if (payment.data().studentId !== sid || payment.data().packageId !== packageId) throw new Error('invalid_payment');
+            return;
+        }
         if (!snap.exists()) throw new Error("package_missing");
         const p = snap.data() as Omit<SessionPackage, "id">;
-        const next = { ...p, paidAmount: Math.max(0, (p.paidAmount || 0) + amount) };
-        tx.update(pkgRef, { paidAmount: next.paidAmount, updatedAt: serverTimestamp() });
+        if (p.price == null || amount > Math.round(unpaidOf(p) * 100) / 100) throw new Error('payment_exceeds_balance');
+        if (!p.paymentLedger && p.paidAmount > 0) tx.set(doc(paymentsColRef(uid), `opening_${packageId}`), {
+            studentId: sid, packageId, amount: p.paidAmount, currency: p.currency,
+            kind: 'opening', note: null, createdAt: serverTimestamp(),
+        });
+        const next = { ...p, paidAmount: Math.round(((p.paidAmount || 0) + amount) * 100) / 100 };
+        tx.set(paymentRef, { studentId: sid, packageId, amount, currency: p.currency, kind: 'payment', note: note.trim().slice(0, 300) || null, createdAt: serverTimestamp() });
+        tx.update(pkgRef, { paidAmount: next.paidAmount, paymentLedger: true, updatedAt: serverTimestamp() });
         if (!p.closedAt) tx.update(studentDocRef(uid, sid), { activePackage: summaryOf(packageId, next) });
+    });
+}
+
+/** Retain the original movement; cancel once and atomically correct the package total. */
+export async function voidPayment(uid: string, sid: string, paymentId: string) {
+    const paymentRef = doc(paymentsColRef(uid), paymentId);
+    await runTransaction(db, async tx => {
+        const payment = await tx.get(paymentRef);
+        if (!payment.exists()) throw new Error('payment_missing');
+        const entry = payment.data() as PaymentEntry;
+        if (entry.studentId !== sid || entry.kind !== 'payment') throw new Error('invalid_payment');
+        if (entry.voidedAt) return;
+        paymentAmount(entry.amount);
+        const pkgRef = doc(packagesColRef(uid, sid), entry.packageId);
+        const pkg = await tx.get(pkgRef);
+        if (!pkg.exists()) throw new Error('package_missing');
+        const p = pkg.data() as SessionPackage;
+        if (p.paidAmount < entry.amount) throw new Error('invalid_payment');
+        const next = { ...p, paidAmount: Math.round((p.paidAmount - entry.amount) * 100) / 100 };
+        tx.update(paymentRef, { voidedAt: serverTimestamp() });
+        tx.update(pkgRef, { paidAmount: next.paidAmount, updatedAt: serverTimestamp() });
+        if (!p.closedAt) tx.update(studentDocRef(uid, sid), { activePackage: summaryOf(entry.packageId, next) });
     });
 }
 
@@ -255,7 +303,7 @@ export function currencySymbol(currency: string, locale: string): string {
 
 export function formatMoney(amount: number, currency: string, locale: string) {
     try {
-        return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+        return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 2, minimumFractionDigits: 0 }).format(amount);
     } catch {
         return `${Math.round(amount)} ${currency === "TRY" ? "₺" : currency}`;
     }

@@ -2,7 +2,7 @@
 import type { ThemeUI } from "@/constants/types";
 import { appLocale } from "@/constants/languages";
 import { useTheme } from "@/constants/usetheme";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
     ArrowLeft,
     BicepsFlexed,
@@ -11,12 +11,13 @@ import {
     Mail,
     PersonStanding,
     Phone,
+    Pencil,
     SquareActivity,
     Trash2,
     User,
     VenusAndMars,
 } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import {
@@ -75,9 +76,10 @@ export default function RecordDetailScreen() {
         track("record_viewed");
     }, []);
 
-    useEffect(() => {
+    useFocusEffect(useCallback(() => {
         if (!id) return;
 
+        let live = true;
         const fetchData = async () => {
             try {
                 setLoading(true);
@@ -86,6 +88,7 @@ export default function RecordDetailScreen() {
                 // 🔹 Kayıt: /users/{uid}/records/{id}
                 const recRef = recordDocRef(auth.currentUser?.uid!, id as string);
                 const recSnap = await getDoc(recRef);
+                if (!live) return;
 
                 if (!recSnap.exists()) {
                     setError(t("recordDetail.notFound"));
@@ -105,6 +108,7 @@ export default function RecordDetailScreen() {
                 if (recData.studentId) {
                     const stuRef = studentDocRef(auth.currentUser?.uid!, recData.studentId);
                     const stuSnap = await getDoc(stuRef);
+                    if (!live) return;
                     if (stuSnap.exists()) {
                         const s = stuSnap.data() as any;
                         setStudent({
@@ -121,14 +125,15 @@ export default function RecordDetailScreen() {
                 }
             } catch (err: any) {
                 console.error("Kayıt detay hata:", err);
-                setError(err?.message ?? t("recordDetail.fetchError"));
+                if (live) setError(err?.message ?? t("recordDetail.fetchError"));
             } finally {
-                setLoading(false);
+                if (live) setLoading(false);
             }
         };
 
         fetchData();
-    }, [id, t]);
+        return () => { live = false; };
+    }, [id, t]));
 
     const handleGoBack = () => {
         if (student) {
@@ -199,8 +204,12 @@ export default function RecordDetailScreen() {
                                 <ArrowLeft size={18} color={theme.colors.text.primary} />
                                 <Text style={styles.backButtonText}>{t("recordDetail.back")}</Text>
                             </TouchableOpacity>
+                            <TouchableOpacity style={[styles.backButton, { marginLeft: "auto" }]} accessibilityLabel={t("recordEdit.title")}
+                                onPress={() => record && router.push({ pathname: '/newrecord/[id]', params: { id: record.studentId, recordId: record.id } })}>
+                                <Pencil size={16} color={theme.colors.text.primary} />
+                            </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.backButton, { marginLeft: "auto", backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }]}
+                                style={[styles.backButton, { marginLeft: 8, backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }]}
                                 onPress={confirmDelete}
                                 activeOpacity={0.85}
                                 accessibilityLabel={t("recordDetail.delete")}

@@ -1,3 +1,6 @@
+import * as Crypto from "expo-crypto";
+import { useFormDraft } from "@/hooks/use-form-draft";
+import DraftNotice from "@/components/DraftNotice";
 import { hapticFeedback } from "@/services/haptics";
 import { maybePromptForPush } from "@/services/push-permission";
 import { usePremium } from "@/constants/PremiumContext";
@@ -19,7 +22,7 @@ import type { ThemeUI } from "@/constants/types";
 import { useTheme } from "@/constants/usetheme";
 
 import { track } from "@/services/analytics";
-import { auth } from "@/services/firebase";
+import { auth, db } from "@/services/firebase";
 import { requestWidgetRefresh } from "@/services/widgetData";
 import { studentsColRef } from "@/services/firestorePaths";
 
@@ -27,11 +30,12 @@ import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/dat
 import { calendarLangOf, pickerLocaleOf } from "@/constants/calendarLocale";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { addDoc, doc, getCountFromServer, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getCountFromServer, getDoc, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
 import { AlertTriangle, ArrowLeft, Calendar, Save, User as UserIcon } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Modal,
@@ -143,6 +147,9 @@ const YeniOgrenciScreen = () => {
     const pickerLocale = pickerLocaleOf(calendarLangOf(i18n.language));
     const { id, mode } = useLocalSearchParams<{ id?: string; mode?: string }>();
     const isEdit = mode === "edit" && !!id;
+    const [editReady, setEditReady] = useState(!isEdit);
+    const [loadFailed, setLoadFailed] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
 
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -159,6 +166,8 @@ const YeniOgrenciScreen = () => {
     const [loading, setLoading] = useState(true);
 
     const [saving, setSaving] = useState(false);
+    const saveLock = useRef(false);
+    const [submissionId, setSubmissionId] = useState(() => Crypto.randomUUID());
 
     // ✅ DOB picker state
     const [showDobPicker, setShowDobPicker] = useState(false);
@@ -242,6 +251,14 @@ const YeniOgrenciScreen = () => {
 
         trainingGoals: [],
         otherGoal: "",
+    });
+
+    const draft = useFormDraft(user?.uid, `student:${isEdit ? id : 'new'}`, { form, submissionId }, !loading && editReady && !loadFailed, saved => {
+        if (!saved?.form || typeof saved.form !== 'object') return;
+        if (typeof saved.submissionId === 'string' && /^[a-zA-Z0-9-]+$/.test(saved.submissionId)) setSubmissionId(saved.submissionId);
+        setForm(prev => Object.fromEntries(Object.keys(prev).map(key => [key, key in saved.form ? saved.form[key as keyof FormState] : prev[key as keyof FormState]])) as FormState);
+        const cm = parseNum(saved.form.boy);
+        if (cm != null) { const { ft, inch } = cmToFtIn(cm); setHeightFt(String(ft)); setHeightIn(String(inch)); }
     });
 
     /* -------------------- helpers -------------------- */
@@ -354,33 +371,37 @@ const YeniOgrenciScreen = () => {
 
     useEffect(() => {
         if (!isEdit) return;
-        if (!auth.currentUser?.uid) return;
+        if (!user?.uid) return;
+        let live = true;
 
         (async () => {
             try {
-                setLoading(true);
+                setLoading(true); setLoadFailed(false); setEditReady(false);
 
-                const ref = doc(studentsColRef(auth.currentUser!.uid), id!);
+                const ref = doc(studentsColRef(user.uid), id!);
                 const snap = await getDoc(ref);
-                if (!snap.exists()) return;
+                if (!live) return;
+                if (!snap.exists()) throw new Error("student_missing");
 
                 const d = snap.data() as any;
 
                 setForm((prev) => ({
                     ...prev,
-                    ...d,
+                    ...Object.fromEntries(Object.keys(prev).map(key => [key, key in d ? d[key] : prev[key as keyof FormState]])),
                     trainingGoals: normalizeGoals(d.trainingGoals),
                     plannedDaysPerWeek: typeof d.plannedDaysPerWeek === "number" ? d.plannedDaysPerWeek : null,
                     assessmentDate: d.assessmentDate ?? prev.assessmentDate,
                     dateOfBirth: d.dateOfBirth ?? prev.dateOfBirth,
                 }));
             } catch (e) {
+                if (live) setLoadFailed(true);
                 console.error("edit load error:", e);
             } finally {
-                setLoading(false);
+                if (live) { setLoading(false); setEditReady(true); }
             }
         })();
-    }, [isEdit, id]);
+        return () => { live = false; };
+    }, [isEdit, id, reloadKey, user?.uid]);
 
     // Düzenlemede kayıtlı cm değerini ft/in kutularına yansıt (bir kez).
     const heightSynced = React.useRef(false);
@@ -396,13 +417,18 @@ const YeniOgrenciScreen = () => {
 
     /* -------------------- submit -------------------- */
     const handleSubmit = async () => {
-        if (!validateForm()) return;
+        if (saveLock.current || !draft.ready || !validateForm()) return;
 
         try {
+            saveLock.current = true;
             setSaving(true);
+            await draft.flush();
+            const uid = auth.currentUser!.uid;
+            const submissionRef = doc(studentsColRef(uid), submissionId);
+            const alreadySaved = !isEdit && (await getDoc(submissionRef)).exists();
 
             // Yeni öğrenci eklenirken plan limitini kontrol et
-            if (!isEdit && !isUnlimited) {
+            if (!isEdit && !isUnlimited && !alreadySaved) {
                 const uid = auth.currentUser?.uid;
                 if (uid) {
                     // Sayım için tüm öğrenci dokümanlarını indirmeye gerek yok.
@@ -457,15 +483,14 @@ const YeniOgrenciScreen = () => {
                 });
                 track("student_updated", analyticsProps);
             } else {
-                await addDoc(studentsColRef(auth.currentUser?.uid!), {
-                    ...payload,
-                    ownerUid: auth.currentUser?.uid,
-                    createdAt: serverTimestamp(),
-                    followUpDays: 30,
+                await runTransaction(db, async tx => {
+                    if ((await tx.get(submissionRef)).exists()) return;
+                    tx.set(submissionRef, { ...payload, ownerUid: uid, createdAt: serverTimestamp(), followUpDays: 30 });
                 });
                 track("student_created", analyticsProps);
                 notifyPositiveMoment("student_created");
             }
+            await draft.clear();
             requestWidgetRefresh();
             void hapticFeedback("success");
 
@@ -476,10 +501,13 @@ const YeniOgrenciScreen = () => {
             console.error("student save error:", e);
             Alert.alert(t("newstudent.alert.error.title"), t("newstudent.alert.error.message"));
         } finally {
+            saveLock.current = false;
             setSaving(false);
         }
     };
 
+    if (loadFailed) return <SafeAreaView style={styles.safeArea}><Text style={{ color: theme.colors.text.primary, padding: 24 }}>{t("draft.loadError")}</Text><TouchableOpacity onPress={() => setReloadKey(k => k + 1)}><Text style={{ color: theme.colors.primary, padding: 24 }}>{t("common.retry")}</Text></TouchableOpacity></SafeAreaView>;
+    if (loading || !draft.ready) return <SafeAreaView style={styles.safeArea}><ActivityIndicator color={theme.colors.primary} style={{ margin: 40 }} /></SafeAreaView>;
     return (
         <SafeAreaView style={styles.safeArea}>
             <KeyboardAvoidingView
@@ -517,6 +545,7 @@ const YeniOgrenciScreen = () => {
                         </View>
                     </View>
 
+                    <DraftNotice status={draft.status} />
                     {/* FORM */}
                     <ScrollView style={styles.formScroll} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
                         {/* BÖLÜM 1 */}

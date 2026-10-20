@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Calendar from "expo-calendar";
 import { Platform } from "react-native";
+import { appointmentDuration } from "./appointment-conflicts";
 import { startOfDay, toDateSafe } from "./schedule";
 
 // ─────────────────────────────────────────────────────────────
@@ -12,7 +13,7 @@ import { startOfDay, toDateSafe } from "./schedule";
 // - Randevu → etkinlik eşlemesi cihazda tutulur (etkinlik kimlikleri
 //   cihaza özeldir; Firestore'a yazmanın anlamı yok).
 // - Tekrarlı randevular takvimde de tekrarlı etkinlik olarak açılır.
-// - Süre bilgisi olmadığı için etkinlik 60 dk, 30 dk önce hatırlatmalı.
+// - Eski randevular 60 dk; yeni randevular seçilen sürede, 30 dk önce hatırlatmalı.
 // ─────────────────────────────────────────────────────────────
 
 const K = {
@@ -23,7 +24,7 @@ const K = {
 
 const CALENDAR_TITLE = "AthleTrack";
 const CALENDAR_COLOR = "#0284c7";
-const DURATION_MIN = 60;
+
 const ALARM_MIN = 30;
 
 export type CalendarAppointment = {
@@ -32,6 +33,7 @@ export type CalendarAppointment = {
     date: any;
     note?: string | null;
     repeatDays?: number | null;
+    durationMinutes?: number;
 };
 
 export async function isDeviceCalendarEnabled(): Promise<boolean> {
@@ -99,7 +101,7 @@ async function ensureCalendar(): Promise<string> {
 
 function eventDetails(apt: CalendarAppointment, title: (name: string) => string) {
     const start = toDateSafe(apt.date) ?? new Date();
-    const end = new Date(start.getTime() + DURATION_MIN * 60_000);
+    const end = new Date(start.getTime() + appointmentDuration(apt) * 60_000);
     const repeat = apt.repeatDays && apt.repeatDays > 0 ? apt.repeatDays : null;
     return {
         title: title(apt.studentName ?? ""),

@@ -52,6 +52,7 @@ export type AnalyticsEvent =
   | "record_form_opened"
   | "record_step_viewed"
   | "record_created"
+  | "record_updated"
   | "first_record_created"
   | "record_viewed"
   | "student_note_added"
