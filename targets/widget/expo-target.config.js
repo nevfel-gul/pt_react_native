@@ -2,7 +2,7 @@
 module.exports = (config) => ({
   type: "widget",
   name: "TodayWidget",
-  displayName: "AthleTrack",
+  displayName: config.ios.bundleIdentifier.endsWith(".dev") ? "AthleTrack Dev" : "AthleTrack",
   bundleIdentifier: ".widget",
   // containerBackground ve modern WidgetKit API'leri için. Daha eski iOS'ta
   // uygulama çalışmaya devam eder, sadece widget listede görünmez.

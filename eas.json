@@ -5,6 +5,10 @@
   },
   "build": {
     "development": {
+      "node": "22.14.0",
+      "env": {
+        "APP_VARIANT": "development"
+      },
       "developmentClient": true,
       "distribution": "internal",
       "ios": {

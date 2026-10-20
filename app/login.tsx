@@ -1,20 +1,21 @@
-import { PASSWORD_RE, passwordChecks, registerEmailAccount } from "@/services/account-security";
+import LanguagePicker from "@/components/LanguagePicker";
 import { SocialSignIn } from "@/components/social-sign-in";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { normalizeLanguage, sitePathLanguage } from "@/constants/languages";
+import { deviceUnitSystem } from "@/constants/UnitsContext";
+import { PASSWORD_RE, passwordChecks, registerEmailAccount } from "@/services/account-security";
 import { track } from "@/services/analytics";
+import { setAppLanguage } from "@/services/i18n";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Checkbox from "expo-checkbox";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
-import { setAppLanguage } from "@/services/i18n";
-import { normalizeLanguage, sitePathLanguage } from "@/constants/languages";
-import LanguagePicker from "@/components/LanguagePicker";
-import { deviceUnitSystem } from "@/constants/UnitsContext";
-import { Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
+import { Check, Eye, EyeOff, Lock, Mail, Moon, Sun, User, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -71,7 +72,7 @@ function authErrorKey(code?: string): string {
 export default function LoginScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const { theme, mode } = useTheme();
+  const { theme, mode, toggleTheme } = useTheme();
 
   const styles = useMemo(() => createStyles(theme, mode), [theme, mode]);
 
@@ -230,9 +231,12 @@ export default function LoginScreen() {
 
   const headerTitle = isLoginMode ? t("login.header.welcome_back") : t("login.header.join_us");
   const headerSub = isLoginMode ? t("login.header.sub_continue") : t("login.header.sub_start");
+  const checks = passwordChecks(password);
+  const metCount = Object.values(checks).filter(Boolean).length;
 
   return (
     <View style={styles.root}>
+      <StatusBar style={mode === "dark" ? "light" : "dark"} />
       <LanguagePicker visible={langOpen} onClose={() => setLangOpen(false)} />
       <LinearGradient
         colors={
@@ -263,15 +267,26 @@ export default function LoginScreen() {
             <View style={styles.topBar}>
               <Text style={styles.logoText}>ATHLETRACK</Text>
 
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={toggleLang}
-                style={styles.langBtn}
-              >
-                <Text style={styles.langText}>
-                  {normalizeLanguage(i18n.language).toUpperCase()}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.headerActions}>
+                <Pressable onPress={toggleTheme} accessibilityRole="switch"
+                  accessibilityLabel={t("settings.preference.darkTheme")}
+                  accessibilityHint={t("settings.preference.darkTheme.sub")}
+                  accessibilityState={{ checked: mode === "dark" }}
+                  style={({ pressed }) => [styles.themeBtn, pressed && { opacity: 0.65 }]}>
+                  {mode === "dark"
+                    ? <Sun size={18} color={theme.colors.text.primary} strokeWidth={1.8} />
+                    : <Moon size={18} color={theme.colors.text.primary} strokeWidth={1.8} />}
+                </Pressable>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={toggleLang}
+                  style={styles.langBtn}
+                >
+                  <Text style={styles.langText}>
+                    {normalizeLanguage(i18n.language).toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.centerWrap}>
@@ -336,6 +351,10 @@ export default function LoginScreen() {
                     placeholder={t("login.placeholder.password")}
                     placeholderTextColor={styles.inputPh.color as any}
                     secureTextEntry={!isPasswordVisible}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType={isLoginMode ? "password" : "newPassword"}
+                    autoComplete={isLoginMode ? "current-password" : "new-password"}
                     style={styles.input}
                   />
                   <Pressable onPress={() => setIsPasswordVisible((v) => !v)} hitSlop={10}>
@@ -347,11 +366,27 @@ export default function LoginScreen() {
                   </Pressable>
                 </View>
 
-                {!isLoginMode && <View style={{ gap: 4, marginBottom: 14 }}>
-                  {Object.entries(passwordChecks(password)).map(([key, met]) =>
-                    <Text key={key} style={{ color: met ? theme.colors.primary : theme.colors.text.secondary, fontSize: 12 }}>
-                      {met ? "✓" : "○"} {t(`password.${key}`)}
-                    </Text>)}
+                {!isLoginMode && <View style={styles.passwordGuide}>
+                  <View style={styles.passwordGuideHeader}>
+                    <Text style={styles.passwordGuideTitle}>{t("password.title")}</Text>
+                    <Text style={styles.passwordCount}>{metCount}/{Object.keys(checks).length}</Text>
+                  </View>
+                  <View style={styles.passwordProgress} accessible={false}>
+                    {Object.keys(checks).map((key, index) => <View key={key} style={[
+                      styles.passwordProgressSegment,
+                      index < metCount && { backgroundColor: theme.colors.success },
+                    ]} />)}
+                  </View>
+                  {Object.entries(checks).map(([key, met]) => {
+                    const color = met ? theme.colors.success : password ? theme.colors.danger : theme.colors.text.secondary;
+                    return <View key={key} style={styles.passwordRule} accessible
+                      accessibilityLabel={`${t(`password.${key}`)}, ${t(met ? "password.met" : "password.unmet")}`}>
+                      <View style={[styles.passwordRuleIcon, { backgroundColor: met ? theme.colors.successSoft : password ? theme.colors.dangerSoft : theme.colors.surfaceSoft }]}>
+                        {met ? <Check size={12} color={color} strokeWidth={3} /> : <X size={12} color={color} strokeWidth={2.5} />}
+                      </View>
+                      <Text style={[styles.passwordRuleText, { color }]}>{t(`password.${key}`)}</Text>
+                    </View>;
+                  })}
                 </View>}
 
                 {!isLoginMode && (
@@ -363,6 +398,10 @@ export default function LoginScreen() {
                       placeholder={t("login.placeholder.password_again")}
                       placeholderTextColor={styles.inputPh.color as any}
                       secureTextEntry={!isPasswordVisible}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="newPassword"
+                      autoComplete="new-password"
                       style={styles.input}
                     />
                   </View>
@@ -389,7 +428,7 @@ export default function LoginScreen() {
                   )}
                 </View>
 
-                {(
+                {!isLoginMode && (
                   <View style={styles.legalWrap}>
                     <View style={styles.legalRow}>
                       <Checkbox
@@ -435,8 +474,6 @@ export default function LoginScreen() {
                   </View>
                 )}
 
-                <SocialSignIn onBusyChange={setLoading} busy={loading} legalAccepted={acceptMainLegal && acceptKvkkConsent} />
-
                 <TouchableOpacity
                   activeOpacity={0.9}
                   onPress={handleSubmit}
@@ -464,13 +501,18 @@ export default function LoginScreen() {
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
+
+                <SocialSignIn onBusyChange={setLoading} busy={loading}
+                  isRegistration={!isLoginMode}
+                  legalAccepted={!isLoginMode && acceptMainLegal && acceptKvkkConsent}
+                  onRegistrationRequired={() => setIsLoginMode(false)} />
               </View>
 
               <View style={styles.bottomRow}>
                 <Text style={styles.bottomText}>
                   {isLoginMode ? t("login.toggle.no_account") : t("login.toggle.already_here")}
                 </Text>
-                <TouchableOpacity activeOpacity={0.85} onPress={() => setIsLoginMode((v) => !v)}>
+                <TouchableOpacity activeOpacity={0.85} disabled={loading} onPress={() => setIsLoginMode((v) => !v)}>
                   <Text style={styles.bottomLink}>
                     {isLoginMode ? t("login.toggle.sign_up") : t("login.toggle.sign_in")}
                   </Text>
@@ -507,39 +549,55 @@ function createStyles(theme: ThemeUI, mode: ThemeMode) {
     flex: { flex: 1 },
     scrollContent: { flexGrow: 1, paddingBottom: 28 },
     topBar: {
-      paddingHorizontal: 18, paddingTop: 8, paddingBottom: 8,
+      paddingHorizontal: 24, paddingTop: 8, paddingBottom: 8,
       flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 56,
     },
+    headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+    themeBtn: {
+      width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center",
+      backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.04)",
+      borderWidth: 1, borderColor: cardBorder,
+    },
     langBtn: {
-      paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+      minWidth: 44, minHeight: 44, paddingHorizontal: 12, borderRadius: 14,
+      alignItems: "center", justifyContent: "center",
       backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)",
       borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.10)",
     },
-    langText: { color: isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.75)", fontWeight: "900", fontSize: 12 },
-    centerWrap: { flex: 1, justifyContent: "center", paddingHorizontal: 24, paddingTop: 18 },
+    langText: { color: textPrimary, fontWeight: "600", fontSize: 12 },
+    centerWrap: { flex: 1, justifyContent: "center", paddingHorizontal: 24, paddingTop: 12 },
     iconCircle: {
-      alignSelf: "center", width: 88, height: 88, borderRadius: 24,
+      alignSelf: "center", width: 76, height: 76, borderRadius: 22,
       backgroundColor: isDark ? "rgba(77,141,255,0.10)" : "rgba(77,141,255,0.08)",
       borderWidth: 1, borderColor: isDark ? "rgba(77,141,255,0.22)" : "rgba(77,141,255,0.18)",
       alignItems: "center", justifyContent: "center", marginBottom: 16, overflow: "hidden",
     },
-    appIcon: { width: 62, height: 62, borderRadius: 16 },
-    title: { textAlign: "center", color: textPrimary, fontSize: 34, fontWeight: "900", letterSpacing: -0.9 },
+    appIcon: { width: 56, height: 56, borderRadius: 15 },
+    title: { textAlign: "center", color: textPrimary, fontSize: 30, fontWeight: "700", letterSpacing: -0.65 },
     logoText: { fontSize: theme.fontSize.lg, fontWeight: "800", color: theme.colors.primary, flexShrink: 1, marginRight: 12 },
-    subtitle: { textAlign: "center", marginTop: 6, marginBottom: 22, color: textMuted, fontSize: 14, fontWeight: "600", paddingHorizontal: 8 },
+    subtitle: { textAlign: "center", marginTop: 8, marginBottom: 24, color: textMuted, fontSize: 14, lineHeight: 21, fontWeight: "400", paddingHorizontal: 8 },
     card: {
-      backgroundColor: cardBg, borderWidth: 1, borderColor: cardBorder, borderRadius: 26, padding: 18,
-      shadowColor: "#000", shadowOpacity: isDark ? 0.38 : 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 12 },
+      backgroundColor: cardBg, borderWidth: 1, borderColor: cardBorder, borderRadius: 22, padding: 18,
+      borderCurve: "continuous", boxShadow: isDark ? "0 12px 32px rgba(0,0,0,0.20)" : "0 8px 28px rgba(15,23,42,0.06)",
     },
     inputRow: {
       flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14,
-      height: 54, borderRadius: 16, backgroundColor: inputBg, borderWidth: 1, borderColor: inputBorder, marginBottom: 12,
+      height: 52, borderRadius: 12, backgroundColor: inputBg, borderWidth: 1, borderColor: inputBorder, marginBottom: 12,
     },
-    input: { flex: 1, color: textPrimary, fontSize: 15.5, fontWeight: "700" },
+    input: { flex: 1, color: textPrimary, fontSize: 15, fontWeight: "400" },
     inputPh: { color: isDark ? "rgba(148,163,184,0.85)" : "rgba(100,116,139,0.85)" },
+    passwordGuide: { gap: 9, padding: 14, marginBottom: 14, borderRadius: 14, backgroundColor: inputBg, borderWidth: 1, borderColor: inputBorder },
+    passwordGuideHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
+    passwordGuideTitle: { flex: 1, color: textPrimary, fontSize: 12, fontWeight: "700" },
+    passwordCount: { color: textMuted, fontSize: 12, fontWeight: "600", fontVariant: ["tabular-nums"] },
+    passwordProgress: { flexDirection: "row", gap: 4, marginBottom: 3 },
+    passwordProgressSegment: { flex: 1, height: 3, borderRadius: 2, backgroundColor: theme.colors.border },
+    passwordRule: { flexDirection: "row", alignItems: "center", gap: 8 },
+    passwordRuleIcon: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+    passwordRuleText: { flex: 1, fontSize: 12, lineHeight: 17, fontWeight: "500" },
     row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6, marginBottom: 14, gap: 12 },
-    rememberWrap: { flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 },
-    rememberText: { color: isDark ? "rgba(148,163,184,1)" : "rgba(15,23,42,0.55)", fontSize: 13, fontWeight: "700", flexShrink: 1 },
+    rememberWrap: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 },
+    rememberText: { color: textMuted, fontSize: 12, fontWeight: "500", flexShrink: 1 },
     switchBase: {
       width: 46, height: 24, borderRadius: 999,
       backgroundColor: isDark ? "rgba(148,163,184,0.16)" : "rgba(15,23,42,0.10)",
@@ -551,18 +609,18 @@ function createStyles(theme: ThemeUI, mode: ThemeMode) {
     },
     knob: { width: 18, height: 18, borderRadius: 9, backgroundColor: "#FFFFFF", transform: [{ translateX: 0 }] },
     knobOn: { transform: [{ translateX: 22 }], backgroundColor: "#FFFFFF" },
-    forgot: { color: link, fontSize: 13, fontWeight: "900" },
+    forgot: { color: link, fontSize: 12, fontWeight: "600" },
     legalWrap: { marginTop: 2, marginBottom: 16, gap: 10 },
     legalRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
     checkbox: { marginTop: 2 },
     legalText: { flex: 1, color: textMuted, fontSize: 12.5, lineHeight: 18, fontWeight: "600" },
     legalLink: { color: link, fontWeight: "900", textDecorationLine: "underline" },
-    buttonOuter: { height: 56, borderRadius: 16, overflow: "hidden" },
+    buttonOuter: { height: 52, borderRadius: 12, overflow: "hidden" },
     button: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
-    buttonText: { color: "#07101D", fontSize: 16.5, fontWeight: "900" },
-    buttonArrow: { color: "#07101D", fontSize: 18, fontWeight: "900", marginTop: -1 },
+    buttonText: { color: "#07101D", fontSize: 16, fontWeight: "700" },
+    buttonArrow: { color: "#07101D", fontSize: 18, fontWeight: "600", marginTop: -1 },
     bottomRow: { marginTop: 18, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, flexWrap: "wrap", paddingHorizontal: 8 },
-    bottomText: { color: isDark ? "rgba(148,163,184,1)" : "rgba(15,23,42,0.55)", fontSize: 13.5, fontWeight: "700", textAlign: "center" },
-    bottomLink: { color: link, fontSize: 13.5, fontWeight: "900" },
+    bottomText: { color: textMuted, fontSize: 13, fontWeight: "400", textAlign: "center" },
+    bottomLink: { color: link, fontSize: 13, fontWeight: "600" },
   });
 }

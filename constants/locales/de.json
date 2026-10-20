@@ -1195,7 +1195,7 @@
   "appLock.confirmEnable": "App-Sperre aktivieren",
   "appLock.confirmDisable": "App-Sperre deaktivieren",
   "settings.about.publisher": "Herausgeber",
-  "password.requirements": "Verwende 10–128 Zeichen mit einem Großbuchstaben, einem Kleinbuchstaben und einer Zahl.",
+  "password.requirements": "Verwende 10–128 Zeichen mit einem Großbuchstaben, einem Kleinbuchstaben, einer Zahl und einem Sonderzeichen.",
   "password.length": "10–128 Zeichen",
   "password.upper": "Mindestens ein Großbuchstabe (A–Z)",
   "password.lower": "Mindestens ein Kleinbuchstabe (a–z)",
@@ -1248,5 +1248,11 @@
   "payments.loadError": "Zahlungen konnten nicht geladen werden",
   "payments.balanceChanged": "Der Saldo hat sich geändert oder der Betrag übersteigt den offenen Betrag. Prüfe den aktuellen Saldo.",
   "payments.note": "Notiz (optional)",
-  "common.saving": "Wird gespeichert…"
+  "common.saving": "Wird gespeichert…",
+  "password.special": "Mindestens ein Sonderzeichen (. ! ? @ # usw.)",
+  "password.title": "Erstelle ein sicheres Passwort",
+  "password.met": "Erfüllt",
+  "password.unmet": "Nicht erfüllt",
+  "social.or": "oder",
+  "social.registrationRequired": "Die Registrierung für dieses Konto ist noch nicht abgeschlossen. Bestätige die Bedingungen auf der Registrierungsseite und wähle dann dieselbe Anmeldemethode."
 }

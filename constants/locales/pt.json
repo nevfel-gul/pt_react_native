@@ -1195,7 +1195,7 @@
   "appLock.confirmEnable": "Ativar o bloqueio",
   "appLock.confirmDisable": "Desativar o bloqueio",
   "settings.about.publisher": "Publicador",
-  "password.requirements": "Use de 10 a 128 caracteres com uma letra maiúscula, uma minúscula e um número.",
+  "password.requirements": "Use de 10 a 128 caracteres com uma letra maiúscula, uma minúscula, um número e um caractere especial.",
   "password.length": "10–128 caracteres",
   "password.upper": "Pelo menos uma maiúscula (A–Z)",
   "password.lower": "Pelo menos uma minúscula (a–z)",
@@ -1248,5 +1248,11 @@
   "payments.loadError": "Não foi possível carregar os pagamentos",
   "payments.balanceChanged": "O saldo mudou ou o valor supera o saldo pendente. Confira o valor atual.",
   "payments.note": "Observação (opcional)",
-  "common.saving": "Salvando…"
+  "common.saving": "Salvando…",
+  "password.special": "Pelo menos um caractere especial (. ! ? @ # etc.)",
+  "password.title": "Crie uma senha segura",
+  "password.met": "Atendido",
+  "password.unmet": "Não atendido",
+  "social.or": "ou",
+  "social.registrationRequired": "O cadastro desta conta está incompleto. Aceite os termos na tela de cadastro e escolha o mesmo método de acesso para continuar."
 }

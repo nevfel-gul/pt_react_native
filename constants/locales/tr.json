@@ -1199,7 +1199,7 @@
   "appLock.confirmEnable": "Uygulama kilidini aç",
   "appLock.confirmDisable": "Uygulama kilidini kapat",
   "settings.about.publisher": "Yayıncı",
-  "password.requirements": "Şifren 10–128 karakter olmalı; büyük harf, küçük harf ve rakam içermeli.",
+  "password.requirements": "Şifren 10–128 karakter olmalı; büyük harf, küçük harf, rakam ve özel karakter içermeli.",
   "password.length": "10–128 karakter",
   "password.upper": "En az bir büyük harf (A–Z)",
   "password.lower": "En az bir küçük harf (a–z)",
@@ -1252,5 +1252,11 @@
   "payments.loadError": "Tahsilatlar yüklenemedi",
   "payments.balanceChanged": "Paket bakiyesi değişti veya girilen tutar kalan borcu aşıyor. Güncel tutarı kontrol et.",
   "payments.note": "Açıklama (isteğe bağlı)",
-  "common.saving": "Kaydediliyor…"
+  "common.saving": "Kaydediliyor…",
+  "password.special": "En az bir özel karakter (. ! ? @ # vb.)",
+  "password.title": "Güvenli bir şifre oluştur",
+  "password.met": "Sağlandı",
+  "password.unmet": "Eksik",
+  "social.or": "veya",
+  "social.registrationRequired": "Bu hesap için kayıt tamamlanmamış. Devam etmek için kayıt ekranındaki onayları verip aynı giriş yöntemini seç."
 }

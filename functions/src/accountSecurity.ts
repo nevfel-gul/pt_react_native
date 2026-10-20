@@ -2,7 +2,7 @@ import { createHash, randomInt } from 'crypto';
 import * as admin from 'firebase-admin';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
-const PASSWORD_RE = /^(?=[\s\S]*[a-z])(?=[\s\S]*[A-Z])(?=[\s\S]*[0-9])[\s\S]{10,128}$/;
+const PASSWORD_RE = /^(?=[\s\S]*[a-z])(?=[\s\S]*[A-Z])(?=[\s\S]*[0-9])(?=[\s\S]*[\p{P}\p{S}])[\s\S]{10,128}$/u;
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const ttl = 10 * 60 * 1000;
 

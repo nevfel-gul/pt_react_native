@@ -1195,7 +1195,7 @@
   "appLock.confirmEnable": "Attiva il blocco",
   "appLock.confirmDisable": "Disattiva il blocco",
   "settings.about.publisher": "Editore",
-  "password.requirements": "Usa da 10 a 128 caratteri con una maiuscola, una minuscola e un numero.",
+  "password.requirements": "Usa da 10 a 128 caratteri con una maiuscola, una minuscola, un numero e un carattere speciale.",
   "password.length": "10–128 caratteri",
   "password.upper": "Almeno una maiuscola (A–Z)",
   "password.lower": "Almeno una minuscola (a–z)",
@@ -1248,5 +1248,11 @@
   "payments.loadError": "Impossibile caricare i pagamenti",
   "payments.balanceChanged": "Il saldo è cambiato o l’importo supera il saldo residuo. Controlla l’importo attuale.",
   "payments.note": "Nota (facoltativa)",
-  "common.saving": "Salvataggio…"
+  "common.saving": "Salvataggio…",
+  "password.special": "Almeno un carattere speciale (. ! ? @ # ecc.)",
+  "password.title": "Crea una password sicura",
+  "password.met": "Soddisfatto",
+  "password.unmet": "Non soddisfatto",
+  "social.or": "oppure",
+  "social.registrationRequired": "La registrazione di questo account non è completa. Accetta le condizioni nella schermata di registrazione e scegli lo stesso metodo di accesso per continuare."
 }

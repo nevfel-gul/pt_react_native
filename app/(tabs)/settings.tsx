@@ -1,16 +1,18 @@
-import { getNewsletterPreference, setNewsletterPreference } from "@/services/newsletter";
-import { hapticFeedback } from "@/services/haptics";
-import * as Application from "expo-application";
-import Constants from "expo-constants";
-import { LANGUAGE_META, normalizeLanguage, sitePathLanguage } from "@/constants/languages";
 import LanguagePicker from "@/components/LanguagePicker";
+import { LANGUAGE_META, normalizeLanguage, sitePathLanguage } from "@/constants/languages";
 import { useUnits } from "@/constants/UnitsContext";
 import { track } from "@/services/analytics";
+import { authenticate, canUseAppLock, getAppLockEnabled, setAppLockEnabled } from "@/services/appLock";
+import { hapticFeedback } from "@/services/haptics";
+import { getNewsletterPreference, setNewsletterPreference } from "@/services/newsletter";
+import { requestPasswordReset } from "@/services/passwordReset";
 import { openStoreReviewPage } from "@/services/rating";
+import { registerForPushNotificationsAsync } from "@/services/registerForPush";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs";
+import * as Application from "expo-application";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
-import { requestPasswordReset } from "@/services/passwordReset";
 import { deleteUser, signOut } from "firebase/auth";
 import {
   Bell,
@@ -37,8 +39,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { registerForPushNotificationsAsync } from "@/services/registerForPush";
-import { authenticate, canUseAppLock, getAppLockEnabled, setAppLockEnabled } from "@/services/appLock";
 import { auth, db } from "../../services/firebase";
 
 // ✅ THEME
@@ -391,9 +391,11 @@ export default function SettingsScreen() {
         if (error?.code === 'functions/failed-precondition') {
           Alert.alert(t('verify.title'), t('newsletter.verify'), [
             { text: t('common.cancel'), style: 'cancel' },
-            { text: t('verify.send'), onPress: () => {
-              router.push('/verify-email');
-            } },
+            {
+              text: t('verify.send'), onPress: () => {
+                router.push('/verify-email');
+              }
+            },
           ]);
         } else Alert.alert(t('common.error'), t('newsletter.failed'));
       } finally { setEmailBusy(false); }
@@ -896,24 +898,6 @@ export default function SettingsScreen() {
           <SettingRow
             label={t("settings.about.publisher")}
             right={<Text style={styles.settingValueText}>Callidus</Text>}
-          />
-
-          <SettingRow
-            label={t("settings.about.privacyPolicy")}
-            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
-            onPress={() => handleOpenLink(legalLinks.privacy)}
-          />
-
-          <SettingRow
-            label={t("settings.about.termsOfUse")}
-            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
-            onPress={() => handleOpenLink(legalLinks.terms)}
-          />
-
-          <SettingRow
-            label={t("settings.about.cookiePolicy")}
-            right={<Text style={styles.badgeMuted}>{t("settings.action.open")}</Text>}
-            onPress={() => handleOpenLink(legalLinks.cookie)}
             isLast
           />
         </View>

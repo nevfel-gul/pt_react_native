@@ -68,14 +68,22 @@ beforeEach(() => {
 
 test('registration rejects missing password conditions and creates a server-owned verification requirement', async () => {
   const base = { email: 'alice@example.com', name: 'Alice', username: 'alice', acceptLegal: true };
-  for (const password of ['ShortA1', 'lowercase123', 'UPPERCASE123', 'NoNumbersHere']) {
+  for (const password of ['ShortA1!', 'lowercase123!', 'UPPERCASE123!', 'NoNumbersHere!', 'ValidPassword1', 'ValidPassword1 ', 'ValidPassword1é']) {
     await assert.rejects(security.registerEmailAccount({ data: { ...base, password } }), { code: 'invalid-argument' });
   }
-  const result = await security.registerEmailAccount({ data: { ...base, password: 'ValidPassword1' } });
+  const result = await security.registerEmailAccount({ data: { ...base, password: 'ValidPassword1!' } });
   assert.equal(result.ok, true);
   const uid = [...users.keys()].find(uid => uid.startsWith('new-'));
   assert.equal(users.get(uid).customClaims.email_verification_required, true);
   assert.equal(docs.get('users/' + uid).emailEnabled, false);
+});
+
+test('registration accepts punctuation and symbols without a restricted special-character list', async () => {
+  const base = { email: 'alice@example.com', name: 'Alice', username: 'alice', acceptLegal: true };
+  for (const symbol of ['.', '!', '?', '@', '#', '_', '-', '/', '\\', '\"', "'", '(', ')', '[', ']', '{', '}', ':', ';', ',', '€', '£', '₺', '+', '=', '~', '`', '|', '…', '！', '？']) {
+    const result = await security.registerEmailAccount({ data: { ...base, password: `ValidPassword1${symbol}` }, rawRequest: { ip: symbol } });
+    assert.equal(result.ok, true, symbol);
+  }
 });
 
 test('email code requires authentication and rate-limits resend', async () => {

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Application from "expo-application";
 import { calendarFirstDay } from "@/constants/calendarLocale";
 import { appLocale, currentLanguage } from "@/constants/languages";
 import type { ActivePackageSummary } from "./packages";
@@ -30,7 +31,9 @@ import {
 // snapshot önümüzdeki 7 günün randevularını tarih damgasıyla taşır.
 // ─────────────────────────────────────────────────────────────
 
-export const APP_GROUP = "group.com.athletrack.athletrack";
+export const APP_GROUP = Platform.OS === "ios" && Application.applicationId
+    ? `group.${Application.applicationId}`
+    : "group.com.athletrack.athletrack";
 export const WIDGET_SNAPSHOT_KEY = "snapshot";
 export const ANDROID_SNAPSHOT_KEY = "widget:snapshot";
 export const ANDROID_WIDGET_NAME = "TodayWidget";

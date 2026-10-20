@@ -8,7 +8,7 @@ const passwordPolicyConfig = {
   passwordPolicyVersions: [{ customStrengthOptions: {
     minPasswordLength: 10, maxPasswordLength: 128,
     containsLowercaseCharacter: true, containsUppercaseCharacter: true,
-    containsNumericCharacter: true, containsNonAlphanumericCharacter: false,
+    containsNumericCharacter: true, containsNonAlphanumericCharacter: true,
   } }],
 };
 async function main() {

@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
-import { GoogleAuthProvider, OAuthProvider, signInWithCredential, signInWithPopup, updateProfile, type UserCredential } from 'firebase/auth';
+import { GoogleAuthProvider, OAuthProvider, signInWithCredential, signInWithPopup, signOut, updateProfile, type UserCredential } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { normalizeLanguage } from '@/constants/languages';
@@ -38,8 +38,12 @@ export async function signInSocial(provider: 'google' | 'apple', legalAccepted: 
   const ref = doc(db, 'users', result.user.uid);
   const snap = await getDoc(ref);
   if (!snap.data()?.createdAt) {
-    // The shared login UI requires the legal checkboxes for all provider buttons.
-    if (!legalAccepted) throw new Error('Legal consent required');
+    // Returning users never have to accept signup terms again. An unknown social
+    // account must finish the registration flow before we create its app profile.
+    if (!legalAccepted) {
+      await signOut(auth);
+      throw Object.assign(new Error('Registration required'), { code: 'social/registration-required' });
+    }
     await setDoc(ref, { uid: result.user.uid, email: result.user.email ?? '', displayName: result.user.displayName ?? '',
       username: '', language: normalizeLanguage(i18n.language), units: deviceUnitSystem(), pushEnabled: true,
       emailEnabled: false, createdAt: serverTimestamp(),

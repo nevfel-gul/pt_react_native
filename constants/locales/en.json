@@ -1195,7 +1195,7 @@
   "appLock.confirmEnable": "Turn on app lock",
   "appLock.confirmDisable": "Turn off app lock",
   "settings.about.publisher": "Publisher",
-  "password.requirements": "Use 10–128 characters with an uppercase letter, a lowercase letter and a number.",
+  "password.requirements": "Use 10–128 characters with an uppercase letter, a lowercase letter, a number and a special character.",
   "password.length": "10–128 characters",
   "password.upper": "At least one uppercase letter (A–Z)",
   "password.lower": "At least one lowercase letter (a–z)",
@@ -1248,5 +1248,11 @@
   "payments.loadError": "Could not load payments",
   "payments.balanceChanged": "The package balance changed or this amount exceeds the outstanding balance. Check the current amount.",
   "payments.note": "Note (optional)",
-  "common.saving": "Saving…"
+  "common.saving": "Saving…",
+  "password.special": "At least one special character (. ! ? @ # etc.)",
+  "password.title": "Create a secure password",
+  "password.met": "Met",
+  "password.unmet": "Not met",
+  "social.or": "or",
+  "social.registrationRequired": "Registration is not complete for this account. Accept the terms on the signup screen, then choose the same sign-in method to continue."
 }

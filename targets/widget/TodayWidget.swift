@@ -11,7 +11,11 @@ import WidgetKit
 // Android karşılığı: widgets/android/TodayWidget.tsx
 // ─────────────────────────────────────────────────────────────
 
-private let appGroup = "group.com.athletrack.athletrack"
+private let parentBundleIdentifier = String(
+    (Bundle.main.bundleIdentifier ?? "com.athletrack.athletrack.widget").dropLast(".widget".count)
+)
+private let appGroup = "group.\(parentBundleIdentifier)"
+private let appScheme = parentBundleIdentifier.hasSuffix(".dev") ? "ptreactnative-dev" : "ptreactnative"
 private let snapshotKey = "snapshot"
 
 // MARK: - Model
@@ -204,16 +208,16 @@ struct TodayProvider: TimelineProvider {
 
 // MARK: - Views
 
-private let calendarURL = URL(string: "ptreactnative://calendar?source=widget")!
-private let overdueURL = URL(string: "ptreactnative://calendar?source=widget&filter=overdue")!
-private let dueSoonURL = URL(string: "ptreactnative://calendar?source=widget&filter=dueSoon")!
-private let homeURL = URL(string: "ptreactnative://?source=widget")!
+private let calendarURL = URL(string: "\(appScheme)://calendar?source=widget")!
+private let overdueURL = URL(string: "\(appScheme)://calendar?source=widget&filter=overdue")!
+private let dueSoonURL = URL(string: "\(appScheme)://calendar?source=widget&filter=dueSoon")!
+private let homeURL = URL(string: "\(appScheme)://?source=widget")!
 
 /// Öğrencinin sayfası; kimlik yoksa takvim.
 private func studentURL(_ sid: String?) -> URL {
     guard let sid, !sid.isEmpty,
           let encoded = sid.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
-          let url = URL(string: "ptreactnative://student/\(encoded)?source=widget")
+          let url = URL(string: "\(appScheme)://student/\(encoded)?source=widget")
     else { return calendarURL }
     return url
 }

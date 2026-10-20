@@ -1195,7 +1195,7 @@
   "appLock.confirmEnable": "Activer le verrouillage",
   "appLock.confirmDisable": "Désactiver le verrouillage",
   "settings.about.publisher": "Éditeur",
-  "password.requirements": "Utilisez 10 à 128 caractères avec une majuscule, une minuscule et un chiffre.",
+  "password.requirements": "Utilisez 10 à 128 caractères avec une majuscule, une minuscule, un chiffre et un caractère spécial.",
   "password.length": "10–128 caractères",
   "password.upper": "Au moins une majuscule (A–Z)",
   "password.lower": "Au moins une minuscule (a–z)",
@@ -1248,5 +1248,11 @@
   "payments.loadError": "Impossible de charger les paiements",
   "payments.balanceChanged": "Le solde a changé ou le montant dépasse le solde restant. Vérifiez le montant actuel.",
   "payments.note": "Note (facultative)",
-  "common.saving": "Enregistrement…"
+  "common.saving": "Enregistrement…",
+  "password.special": "Au moins un caractère spécial (. ! ? @ # etc.)",
+  "password.title": "Créez un mot de passe sécurisé",
+  "password.met": "Respecté",
+  "password.unmet": "Non respecté",
+  "social.or": "ou",
+  "social.registrationRequired": "L’inscription de ce compte est incomplète. Acceptez les conditions sur l’écran d’inscription, puis choisissez la même méthode de connexion pour continuer."
 }
